@@ -1,0 +1,6 @@
+models/            # trained checkpoints (~144MB); regenerate with train.py
+data/ag_news/      # ~31MB HF dataset; source is the HF cache (see 04-handoff.md)
+__pycache__/
+*.pyc
+.DS_Store
+# NOTE: .best_metric is intentionally TRACKED - it is the loop's memory.
