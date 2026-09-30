@@ -61,10 +61,11 @@ We have established our benchmark ($0.8570$). The following 3 experiments are sc
 | :---: | :--- | :---: | :---: | :---: | :--- |
 | **0** | Baseline (5 heads, raw conf target) | 0.8570 | 84.61% | 0.1321 | **Committed** baseline |
 | **1** | Fix Judger Target (correct & confident) | 0.7767 | 83.38% | 0.2804 | **Reverted** (Brier degraded; reveals `eval.py` evaluates `sigmoid(judger.scores)`, not `head.confs`) |
-| **2** | Head Diversity Penalty | *Pending* | — | — | *Executing next* |
-| **3** | Single-Head Ablation (`num_heads = 1`) | *Pending* | — | — | *Scheduled* |
+| **2** | Head Diversity Penalty ($\lambda_{\text{div}}=0.05$) | 0.8412 | **86.99%** | 0.1874 | **Reverted** (Accuracy jumped **+2.38%**, but Brier penalty nudged metric below 0.8570) |
+| **3** | Single-Head Ablation (`num_heads = 1`) | *Pending* | — | — | *Executing next* |
 
-### Critical Architectural Finding from Test 1:
-- `eval.py` measures calibration against `conf`, which in `system.py` is defined as `best_conf = torch.sigmoid(scores.gather(...))` (from the Judger's raw scoring logits), **not** the winning head's calibrated confidence (`confs`).
-- In the baseline, `judge_loss = cross_entropy(scores, confs.max())` essentially forced the Judger's scores to mimic the head confidence ordering. When Test 1 trained the Judger on binary correctness without diversity between the heads, the Judger's scores became overconfident/noisy, causing Brier error to jump from 0.1321 to 0.2804.
+### Critical Architectural Findings:
+1. **From Test 1 (Judger Target)**: `eval.py` measures calibration against `conf`, which in `system.py` is defined as `best_conf = torch.sigmoid(scores.gather(...))` (from the Judger's raw scoring logits), **not** the winning head's calibrated confidence (`confs`).
+2. **From Test 2 (Diversity Penalty)**: The cosine diversity penalty worked remarkably well to break symmetry (`div = -0.167`), driving accuracy up significantly from **84.61% to 86.99%** (+2.38%). However, the wider spread in Judger scores widened the Brier penalty (0.1321 $\to$ 0.1874). A lighter $\lambda_{\text{div}}$ (e.g. 0.01) or calibrating Judger logits will be key to capturing this accuracy gain while preserving calibration.
+
 
