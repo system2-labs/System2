@@ -27,18 +27,18 @@ from bert import tokenizer, model
 from system import System2
 
 
-def mean_pool_texts(texts, device):
+def mean_pool_texts(texts, device, max_len=192):
     """(N texts) -> (N, 1024) tensor via ModernBERT + attention-weighted mean."""
-    inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=128).to(device)
+    inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(device)
     last_hidden = model(**inputs).last_hidden_state
     mask = inputs["attention_mask"].unsqueeze(-1)
     return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
 
 
-def evaluate(checkpoint_path, batch=64, max_samples=None, device=None):
+def evaluate(checkpoint_path, batch=64, max_samples=None, device=None, data_dir="./data/arc"):
     device = device or ("mps" if torch.backends.mps.is_available() else "cpu")
     model.to(device)
-    ds = load_from_disk("./data/ag_news")
+    ds = load_from_disk(data_dir)
     test = ds["test"]
     n = max_samples or len(test)
     # NOTE: test[:n] on a HF Dataset returns a dict of COLUMNS, not a list of
@@ -81,9 +81,10 @@ if __name__ == "__main__":
         ap = argparse.ArgumentParser()
         ap.add_argument("ckpt", nargs="?", default="./models/system2.pt")
         ap.add_argument("--max-samples", type=int, default=None)
+        ap.add_argument("--data", default="./data/arc")
         args = ap.parse_args()
         ckpt = args.ckpt
-        m = evaluate(ckpt, max_samples=args.max_samples)
+        m = evaluate(ckpt, max_samples=args.max_samples, data_dir=args.data)
         metric = 0.5 * m["accuracy"] + 0.5 * (1 - m["brier"])
         print(json.dumps({"metric": round(metric, 4), "accuracy": round(m["accuracy"], 4), "brier": round(m["brier"], 4)}))
     except Exception as e:
