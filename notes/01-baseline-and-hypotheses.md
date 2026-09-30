@@ -60,6 +60,11 @@ We have established our benchmark ($0.8570$). The following 3 experiments are sc
 | Run # | Experiment Description | Result Metric | Accuracy | Brier Score | Outcome / Action |
 | :---: | :--- | :---: | :---: | :---: | :--- |
 | **0** | Baseline (5 heads, raw conf target) | 0.8570 | 84.61% | 0.1321 | **Committed** baseline |
-| **1** | Fix Judger Target (correct & confident) | *Pending* | — | — | *Executing next* |
-| **2** | Head Diversity Penalty | *Pending* | — | — | *Scheduled* |
+| **1** | Fix Judger Target (correct & confident) | 0.7767 | 83.38% | 0.2804 | **Reverted** (Brier degraded; reveals `eval.py` evaluates `sigmoid(judger.scores)`, not `head.confs`) |
+| **2** | Head Diversity Penalty | *Pending* | — | — | *Executing next* |
 | **3** | Single-Head Ablation (`num_heads = 1`) | *Pending* | — | — | *Scheduled* |
+
+### Critical Architectural Finding from Test 1:
+- `eval.py` measures calibration against `conf`, which in `system.py` is defined as `best_conf = torch.sigmoid(scores.gather(...))` (from the Judger's raw scoring logits), **not** the winning head's calibrated confidence (`confs`).
+- In the baseline, `judge_loss = cross_entropy(scores, confs.max())` essentially forced the Judger's scores to mimic the head confidence ordering. When Test 1 trained the Judger on binary correctness without diversity between the heads, the Judger's scores became overconfident/noisy, causing Brier error to jump from 0.1321 to 0.2804.
+
