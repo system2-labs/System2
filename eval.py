@@ -45,7 +45,7 @@ def evaluate(checkpoint_path, batch=64, max_samples=None, device=None):
     # rows. Iterating it yields column-name strings. So read from the columns.
     cols = test[:n]
     texts = cols["text"]
-    labels = torch.tensor(cols["label"])
+    labels = torch.tensor(cols["label"], device=device)
 
     state = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     # num_heads must match the checkpoint (the autoresearch loop varies it).
@@ -53,6 +53,7 @@ def evaluate(checkpoint_path, batch=64, max_samples=None, device=None):
     num_heads = len({k.split(".")[1] for k in state.keys() if k.startswith("heads.")})
     sys2 = System2(num_heads=num_heads, num_classes=4)
     sys2.load_state_dict(state)
+    sys2.to(device)
     sys2.eval()
 
     correct = 0
