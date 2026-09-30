@@ -18,10 +18,16 @@ def load_ag_news(path="./data/ag_news", train_size=None, test_size=7600):
 def load_arc(path="./data/arc", train_size=None):
     """Load AI2 ARC scientific reasoning dataset. Returns (train, test)."""
     ds = load_from_disk(path)
-    train = [{"text": ex["text"], "label": ex["label"]} for ex in ds["train"]]
+    train = [
+        {"question": ex.get("question"), "choices": ex.get("choices"), "text": ex["text"], "label": ex["label"]}
+        for ex in ds["train"]
+    ]
     if train_size:
         train = train[:train_size]
-    test = [{"text": ex["text"], "label": ex["label"]} for ex in ds["test"]]
+    test = [
+        {"question": ex.get("question"), "choices": ex.get("choices"), "text": ex["text"], "label": ex["label"]}
+        for ex in ds["test"]
+    ]
     return train, test
 
 

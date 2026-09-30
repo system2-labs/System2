@@ -30,28 +30,43 @@ from system import System2
 def mean_pool_texts(texts, device, max_len=192):
     """(N texts) -> (N, 1024) tensor via ModernBERT + attention-weighted mean."""
     inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(device)
-    last_hidden = model(**inputs).last_hidden_state
-    mask = inputs["attention_mask"].unsqueeze(-1)
-    return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
+    with torch.no_grad():
+        last_hidden = model(**inputs).last_hidden_state
+        mask = inputs["attention_mask"].unsqueeze(-1)
+        return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
 
 
-def evaluate(checkpoint_path, batch=64, max_samples=None, device=None, data_dir="./data/arc"):
+def mean_pool_pairwise(questions, choices_list, device, max_len=128):
+    """Pairwise encoding: (b questions, 4 choices) -> (b, 4, 1024)."""
+    b = len(questions)
+    flat_texts = [
+        f"Question: {questions[idx]} Answer: {choices_list[idx][c]}"
+        for idx in range(b)
+        for c in range(4)
+    ]
+    inputs = tokenizer(flat_texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(device)
+    with torch.no_grad():
+        last_hidden = model(**inputs).last_hidden_state
+        mask = inputs["attention_mask"].unsqueeze(-1)
+        pooled = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
+    return pooled.view(b, 4, -1)
+
+
+def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir="./data/arc"):
     device = device or ("mps" if torch.backends.mps.is_available() else "cpu")
     model.to(device)
     ds = load_from_disk(data_dir)
     test = ds["test"]
     n = max_samples or len(test)
-    # NOTE: test[:n] on a HF Dataset returns a dict of COLUMNS, not a list of
-    # rows. Iterating it yields column-name strings. So read from the columns.
     cols = test[:n]
-    texts = cols["text"]
     labels = torch.tensor(cols["label"], device=device)
+    has_choices = "choices" in cols and cols["choices"] is not None
 
     state = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
-    # num_heads must match the checkpoint (the autoresearch loop varies it).
-    # Recover it from the saved state: count distinct head indices.
     num_heads = len({k.split(".")[1] for k in state.keys() if k.startswith("heads.")})
-    sys2 = System2(num_heads=num_heads, num_classes=4)
+    hypo_w = state.get("heads.0.hypothesis_head.weight")
+    is_pairwise = (hypo_w is not None and hypo_w.shape[0] == 1)
+    sys2 = System2(num_heads=num_heads, num_classes=1 if is_pairwise else 4, pairwise=is_pairwise)
     sys2.load_state_dict(state)
     sys2.to(device)
     sys2.eval()
@@ -59,19 +74,18 @@ def evaluate(checkpoint_path, batch=64, max_samples=None, device=None, data_dir=
     correct = 0
     ece_sum = 0.0
     with torch.no_grad():
-        for i in range(0, len(texts), batch):
-            vecs = mean_pool_texts(texts[i : i + b], device) if (b := len(texts[i : i + batch])) else None
-            if vecs is None:
-                continue
+        for i in range(0, n, batch):
+            b = min(batch, n - i)
+            if has_choices and is_pairwise:
+                vecs = mean_pool_pairwise(cols["question"][i : i + b], cols["choices"][i : i + b], device)
+            else:
+                vecs = mean_pool_texts(cols["text"][i : i + b], device)
             best, conf, pruned, confs, logits, emb, scores = sys2(vecs)
-            # Winner's predicted class = argmax of winning head's logits
-            win_logits = logits[torch.arange(len(vecs)), best]  # (b, 4)
+            win_logits = logits[torch.arange(b), best]  # (b, 4)
             preds = win_logits.max(dim=1).indices
             correct += (preds == labels[i : i + b]).sum().item()
-            # Calibration: winning confidence vs correctness
             ece_sum += ((conf - (preds == labels[i : i + b]).float()) ** 2).sum().item()
 
-    n = len(texts)
     return {"accuracy": correct / n, "brier": ece_sum / n}
 
 

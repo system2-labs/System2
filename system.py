@@ -34,36 +34,51 @@ class Judger(nn.Module):
 class System2(nn.Module):
     """Encoder + N parallel thought heads + judger.
 
-    One forward pass: text -> vector -> N hypotheses -> 1 selected.
-    No autoregressive generation. No hidden alignment layer.
+    Supports both:
+    1. Single-vector classification: (B, 1024) -> N hypotheses -> 1 selected
+    2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False):
         super().__init__()
-        self.heads = nn.ModuleList([ThoughtHead(num_classes=num_classes) for _ in range(num_heads)])
+        self.pairwise = pairwise
         self.num_classes = num_classes
+        head_classes = 1 if pairwise else num_classes
+        self.heads = nn.ModuleList([ThoughtHead(num_classes=head_classes) for _ in range(num_heads)])
         self.judger = Judger()
 
     def forward(self, encoder_output):
-        embeddings, confidences = [], []
-        for head in self.heads:
-            x = head.input_proj(encoder_output).unsqueeze(1)
-            x = head.layers(x).squeeze(1)  # (B, 512)
-            embeddings.append(x)
-            confidences.append(torch.sigmoid(head.confidence_head(x)).squeeze(-1))
-        # Stack per-head outputs: (B, N, 512) embeddings, (B, N) confidences.
-        # Stacking confidences here (not at the call site) so every consumer
-        # gets a tensor, not a Python list.
-        embeddings = torch.stack(embeddings, dim=1)  # (B, N, 512)
-        confidences = torch.stack(confidences, dim=1)  # (B, N)
-        # (B, N, C) - index along the N (head) dim, never the batch dim.
-        # zipping heads with `embeddings` would iterate over dim 0 (batch) and
-        # collapse every head to a fixed (N, C) output - a batch-size bug that
-        # only surfaces when batch != num_heads.
-        head_logits = [self.heads[n].hypothesis_head(embeddings[:, n, :]) for n in range(embeddings.size(1))]
-        logits = torch.stack(head_logits, dim=1)  # (B, N, C)
-        best, best_conf, pruned, scores = self.judger(embeddings)
-        return best, best_conf, pruned, confidences, logits, embeddings, scores
+        if encoder_output.dim() == 3:
+            # Pairwise candidate reasoning: (B, num_choices, 1024)
+            all_logits, confidences, embeddings = [], [], []
+            for head in self.heads:
+                x = head.input_proj(encoder_output)  # (B, num_choices, 512)
+                x = head.layers(x)                   # (B, num_choices, 512) - cross-candidate self-attention
+                cand_scores = head.hypothesis_head(x).squeeze(-1)  # (B, num_choices)
+                head_emb = x.mean(dim=1)             # (B, 512)
+                conf = torch.sigmoid(head.confidence_head(head_emb)).squeeze(-1)  # (B,)
+                all_logits.append(cand_scores)
+                confidences.append(conf)
+                embeddings.append(head_emb)
+            embeddings = torch.stack(embeddings, dim=1)    # (B, N, 512)
+            confidences = torch.stack(confidences, dim=1)  # (B, N)
+            logits = torch.stack(all_logits, dim=1)        # (B, N, num_choices)
+            best, best_conf, pruned, scores = self.judger(embeddings)
+            return best, best_conf, pruned, confidences, logits, embeddings, scores
+        else:
+            # Single-vector classification: (B, 1024)
+            embeddings, confidences = [], []
+            for head in self.heads:
+                x = head.input_proj(encoder_output).unsqueeze(1)
+                x = head.layers(x).squeeze(1)  # (B, 512)
+                embeddings.append(x)
+                confidences.append(torch.sigmoid(head.confidence_head(x)).squeeze(-1))
+            embeddings = torch.stack(embeddings, dim=1)  # (B, N, 512)
+            confidences = torch.stack(confidences, dim=1)  # (B, N)
+            head_logits = [self.heads[n].hypothesis_head(embeddings[:, n, :]) for n in range(embeddings.size(1))]
+            logits = torch.stack(head_logits, dim=1)  # (B, N, C)
+            best, best_conf, pruned, scores = self.judger(embeddings)
+            return best, best_conf, pruned, confidences, logits, embeddings, scores
 
 
 if __name__ == '__main__':
