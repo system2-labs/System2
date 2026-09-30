@@ -31,11 +31,12 @@ HYPERPARAMS = {
     "lr_heads": 1e-3,
     "lr_judger": 3e-4,
     "batch_size": 32,
-    "max_len": 128,
+    "max_len": 192,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
-    "epochs": 2,
-    "train_size": 20000,
+    "epochs": 3,
+    "train_size": 3500,
     "lambda_div": 0.01,
+    "data_dir": "./data/arc",
 }
 
 
@@ -53,6 +54,7 @@ def main():
     ap.add_argument("--train-size", type=int, default=None)
     ap.add_argument("--epochs", type=int, default=None)
     ap.add_argument("--batch-size", type=int, default=None)
+    ap.add_argument("--data", default=None)
     args = ap.parse_args()
     if args.train_size is not None:
         HYPERPARAMS["train_size"] = args.train_size
@@ -61,11 +63,12 @@ def main():
     if args.batch_size is not None:
         HYPERPARAMS["batch_size"] = args.batch_size
 
-    ds = load_from_disk("./data/ag_news")
-    # CRITICAL: the HF split is sorted by label (train[:N] would be a single
-    # class -> degenerate). Deterministic shuffle before slicing.
+    data_dir = args.data or HYPERPARAMS.get("data_dir", "./data/arc")
+    ds = load_from_disk(data_dir)
+    # Deterministic shuffle before slicing
     train = ds["train"].shuffle(seed=0)
-    cols = train[: HYPERPARAMS["train_size"]]
+    n_samples = min(HYPERPARAMS["train_size"], len(train))
+    cols = train[: n_samples]
     texts = cols["text"]
     labels = cols["label"]
 
