@@ -69,31 +69,58 @@ $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{task}} + 0.5 \mathcal{L}_{\tex
 
 | Run # | Experiment Description | Result Metric | Accuracy | Brier Score | Outcome / Status |
 | :---: | :--- | :---: | :---: | :---: | :--- |
-| **0** | **Phase 2 Baseline (AI2 ARC, 5 heads)** | **0.5353** | **26.69%** | **0.1962** | **COMMITTED**: Baseline established (random chance is 25.0%) |
+| **0** | **Phase 2 Baseline (AI2 ARC, 5 heads, blended bag)** | **0.5353** | **26.69%** | **0.1962** | **COMMITTED**: Baseline established (random chance is 25.0%) |
+| **1** | **Pairwise Question-Choice Hypothesis Encoding** | **0.5948** | **43.97%** | **0.2500** | **COMMITTED (NEW SOTA)**: Accuracy leaped by **+17.28%** over baseline; metric increased by +0.0595 |
 
 ---
 
-## 5. Diagnostic Analysis of the Phase 2 Baseline
+## 5. Diagnostic Analysis of Run 1 (Pairwise Hypotheses)
 
-### The Bottleneck: Mean-Pooling All Choices vs. Per-Option Hypothesis Framing
-In the Phase 1 setup, input text is a single passage (a news headline), and the model outputs a topic class.
-In the naive Phase 2 baseline, the prompt concatenated the question and all four choices:
-```
-Question: George wants to warm his hands quickly by rubbing them. Which skin surface will produce the most heat?
-(A) dry palms
-(B) wet palms
-(C) palms covered with oil
-(D) palms covered with lotion
-```
-When mean-pooled into a single 1024-dim vector, ModernBERT averages all four choices together into one generic bag of embeddings. The downstream 2-layer `ThoughtHead` is then forced to guess which option was correct from this blended summary.
+### The Quantitative Leap:
+- **Baseline (Blended Bag)**: Accuracy was **26.69%**, essentially random chance (25.0%). ModernBERT had all four choices averaged together into one 1024-dimensional vector, losing the distinction between options.
+- **Run 1 (Pairwise Candidates)**: Accuracy leaped to **43.97%** across all 3,530 held-out test problems!
+- **Composite Metric**: Rose from **0.5353 to 0.5948** (commit [`c733a18`](https://github.com/tj-doomer-it/System2/commit/c733a18)).
 
-### The Breakthrough Hypothesis: Pairwise Question-Choice Hypothesis Encoding
-In true System 2 reasoning, **each choice is literally a distinct hypothesis**:
-- *Hypothesis 1*: $\text{Question} \oplus \text{Choice A}$ (dry palms)
-- *Hypothesis 2*: $\text{Question} \oplus \text{Choice B}$ (wet palms)
-- *Hypothesis 3*: $\text{Question} \oplus \text{Choice C}$ (palms with oil)
-- *Hypothesis 4*: $\text{Question} \oplus \text{Choice D}$ (palms with lotion)
+### Why Pairwise Framing Solved the Core Reasoning Bottleneck:
+1. **Bidirectional Cross-Attention per Hypothesis**:
+   For each question $Q$ and candidate choice $C_i$, ModernBERT computes:
+   $$v_i = \text{ModernBERT}(\text{"Question: "} Q \oplus \text{" Answer: "} C_i) \in \mathbb{R}^{1024}$$
+   ModernBERT's 28 bidirectional attention layers compute full pairwise token interaction between every word in the question and every word in that specific candidate choice.
+2. **Cross-Option Deliberation in the ThoughtHeads**:
+   Each `ThoughtHead` takes the four candidate vectors $(B, 4, 1024)$, projects them to $(B, 4, 512)$, and passes them through a 2-layer `TransformerEncoder` where all 4 candidate choices **attend directly to each other**. Choice A actively compares its plausibility against Choice B, C, and D.
+3. **Head Divergence & Judger Specialization**:
+   The pairwise cosine diversity penalty $\lambda_{\text{div}} = 0.01$ pushed the head correlation down to $-0.146$, meaning the 5 parallel heads developed distinct internal criteria for ranking options.
+   The `Judger` cross-attended between the 5 heads and drove its selection loss down from $1.537 \to 1.014$, learning which head to trust for different question styles.
 
-When ModernBERT encodes each (Question, Choice) pair separately, bidirectional cross-attention directly evaluates the semantic interaction between the condition ("warm hands by rubbing") and each specific option.
-The parallel `ThoughtHead`s score the compatibility of each hypothesis, and the `Judger` cross-attends across all four hypotheses to select the winning derivation and prune the unviable ones!
+---
+
+## 6. Thinking on the Problem with More Data & Scaling
+
+While 43.97% is a massive step up from 26.69% on a challenging reasoning benchmark with a frozen encoder, ARC middle-school science requires deep common-sense and physical knowledge.
+
+### 1. The Data Volume Bottleneck:
+- Our current training set is only **3,358 samples** (ARC-Challenge + ARC-Easy train splits).
+- 3,358 samples is very small for training a multi-head reasoning network to generalize across physics, biology, chemistry, and earth science.
+- Because ModernBERT remains completely frozen, each epoch on 3,358 samples takes only **~50 seconds** on Apple Silicon (Metal/MPS).
+
+### 2. High-Value Scientific & Common-Sense Datasets for Pre-Training / Data Expansion:
+We can dramatically expand the training volume with zero architecture changes:
+1. **OpenBookQA** (~5,000 questions):
+   - Grade-school science questions modeled after open-book exams, requiring multi-hop reasoning over core scientific facts.
+2. **SciQ** (~13,679 questions):
+   - Middle and high school science exam questions with 4 multiple-choice options covering physics, chemistry, biology, and earth science.
+3. **CommonsenseQA** (~12,102 questions):
+   - Multiple-choice questions requiring common-sense relational reasoning (from ConceptNet).
+4. **Combined Corpus**:
+   - Merging ARC (3.3k) + SciQ (13.6k) + OpenBookQA (5k) gives **~22,000 high-quality scientific reasoning problems** (~6.5x more data).
+   - Training time for 22,000 samples at 63 problems/sec on MPS: **~5.8 minutes per epoch**!
+
+### 3. Immediate Architectural Next Steps on ARC:
+1. **Cross-Candidate Subtraction / Difference Features**:
+   - In addition to self-attention across candidates, augment candidate representations with relative difference vectors: $(x_i - \frac{1}{4}\sum_j x_j)$ to explicitly highlight what makes choice $i$ different from the average distractor.
+2. **Confidence Calibration Tuning**:
+   - In Run 1, Brier score was $0.2500$ (with accuracy $43.97\%$). Calibrating head confidences to better reflect true uncertainty will raise the composite metric further.
+3. **Scale Epochs and Learning Rate Schedule**:
+   - Train for 5–8 epochs with a cosine decay learning rate schedule to allow the ThoughtHeads to fully settle into their specialized reasoning niches.
+
 
