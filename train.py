@@ -29,12 +29,13 @@ from system import System2
 HYPERPARAMS = {
     "num_heads": 5,
     "lr_heads": 1e-3,
-    "lr_judger": 1e-3,
+    "lr_judger": 3e-4,
     "batch_size": 32,
     "max_len": 128,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
     "epochs": 2,
     "train_size": 20000,
+    "lambda_div": 0.01,
 }
 
 
@@ -90,7 +91,7 @@ def main():
 
     bs = HYPERPARAMS["batch_size"]
     for epoch in range(HYPERPARAMS["epochs"]):
-        total_ce = total_cal = total_judge = 0.0
+        total_ce = total_cal = total_judge = total_div = 0.0
         n_batches = 0
         for i in range(0, len(texts), bs):
             n_batches += 1
@@ -109,17 +110,34 @@ def main():
             ce = torch.stack([torch.nn.functional.cross_entropy(h, lab) for h in logits.unbind(1)])
             ce_loss = ce.mean()
 
-            # 2. Calibration: head's confidence -> 1[that head is correct]
+            # 2. Head Calibration: head's confidence -> 1[that head is correct]
             with torch.no_grad():
                 head_correct = (logits.max(dim=2).indices == lab.unsqueeze(1)).float()  # (b, N)
             cal_loss = torch.nn.functional.binary_cross_entropy(confs, head_correct)
 
-            # 3. Judger: give its highest score to the most confident head.
+            # 3. Judger Selection: cross-entropy with label smoothing to prevent logit explosion
             target = confs.max(dim=1).indices  # (b,)
-            judge_loss = torch.nn.functional.cross_entropy(scores, target)
+            judge_loss = torch.nn.functional.cross_entropy(scores, target, label_smoothing=0.15)
+
+            # 4. Direct Judger Output Calibration: train winning conf against actual accuracy
+            with torch.no_grad():
+                win_logits = logits[torch.arange(len(vecs)), best]
+                preds = win_logits.max(dim=1).indices
+                is_correct = (preds == lab).float()
+            judge_cal_loss = torch.nn.functional.binary_cross_entropy(conf, is_correct)
+
+            # 5. Diversity: penalize pairwise cosine similarity between head embeddings
+            N_heads = emb.size(1)
+            if N_heads > 1 and HYPERPARAMS.get("lambda_div", 0) > 0:
+                emb_norm = torch.nn.functional.normalize(emb, p=2, dim=2)
+                sim_matrix = torch.bmm(emb_norm, emb_norm.transpose(1, 2))
+                triu_idx = torch.triu_indices(N_heads, N_heads, offset=1, device=device)
+                div_loss = sim_matrix[:, triu_idx[0], triu_idx[1]].mean()
+            else:
+                div_loss = torch.tensor(0.0, device=device)
 
             # Weighted single loss -> single backward keeps the shared graph valid.
-            total_loss = ce_loss + 0.5 * cal_loss + 0.1 * judge_loss
+            total_loss = ce_loss + 0.5 * cal_loss + 0.1 * judge_loss + 0.5 * judge_cal_loss + HYPERPARAMS.get("lambda_div", 0) * div_loss
 
             optimizer.zero_grad()
             total_loss.backward()
@@ -128,12 +146,15 @@ def main():
             total_ce += ce_loss.item()
             total_cal += cal_loss.item()
             total_judge += judge_loss.item()
+            total_div += div_loss.item()
 
         print(
             f"epoch {epoch + 1}/{HYPERPARAMS['epochs']}  "
             f"ce={total_ce / n_batches:.3f} "
             f"cal={total_cal / n_batches:.3f} "
-            f"judge={total_judge / n_batches:.3f}"
+            f"judge={total_judge / n_batches:.3f} "
+            f"div={total_div / n_batches:.3f}",
+            flush=True,
         )
 
     import os
