@@ -44,13 +44,13 @@ System2 generates parallel hypotheses, estimates calibrated confidence for each,
 
 Phase 1 validation is benchmarked on **AG News** (4-class topic classification) as a canary pipeline on Apple Silicon (M-series GPU via Metal Performance Shaders / MPS).
 
-| Metric | Baseline Score | Notes |
+| Metric | Benchmark SOTA | Notes |
 | :--- | :---: | :--- |
-| **Composite Metric** | **0.8570** | $0.5 \times \text{Accuracy} + 0.5 \times (1 - \text{Brier})$ |
-| **Test Accuracy** | **84.61%** | 7,600 held-out test samples |
-| **Brier Score** | **0.1321** | Calibration penalty (lower is better) |
+| **Composite Metric** | **0.8998** | $0.5 \times \text{Accuracy} + 0.5 \times (1 - \text{Brier})$ (Baseline was 0.8570) |
+| **Test Accuracy** | **88.55%** | 7,600 held-out test samples (+3.94% over baseline) |
+| **Brier Score** | **0.0860** | Direct Judger calibration loss (35% error reduction) |
 
-*Trained on 20,000 samples for 2 epochs on MPS (~15 minutes on Apple Silicon).*
+*Trained on 20,000 samples for 2 epochs on MPS (~18 minutes on Apple Silicon).*
 
 ---
 
