@@ -3,6 +3,7 @@ models/
 # ~31MB HF dataset; source is the HF cache (see 04-handoff.md)
 data/ag_news/
 data/arc/
+data/science_mix/
 __pycache__/
 *.pyc
 .DS_Store
