@@ -29,6 +29,8 @@ def format_split(arc_challenge_split, arc_easy_split):
                 f"(D) {texts[3]}"
             )
             records.append({
+                "question": q,
+                "choices": [texts[0], texts[1], texts[2], texts[3]],
                 "text": formatted_text,
                 "label": label_map[key]
             })

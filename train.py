@@ -30,21 +30,38 @@ HYPERPARAMS = {
     "num_heads": 5,
     "lr_heads": 1e-3,
     "lr_judger": 3e-4,
-    "batch_size": 32,
-    "max_len": 192,
+    "batch_size": 16,
+    "max_len": 128,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
     "epochs": 3,
     "train_size": 3500,
     "lambda_div": 0.01,
     "data_dir": "./data/arc",
+    "pairwise": True,
 }
 
 
 def mean_pool_texts(texts, max_len, device):
     inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(device)
-    last_hidden = model(**inputs).last_hidden_state
-    mask = inputs["attention_mask"].unsqueeze(-1)
-    return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
+    with torch.no_grad():
+        last_hidden = model(**inputs).last_hidden_state
+        mask = inputs["attention_mask"].unsqueeze(-1)
+        return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
+
+
+def mean_pool_pairwise(questions, choices_list, max_len, device):
+    b = len(questions)
+    flat_texts = [
+        f"Question: {questions[idx]} Answer: {choices_list[idx][c]}"
+        for idx in range(b)
+        for c in range(4)
+    ]
+    inputs = tokenizer(flat_texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(device)
+    with torch.no_grad():
+        last_hidden = model(**inputs).last_hidden_state
+        mask = inputs["attention_mask"].unsqueeze(-1)
+        pooled = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
+    return pooled.view(b, 4, -1)
 
 
 def main():
@@ -69,13 +86,13 @@ def main():
     train = ds["train"].shuffle(seed=0)
     n_samples = min(HYPERPARAMS["train_size"], len(train))
     cols = train[: n_samples]
-    texts = cols["text"]
     labels = cols["label"]
+    is_pairwise = HYPERPARAMS.get("pairwise", False) and "choices" in cols and cols["choices"] is not None
 
     torch.manual_seed(0)
     device = HYPERPARAMS["device"]
     model.to(device)          # encoder (frozen, lives on the GPU)
-    sys2 = System2(num_heads=HYPERPARAMS["num_heads"], num_classes=4)
+    sys2 = System2(num_heads=HYPERPARAMS["num_heads"], num_classes=1 if is_pairwise else 4, pairwise=is_pairwise)
     sys2.to(device)           # heads + judger must share the encoder's device
     sys2.train()
 
@@ -96,13 +113,16 @@ def main():
     for epoch in range(HYPERPARAMS["epochs"]):
         total_ce = total_cal = total_judge = total_div = 0.0
         n_batches = 0
-        for i in range(0, len(texts), bs):
+        for i in range(0, len(labels), bs):
             n_batches += 1
             # CRITICAL: slice the batch first, derive everything from the slice.
             # (Fixed 2026-09-24: a fixed-size target mismatched the real batch
             # size on the final partial batch -> ValueError in cross_entropy.)
-            b = min(bs, len(texts) - i)
-            vecs = mean_pool_texts(texts[i : i + b], HYPERPARAMS["max_len"], device)
+            b = min(bs, len(labels) - i)
+            if is_pairwise:
+                vecs = mean_pool_pairwise(cols["question"][i : i + b], cols["choices"][i : i + b], HYPERPARAMS["max_len"], device)
+            else:
+                vecs = mean_pool_texts(cols["text"][i : i + b], HYPERPARAMS["max_len"], device)
             lab = torch.tensor(labels[i : i + b], device=device)  # (b,)
 
             best, conf, pruned, confs, logits, emb, scores = sys2(vecs)
