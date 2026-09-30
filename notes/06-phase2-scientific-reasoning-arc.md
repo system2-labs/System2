@@ -69,4 +69,31 @@ $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{task}} + 0.5 \mathcal{L}_{\tex
 
 | Run # | Experiment Description | Result Metric | Accuracy | Brier Score | Outcome / Status |
 | :---: | :--- | :---: | :---: | :---: | :--- |
-| **0** | **Phase 2 Baseline (AI2 ARC, 5 heads)** | *Running...* | — | — | *Establishing Phase 2 benchmark* |
+| **0** | **Phase 2 Baseline (AI2 ARC, 5 heads)** | **0.5353** | **26.69%** | **0.1962** | **COMMITTED**: Baseline established (random chance is 25.0%) |
+
+---
+
+## 5. Diagnostic Analysis of the Phase 2 Baseline
+
+### The Bottleneck: Mean-Pooling All Choices vs. Per-Option Hypothesis Framing
+In the Phase 1 setup, input text is a single passage (a news headline), and the model outputs a topic class.
+In the naive Phase 2 baseline, the prompt concatenated the question and all four choices:
+```
+Question: George wants to warm his hands quickly by rubbing them. Which skin surface will produce the most heat?
+(A) dry palms
+(B) wet palms
+(C) palms covered with oil
+(D) palms covered with lotion
+```
+When mean-pooled into a single 1024-dim vector, ModernBERT averages all four choices together into one generic bag of embeddings. The downstream 2-layer `ThoughtHead` is then forced to guess which option was correct from this blended summary.
+
+### The Breakthrough Hypothesis: Pairwise Question-Choice Hypothesis Encoding
+In true System 2 reasoning, **each choice is literally a distinct hypothesis**:
+- *Hypothesis 1*: $\text{Question} \oplus \text{Choice A}$ (dry palms)
+- *Hypothesis 2*: $\text{Question} \oplus \text{Choice B}$ (wet palms)
+- *Hypothesis 3*: $\text{Question} \oplus \text{Choice C}$ (palms with oil)
+- *Hypothesis 4*: $\text{Question} \oplus \text{Choice D}$ (palms with lotion)
+
+When ModernBERT encodes each (Question, Choice) pair separately, bidirectional cross-attention directly evaluates the semantic interaction between the condition ("warm hands by rubbing") and each specific option.
+The parallel `ThoughtHead`s score the compatibility of each hypothesis, and the `Judger` cross-attends across all four hypotheses to select the winning derivation and prune the unviable ones!
+
