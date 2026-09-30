@@ -63,6 +63,7 @@ We have established our benchmark ($0.8570$). The following 3 experiments are sc
 | **1** | Fix Judger Target (correct & confident) | 0.7767 | 83.38% | 0.2804 | **Reverted** (Brier degraded; reveals `eval.py` evaluates `sigmoid(judger.scores)`, not `head.confs`) |
 | **2** | Head Diversity Penalty ($\lambda_{\text{div}}=0.05$) | 0.8412 | **86.99%** | 0.1874 | **Reverted** (Accuracy jumped **+2.38%**, but Brier penalty nudged metric below 0.8570) |
 | **3** | **Single-Head Ablation (`num_heads = 1`)** | 0.7937 | 85.86% | 0.2712 | **Reverted** (Metric collapsed by **-0.0633**; Brier error **more than doubled**) |
+| **4** | **Tuned Diversity ($\lambda_{\text{div}}=0.01$)** | 0.7818 | **88.01%** | 0.3164 | **Reverted** (**New SOTA Accuracy: 88.01%**, +3.40% over baseline; Judger overconfidence pushed Brier to 0.3164) |
 
 ---
 
