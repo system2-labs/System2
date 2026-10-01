@@ -72,7 +72,8 @@ $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{task}} + 0.5 \mathcal{L}_{\tex
 | **0** | **Phase 2 Baseline (AI2 ARC, 5 heads, blended bag)** | **0.5353** | **26.69%** | **0.1962** | **COMMITTED**: Baseline established (random chance is 25.0%) |
 | **1** | **Pairwise Question-Choice Hypothesis Encoding** | **0.5948** | **43.97%** | **0.2500** | **COMMITTED**: Accuracy leaped by **+17.28%**; metric rose +0.0595 |
 | **2** | **Scaled Training Data (20k Science Mix: ARC+OBQA+SciQ)** | **0.5893** | **42.92%** | **0.2506** | **REVERTED**: 0.5893 <= 0.5948; SciQ trivia diluted multi-step causal reasoning |
-| **3** | **Intra-Head Centroid Difference Features (Option B)** | **0.6231** | **49.63%** | **0.2501** | **COMMITTED (NEW SOTA)**: Accuracy jumped to **49.63%** (+5.66%); metric rose +0.0283 |
+| **3** | **Intra-Head Centroid Difference Features (Option B)** | **0.6231** | **49.63%** | **0.2501** | **COMMITTED (SOTA)**: Accuracy jumped to **49.63%** (+5.66%); metric rose +0.0283 |
+| **4** | **Direct MSE Brier Calibration + Joint Conf (Option C)** | **0.6072** | **47.93%** | **0.2649** | **REVERTED**: 0.6072 <= 0.6231; overconfident Judger on wrong heads degraded Brier |
 
 ---
 
@@ -120,21 +121,33 @@ $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{task}} + 0.5 \mathcal{L}_{\tex
   3. **Milestone Reached**:
      With a completely frozen 395M ModernBERT encoder and tiny trainable heads, the system now solves **half of all middle-school scientific reasoning problems (49.63%)** on ARC Challenge + Easy.
 
+### 5.4 Diagnostic Analysis of Run 4 (Direct MSE Brier Calibration - Option C):
+- **Result**: Accuracy **47.93%**, Brier **0.2649**, Composite Metric **0.6072** (vs SOTA **0.6231** / 49.63%).
+- **Protocol Action**: AutoResearch cleanly reverted `system.py` and `train.py`, keeping the 0.6231 SOTA benchmark safe.
+- **Scientific Diagnosis**:
+  1. **The Overconfidence Trap of Expert Selection**:
+     In Run 4, we formulated decision confidence as:
+     $$\text{Conf} = 0.5 \times \text{HeadConf} + 0.5 \times P_{\text{judger}}(\text{best})$$
+     When the Judger strongly favored Head 0 ($P_{\text{judger}} \approx 0.92$), it pushed output confidence high (~0.70). However, on ARC, even the best head is incorrect ~50% of the time. When the model made a high-confidence mistake, the Brier error exploded: $(0.70 - 0)^2 = 0.49$, compared to only $0.25$ for an uncommitted 0.50 guess!
+     **Core Decision Theory Insight**: Judger consensus reflects *relative expert ranking*, NOT empirical ground-truth probability of scientific correctness.
+  2. **Gradient Conflict on Feature Representations**:
+     Backpropagating a heavy MSE calibration loss (weight 1.0) into the winning choice slice `win_feat` pulled the representation `x` away from pure classification distinction toward predicting whether previous heads had been right or wrong, nudging accuracy down from 49.63% to 47.93%.
+
 ---
 
-## 6. Next Steps: Option C (Confidence Calibration Regularization)
+## 6. Next Synthesis & Future Directions
 
-With reasoning accuracy at **49.63%**, the single largest drag on the composite metric is the Brier score (**0.2501**):
-$$\text{Metric} = 0.5 \times \text{Accuracy} + 0.5 \times (1 - \text{Brier}) = 0.5 \times 0.4963 + 0.5 \times 0.7499 = 0.6231$$
+With Options A, B, and C tested on Phase 2, we have established a clear scientific taxonomy of what works:
 
-### Why Calibration Tuning is the Next High-Leverage Breakthrough:
-- A Brier score of $0.2500$ indicates that the heads' confidence predictions hover near uncalibrated default values (~0.50).
-- If the heads are regularized to output honest calibrated probabilities (e.g. high confidence ~0.9 when correct, low confidence ~0.15 when uncertain), the Brier score will drop toward **0.08–0.12** (mirroring what we achieved in Phase 1 AG News at 0.0860).
-- At 49.63% accuracy and a 0.10 Brier score, the composite metric jumps to:
-  $$0.5 \times 0.4963 + 0.5 \times (1 - 0.10) = \mathbf{0.6982}$$
-- **Specific Knobs**:
-  1. Increase `lambda_cal` (confidence BCE loss weight from 0.5 to 1.0 or 1.5).
-  2. Increase direct Judger calibration loss weight (`judge_cal_loss`).
-  3. Margin-based confidence penalty (penalize heads that guess with high confidence on wrong answers).
+1. **What Works (The Proven Drivers)**:
+   - **Pairwise Hypothesis Encoding**: Smashed the blended bag baseline (+17.28% accuracy).
+   - **Intra-Head Centroid Difference Features ($[x \,\|\, (x - \bar{x})]$)**: Pushed accuracy to **49.63%** and composite metric to **0.6231** (Phase 2 SOTA).
+2. **What Requires Caution**:
+   - **Uncurated Data Expansion**: Generic factual recall (SciQ) dilutes multi-step causal reasoning.
+   - **Confidence Inflation**: Calibrating confidence to expert selection rather than empirical margin increases penalty on wrong answers.
+3. **High-Leverage Next Frontiers**:
+   - **Temperature-Scaled Margin Calibration (Post-hoc / Read-only)**: As proven in diagnostic tests, candidates with top-margin $> 0.01$ achieve **66.86% accuracy**, while margin $< 0.00$ achieves **35.69%**. A calibrated sigmoid mapping over logit margin directly captures empirical correctness without gradient distortion.
+   - **Iterative Deliberation (2-Pass Recurrence)**: Allow the Judger to feedback attention weights into the heads for a second refinement cycle before committing.
+
 
 
