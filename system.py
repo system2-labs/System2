@@ -39,12 +39,16 @@ class System2(nn.Module):
     2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None, pairwise=False):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False):
         super().__init__()
         self.pairwise = pairwise
+        self.diff_features = diff_features
         self.num_classes = num_classes
         head_classes = 1 if pairwise else num_classes
-        self.heads = nn.ModuleList([ThoughtHead(num_classes=head_classes) for _ in range(num_heads)])
+        self.heads = nn.ModuleList([
+            ThoughtHead(num_classes=head_classes, diff_features=diff_features)
+            for _ in range(num_heads)
+        ])
         self.judger = Judger()
 
     def forward(self, encoder_output):
@@ -54,7 +58,13 @@ class System2(nn.Module):
             for head in self.heads:
                 x = head.input_proj(encoder_output)  # (B, num_choices, 512)
                 x = head.layers(x)                   # (B, num_choices, 512) - cross-candidate self-attention
-                cand_scores = head.hypothesis_head(x).squeeze(-1)  # (B, num_choices)
+                if self.diff_features:
+                    # Centroid difference: contrast candidate against the group mean
+                    diff = x - x.mean(dim=1, keepdim=True)
+                    feat = torch.cat([x, diff], dim=-1)  # (B, num_choices, 1024)
+                    cand_scores = head.hypothesis_head(feat).squeeze(-1)
+                else:
+                    cand_scores = head.hypothesis_head(x).squeeze(-1)  # (B, num_choices)
                 head_emb = x.mean(dim=1)             # (B, 512)
                 conf = torch.sigmoid(head.confidence_head(head_emb)).squeeze(-1)  # (B,)
                 all_logits.append(cand_scores)

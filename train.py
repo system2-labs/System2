@@ -38,6 +38,7 @@ HYPERPARAMS = {
     "lambda_div": 0.01,
     "data_dir": "./data/arc",
     "pairwise": True,
+    "diff_features": True,
 }
 
 
@@ -88,11 +89,17 @@ def main():
     cols = train[: n_samples]
     labels = cols["label"]
     is_pairwise = HYPERPARAMS.get("pairwise", False) and "choices" in cols and cols["choices"] is not None
+    diff_features = HYPERPARAMS.get("diff_features", False) and is_pairwise
 
     torch.manual_seed(0)
     device = HYPERPARAMS["device"]
     model.to(device)          # encoder (frozen, lives on the GPU)
-    sys2 = System2(num_heads=HYPERPARAMS["num_heads"], num_classes=1 if is_pairwise else 4, pairwise=is_pairwise)
+    sys2 = System2(
+        num_heads=HYPERPARAMS["num_heads"],
+        num_classes=1 if is_pairwise else 4,
+        pairwise=is_pairwise,
+        diff_features=diff_features,
+    )
     sys2.to(device)           # heads + judger must share the encoder's device
     sys2.train()
 
