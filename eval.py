@@ -74,7 +74,7 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
         num_classes = 1 if is_pairwise else 4
 
     sys2 = System2(num_heads=num_heads, num_classes=num_classes, pairwise=is_pairwise, diff_features=has_diff)
-    sys2.load_state_dict(state)
+    sys2.load_state_dict(state, strict=False)
     sys2.to(device)
     sys2.eval()
 
