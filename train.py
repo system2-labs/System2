@@ -30,8 +30,11 @@ HYPERPARAMS = {
     "num_heads": 5,
     "lr_heads": 1e-3,
     "lr_judger": 3e-4,
-    "lr_encoder": 1e-5,
-    "unfreeze_encoder_layers": 2,  # unfreeze top 2 layers of ModernBERT
+    "use_lora": True,
+    "lora_r": 16,
+    "lora_alpha": 16,
+    "lora_layers": 4,  # adapt top 4 layers of ModernBERT via LoRA
+    "lr_lora": 2e-4,
     "batch_size": 16,
     "max_len": 128,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
@@ -105,13 +108,21 @@ def main():
 
     torch.manual_seed(0)
     device = HYPERPARAMS["device"]
-    model.to(device)
 
+    use_lora = HYPERPARAMS.get("use_lora", False)
     unfreeze_layers = HYPERPARAMS.get("unfreeze_encoder_layers", 0)
     for p in model.parameters():
         p.requires_grad = False
+
     encoder_params = []
-    if unfreeze_layers > 0:
+    if use_lora:
+        from lora import apply_lora
+        r = HYPERPARAMS.get("lora_r", 16)
+        alpha = HYPERPARAMS.get("lora_alpha", 16)
+        num_layers = HYPERPARAMS.get("lora_layers", 4)
+        encoder_params = apply_lora(model, r=r, alpha=alpha, num_layers=num_layers)
+        model.train()
+    elif unfreeze_layers > 0:
         for layer in model.layers[-unfreeze_layers:]:
             for p in layer.parameters():
                 p.requires_grad = True
@@ -122,6 +133,8 @@ def main():
         model.train()
     else:
         model.eval()
+
+    model.to(device)
 
     sys2 = System2(
         num_heads=HYPERPARAMS["num_heads"],
@@ -141,7 +154,8 @@ def main():
         {"params": judger_params, "lr": HYPERPARAMS["lr_judger"]},
     ]
     if encoder_params:
-        param_groups.append({"params": encoder_params, "lr": HYPERPARAMS.get("lr_encoder", 1e-5)})
+        enc_lr = HYPERPARAMS.get("lr_lora", 2e-4) if use_lora else HYPERPARAMS.get("lr_encoder", 1e-5)
+        param_groups.append({"params": encoder_params, "lr": enc_lr})
     optimizer = torch.optim.Adam(param_groups)
 
     bs = HYPERPARAMS["batch_size"]
@@ -154,7 +168,7 @@ def main():
             # (Fixed 2026-09-24: a fixed-size target mismatched the real batch
             # size on the final partial batch -> ValueError in cross_entropy.)
             b = min(bs, len(labels) - i)
-            with_grad = (unfreeze_layers > 0)
+            with_grad = use_lora or (unfreeze_layers > 0)
             if is_pairwise:
                 vecs = mean_pool_pairwise(cols["question"][i : i + b], cols["choices"][i : i + b], HYPERPARAMS["max_len"], device, with_grad=with_grad)
             else:
@@ -221,7 +235,14 @@ def main():
     save_dict = {
         "sys2": sys2.state_dict(),
     }
-    if unfreeze_layers > 0:
+    if use_lora:
+        save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
+        save_dict["lora_config"] = {
+            "r": HYPERPARAMS.get("lora_r", 16),
+            "alpha": HYPERPARAMS.get("lora_alpha", 16),
+            "num_layers": HYPERPARAMS.get("lora_layers", 4),
+        }
+    elif unfreeze_layers > 0:
         top_keys = [f"layers.{28 - i - 1}" for i in range(unfreeze_layers)] + ["final_norm"]
         save_dict["encoder_top2"] = {
             k: v.cpu() for k, v in model.state_dict().items()
