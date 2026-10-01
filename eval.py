@@ -63,18 +63,29 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
     has_choices = "choices" in cols and cols["choices"] is not None
 
     state = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
-    num_heads = len({k.split(".")[1] for k in state.keys() if k.startswith("heads.")})
-    has_diff = "heads.0.hypothesis_head.0.weight" in state
+    if isinstance(state, dict) and "sys2" in state:
+        sys2_state = state["sys2"]
+        if "encoder_top2" in state:
+            model.load_state_dict(state["encoder_top2"], strict=False)
+    else:
+        sys2_state = state
+
+    model.to(device)
+    model.eval()
+
+    num_heads = len({k.split(".")[1] for k in sys2_state.keys() if k.startswith("heads.")})
+    has_diff = "heads.0.hypothesis_head.0.weight" in sys2_state
+    has_recurrence = "feedback_proj.weight" in sys2_state
     if has_diff:
         is_pairwise = True
         num_classes = 1
     else:
-        hypo_w = state.get("heads.0.hypothesis_head.weight")
+        hypo_w = sys2_state.get("heads.0.hypothesis_head.weight")
         is_pairwise = (hypo_w is not None and hypo_w.shape[0] == 1)
         num_classes = 1 if is_pairwise else 4
 
-    sys2 = System2(num_heads=num_heads, num_classes=num_classes, pairwise=is_pairwise, diff_features=has_diff)
-    sys2.load_state_dict(state, strict=False)
+    sys2 = System2(num_heads=num_heads, num_classes=num_classes, pairwise=is_pairwise, diff_features=has_diff, recurrence=has_recurrence)
+    sys2.load_state_dict(sys2_state, strict=False)
     sys2.to(device)
     sys2.eval()
 
