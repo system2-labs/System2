@@ -133,21 +133,36 @@ $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{task}} + 0.5 \mathcal{L}_{\tex
   2. **Gradient Conflict on Feature Representations**:
      Backpropagating a heavy MSE calibration loss (weight 1.0) into the winning choice slice `win_feat` pulled the representation `x` away from pure classification distinction toward predicting whether previous heads had been right or wrong, nudging accuracy down from 49.63% to 47.93%.
 
+### 5.5 Diagnostic Analysis of Run 5 (Detached Margin Calibrator Layer - Option 1):
+- **Result**: Accuracy **45.21%**, Brier **0.2481**, Composite Metric **0.6020** (vs SOTA **0.6231** / 49.63%).
+- **Protocol Action**: AutoResearch cleanly reverted `system.py` and `train.py`, keeping the 0.6231 SOTA benchmark safe.
+- **Scientific Diagnosis**:
+  1. **Brier Calibration Improved ($0.2501 \to 0.2481$)**:
+     The detached margin features succeeded in moving the output confidence away from the flat 0.50 line, reducing overall Brier loss.
+  2. **The "Decision-Level Reinforcement" Gradient Revelation**:
+     In Run 3 (49.63%), `judge_cal_loss` was computed directly on the Judger's winning confidence `best_conf = sigmoid(scores[best])`.
+     Because `best_conf` was a function of `scores`, `judge_cal_loss` backpropagated directly into `self.judger.attention` and `self.judger.score`.
+     This acted as a supervised **RLCD (Reinforcement Learning from Calibrated Decisions)** gradient: whenever the Judger picked a head that was wrong, its score was heavily penalized, and whenever it picked a head that was right, its score was rewarded. This gradient drove Judger training loss down to **0.814**.
+     In Run 5, when we routed `conf` through `self.calibrator(cal_feat.detach())`, the Judger was completely cut off from this decision-correctness gradient. It only received `0.1 * judge_loss` (which merely pushed it to mimic the heads' noisy internal self-confidence). Without the decision-level reinforcement signal, the Judger loss stalled at **1.103**, and final accuracy collapsed from 49.63% down to 45.21%!
+  3. **Core Architectural Principle**:
+     The Judger's cross-attention scoring MUST be directly coupled to whether the selected candidate prediction is objectively correct. Severing this gradient cripples the Judger's ability to discriminate between sound scientific reasoning and confident hallucinations.
+
 ---
 
 ## 6. Next Synthesis & Future Directions
 
-With Options A, B, and C tested on Phase 2, we have established a clear scientific taxonomy of what works:
+With Options A, B, C, and Option 1 tested on Phase 2, we have established a clear scientific taxonomy of what works:
 
 1. **What Works (The Proven Drivers)**:
    - **Pairwise Hypothesis Encoding**: Smashed the blended bag baseline (+17.28% accuracy).
    - **Intra-Head Centroid Difference Features ($[x \,\|\, (x - \bar{x})]$)**: Pushed accuracy to **49.63%** and composite metric to **0.6231** (Phase 2 SOTA).
+   - **Coupled Decision-Level Reinforcement Gradient**: The Judger's cross-attention *must* receive direct feedback on final answer correctness (`judge_cal_loss`).
 2. **What Requires Caution**:
    - **Uncurated Data Expansion**: Generic factual recall (SciQ) dilutes multi-step causal reasoning.
-   - **Confidence Inflation**: Calibrating confidence to expert selection rather than empirical margin increases penalty on wrong answers.
-3. **High-Leverage Next Frontiers**:
-   - **Temperature-Scaled Margin Calibration (Post-hoc / Read-only)**: As proven in diagnostic tests, candidates with top-margin $> 0.01$ achieve **66.86% accuracy**, while margin $< 0.00$ achieves **35.69%**. A calibrated sigmoid mapping over logit margin directly captures empirical correctness without gradient distortion.
-   - **Iterative Deliberation (2-Pass Recurrence)**: Allow the Judger to feedback attention weights into the heads for a second refinement cycle before committing.
+   - **Detached Decision Calibration**: Detaching calibration features starves the Judger of the reward signal needed to select the winning head.
+3. **The Next Frontier: Direction 2 (Iterative 2-Pass Recurrence)**:
+   - The user expressed interest in testing Direction 2, while being appropriately wary of over-complicating the forward graph.
+   - **The Concept**: Allow the Judger's initial cross-attention scores/context to be fed back into the thought heads for a 2nd refinement pass, enabling heads to condition their candidate comparisons on peer deliberation before making the final call.
 
 
 
