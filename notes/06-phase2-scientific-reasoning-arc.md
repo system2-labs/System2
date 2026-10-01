@@ -162,6 +162,21 @@ $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{task}} + 0.5 \mathcal{L}_{\tex
      - Epoch 3: `gate = -0.0473`
      The backpropagation gradients literally attempted to **subtract** or negate the peer feedback! The network itself recognized that the cross-head consensus was acting as noise rather than signal for candidate distinction.
 
+### 5.7 Diagnostic Analysis of Run 7 (Top-2 Layer ModernBERT Fine-Tuning):
+- **Result**: Accuracy **49.55%**, Brier **0.2836**, Composite Metric **0.6059** (vs SOTA **0.6231** / 49.63%).
+- **Protocol Action**: AutoResearch cleanly reverted `system.py` and `train.py`, keeping the 0.6231 SOTA benchmark safe.
+- **Scientific Diagnosis**:
+  1. **Strong Accuracy Preservation ($49.55\%$)**:
+     Unfreezing layers 26, 27 and `final_norm` with discriminative learning rate $1\times 10^{-5}$ maintained strong task accuracy (49.55%), showing that backpropagating through ModernBERT on Apple Silicon Metal (MPS) is stable, fast (~5 mins for 3 epochs), and computationally sound.
+  2. **The Confidence Over-Scaling Penalty ($0.2501 \to 0.2836$)**:
+     Why did the composite metric drop?
+     During training, the Judger loss plummeted from $1.435 \to 0.846$. Because the top-2 encoder layers adapted, the output representations grew sharper and larger in magnitude. This caused the Judger's linear scoring head to output larger logits, which pushed output confidence $\sigma(\text{score})$ toward $\sim 0.80 - 0.85$.
+     Because ARC is a difficult benchmark where the model is wrong $\sim 50\%$ of the time, predicting $0.85$ confidence on incorrect predictions exploded the quadratic Brier error: $(0.85 - 0)^2 = 0.7225$ (vs $(0.50 - 0)^2 = 0.2500$ for an uncommitted prediction).
+  3. **Core Lesson for LoRA & Adaptation**:
+     Adapting encoder representations requires either:
+     - Temperature scaling / logit damping on the Judger's confidence output so sharper representations do not artificially inflate probabilistic confidence.
+     - Parameter-efficient low-rank adaptation (LoRA), which constrains weight updates to a low-dimensional manifold ($r=8$ or $r=16$), preventing representation scale drift.
+
 ---
 
 ## 6. Comprehensive Phase 2 Scientific Synthesis
@@ -177,6 +192,7 @@ Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), 
 | **Run 4** | Option C: Direct MSE Brier on Slices | 47.93% | 0.2649 | 0.6072 | Reverted (Overconfidence penalty) |
 | **Run 5** | Option 1: Detached Margin Calibrator Layer | 45.21% | 0.2481 | 0.6020 | Reverted (Severed Judger RLCD gradient) |
 | **Run 6** | Direction 2: Gated 2-Pass Iterative Recurrence | 47.28% | 0.2492 | 0.6118 | Reverted (Consensus blurring, gate $\to -0.05$) |
+| **Run 7** | Top-2 ModernBERT Layer Fine-Tuning | 49.55% | 0.2836 | 0.6059 | Reverted (Confidence over-scaling) |
 
 ### The Core Architectural Principles Discovered:
 1. **Contrastive Inductive Bias is King**:
@@ -187,6 +203,8 @@ Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), 
    Heads perform best when they evaluate candidates completely independently with diversity orthogonalization ($\lambda_{\text{div}}$). Blending peer consensus through recurrence (Run 6) creates noise that the network actively tries to subtract.
 4. **Data Purity Over Volume**:
    Curated causal reasoning data (ARC) trains heads far better than noisy factual trivia (SciQ).
+5. **Confidence Over-Scaling Hazard**:
+   When adapting encoder representations (top-layer fine-tuning), sharper feature magnitudes cause downstream linear heads to output overconfident probabilities (~0.80–0.85), which heavily penalizes Brier scoring under ~50% accuracy. Damped scaling or LoRA rank constraints are required.
 
 
 
