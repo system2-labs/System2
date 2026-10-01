@@ -70,8 +70,9 @@ $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{task}} + 0.5 \mathcal{L}_{\tex
 | Run # | Experiment Description | Result Metric | Accuracy | Brier Score | Outcome / Status |
 | :---: | :--- | :---: | :---: | :---: | :--- |
 | **0** | **Phase 2 Baseline (AI2 ARC, 5 heads, blended bag)** | **0.5353** | **26.69%** | **0.1962** | **COMMITTED**: Baseline established (random chance is 25.0%) |
-| **1** | **Pairwise Question-Choice Hypothesis Encoding** | **0.5948** | **43.97%** | **0.2500** | **COMMITTED (SOTA)**: Accuracy leaped by **+17.28%**; metric rose +0.0595 |
+| **1** | **Pairwise Question-Choice Hypothesis Encoding** | **0.5948** | **43.97%** | **0.2500** | **COMMITTED**: Accuracy leaped by **+17.28%**; metric rose +0.0595 |
 | **2** | **Scaled Training Data (20k Science Mix: ARC+OBQA+SciQ)** | **0.5893** | **42.92%** | **0.2506** | **REVERTED**: 0.5893 <= 0.5948; SciQ trivia diluted multi-step causal reasoning |
+| **3** | **Intra-Head Centroid Difference Features (Option B)** | **0.6231** | **49.63%** | **0.2501** | **COMMITTED (NEW SOTA)**: Accuracy jumped to **49.63%** (+5.66%); metric rose +0.0283 |
 
 ---
 
@@ -104,35 +105,36 @@ $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{task}} + 0.5 \mathcal{L}_{\tex
   3. **Strategic Takeaway**:
      Data quality and task alignment trump raw quantity. In-domain causal reasoning data (ARC + OpenBookQA or curated multi-step problems) yields higher per-step learning signal than generic multiple-choice recall.
 
+### 5.3 Diagnostic Analysis of Run 3 (Intra-Head Centroid Difference Features - Option B):
+- **Result**: Accuracy **49.63%** (**+5.66% leap** over Run 1, **+22.94% over baseline**!), Brier **0.2501**, Composite Metric **0.6231** (**NEW SOTA**, commit [`2b777a6`](https://github.com/tj-doomer-it/System2/commit/2b777a6)).
+- **Protocol Action**: AutoResearch committed and pushed the new record to GitHub `main`.
+- **Scientific Diagnosis**:
+  1. **Contrastive Inductive Bias Solves Subtle Scientific Distractors**:
+     In scientific multiple-choice reasoning, distractors are written to sound plausible and share common domain keywords with the question.
+     By subtracting the candidate centroid $\bar{x} = \frac{1}{4}\sum_{j=1}^4 x_j$, common contextual noise is eliminated:
+     $$d_i = x_i - \bar{x}$$
+     The scoring MLP receives $[x_i \,\|\, d_i] \in \mathbb{R}^{1024}$, directly evaluating both absolute semantic plausibility and relative distinctiveness.
+  2. **Judger Selection Loss Plummeted**:
+     During training, the Judger selection loss plummeted from **$1.315 \to 0.814$**!
+     Because each head had access to explicit contrast vectors, their internal rankings of the 4 candidates became sharp and confident, making it dramatically easier for the Judger's cross-attention to identify which head was formulating the most coherent scientific deduction.
+  3. **Milestone Reached**:
+     With a completely frozen 395M ModernBERT encoder and tiny trainable heads, the system now solves **half of all middle-school scientific reasoning problems (49.63%)** on ARC Challenge + Easy.
+
 ---
 
-## 6. Next Steps: Intra-Head Difference Features (Option B) & Calibration Tuning (Option C)
+## 6. Next Steps: Option C (Confidence Calibration Regularization)
 
-With raw data expansion tested and analyzed, our next high-leverage focus turns to architectural inductive biases and calibration:
+With reasoning accuracy at **49.63%**, the single largest drag on the composite metric is the Brier score (**0.2501**):
+$$\text{Metric} = 0.5 \times \text{Accuracy} + 0.5 \times (1 - \text{Brier}) = 0.5 \times 0.4963 + 0.5 \times 0.7499 = 0.6231$$
 
-### 1. The Data Volume Bottleneck:
-- Our current training set is only **3,358 samples** (ARC-Challenge + ARC-Easy train splits).
-- 3,358 samples is very small for training a multi-head reasoning network to generalize across physics, biology, chemistry, and earth science.
-- Because ModernBERT remains completely frozen, each epoch on 3,358 samples takes only **~50 seconds** on Apple Silicon (Metal/MPS).
-
-### 2. High-Value Scientific & Common-Sense Datasets for Pre-Training / Data Expansion:
-We can dramatically expand the training volume with zero architecture changes:
-1. **OpenBookQA** (~5,000 questions):
-   - Grade-school science questions modeled after open-book exams, requiring multi-hop reasoning over core scientific facts.
-2. **SciQ** (~13,679 questions):
-   - Middle and high school science exam questions with 4 multiple-choice options covering physics, chemistry, biology, and earth science.
-3. **CommonsenseQA** (~12,102 questions):
-   - Multiple-choice questions requiring common-sense relational reasoning (from ConceptNet).
-4. **Combined Corpus**:
-   - Merging ARC (3.3k) + SciQ (13.6k) + OpenBookQA (5k) gives **~22,000 high-quality scientific reasoning problems** (~6.5x more data).
-   - Training time for 22,000 samples at 63 problems/sec on MPS: **~5.8 minutes per epoch**!
-
-### 3. Immediate Architectural Next Steps on ARC:
-1. **Cross-Candidate Subtraction / Difference Features**:
-   - In addition to self-attention across candidates, augment candidate representations with relative difference vectors: $(x_i - \frac{1}{4}\sum_j x_j)$ to explicitly highlight what makes choice $i$ different from the average distractor.
-2. **Confidence Calibration Tuning**:
-   - In Run 1, Brier score was $0.2500$ (with accuracy $43.97\%$). Calibrating head confidences to better reflect true uncertainty will raise the composite metric further.
-3. **Scale Epochs and Learning Rate Schedule**:
-   - Train for 5–8 epochs with a cosine decay learning rate schedule to allow the ThoughtHeads to fully settle into their specialized reasoning niches.
+### Why Calibration Tuning is the Next High-Leverage Breakthrough:
+- A Brier score of $0.2500$ indicates that the heads' confidence predictions hover near uncalibrated default values (~0.50).
+- If the heads are regularized to output honest calibrated probabilities (e.g. high confidence ~0.9 when correct, low confidence ~0.15 when uncertain), the Brier score will drop toward **0.08–0.12** (mirroring what we achieved in Phase 1 AG News at 0.0860).
+- At 49.63% accuracy and a 0.10 Brier score, the composite metric jumps to:
+  $$0.5 \times 0.4963 + 0.5 \times (1 - 0.10) = \mathbf{0.6982}$$
+- **Specific Knobs**:
+  1. Increase `lambda_cal` (confidence BCE loss weight from 0.5 to 1.0 or 1.5).
+  2. Increase direct Judger calibration loss weight (`judge_cal_loss`).
+  3. Margin-based confidence penalty (penalize heads that guess with high confidence on wrong answers).
 
 
