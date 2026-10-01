@@ -84,7 +84,11 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
         is_pairwise = (hypo_w is not None and hypo_w.shape[0] == 1)
         num_classes = 1 if is_pairwise else 4
 
-    sys2 = System2(num_heads=num_heads, num_classes=num_classes, pairwise=is_pairwise, diff_features=has_diff, recurrence=has_recurrence)
+    kwargs = {"num_heads": num_heads, "num_classes": num_classes, "pairwise": is_pairwise, "diff_features": has_diff}
+    import inspect
+    if "recurrence" in inspect.signature(System2.__init__).parameters:
+        kwargs["recurrence"] = has_recurrence
+    sys2 = System2(**kwargs)
     sys2.load_state_dict(sys2_state, strict=False)
     sys2.to(device)
     sys2.eval()

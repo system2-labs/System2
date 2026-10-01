@@ -30,6 +30,8 @@ HYPERPARAMS = {
     "num_heads": 5,
     "lr_heads": 1e-3,
     "lr_judger": 3e-4,
+    "lr_encoder": 1e-5,
+    "unfreeze_encoder_layers": 2,  # unfreeze top 2 layers of ModernBERT
     "batch_size": 16,
     "max_len": 128,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
@@ -42,15 +44,20 @@ HYPERPARAMS = {
 }
 
 
-def mean_pool_texts(texts, max_len, device):
+def mean_pool_texts(texts, max_len, device, with_grad=False):
     inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(device)
-    with torch.no_grad():
+    if with_grad:
         last_hidden = model(**inputs).last_hidden_state
         mask = inputs["attention_mask"].unsqueeze(-1)
         return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
+    else:
+        with torch.no_grad():
+            last_hidden = model(**inputs).last_hidden_state
+            mask = inputs["attention_mask"].unsqueeze(-1)
+            return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
 
 
-def mean_pool_pairwise(questions, choices_list, max_len, device):
+def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False):
     b = len(questions)
     flat_texts = [
         f"Question: {questions[idx]} Answer: {choices_list[idx][c]}"
@@ -58,10 +65,15 @@ def mean_pool_pairwise(questions, choices_list, max_len, device):
         for c in range(4)
     ]
     inputs = tokenizer(flat_texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(device)
-    with torch.no_grad():
+    if with_grad:
         last_hidden = model(**inputs).last_hidden_state
         mask = inputs["attention_mask"].unsqueeze(-1)
         pooled = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
+    else:
+        with torch.no_grad():
+            last_hidden = model(**inputs).last_hidden_state
+            mask = inputs["attention_mask"].unsqueeze(-1)
+            pooled = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
     return pooled.view(b, 4, -1)
 
 
@@ -93,28 +105,44 @@ def main():
 
     torch.manual_seed(0)
     device = HYPERPARAMS["device"]
-    model.to(device)          # encoder (frozen, lives on the GPU)
+    model.to(device)
+
+    unfreeze_layers = HYPERPARAMS.get("unfreeze_encoder_layers", 0)
+    for p in model.parameters():
+        p.requires_grad = False
+    encoder_params = []
+    if unfreeze_layers > 0:
+        for layer in model.layers[-unfreeze_layers:]:
+            for p in layer.parameters():
+                p.requires_grad = True
+                encoder_params.append(p)
+        for p in model.final_norm.parameters():
+            p.requires_grad = True
+            encoder_params.append(p)
+        model.train()
+    else:
+        model.eval()
+
     sys2 = System2(
         num_heads=HYPERPARAMS["num_heads"],
         num_classes=1 if is_pairwise else 4,
         pairwise=is_pairwise,
         diff_features=diff_features,
     )
-    sys2.to(device)           # heads + judger must share the encoder's device
+    sys2.to(device)
     sys2.train()
 
-    # Encoder params frozen; optimise heads + judger only
     head_params = [p for h in sys2.heads for p in h.parameters()]
     judger_params = list(sys2.judger.parameters())
     for p in head_params + judger_params:
         assert p.requires_grad
-    # One optimizer, two param groups (different LRs). Why a single optimizer:
-    # all three losses share one autograd graph (the judger reads the heads'
-    # embeddings), so a single backward() is the only way to keep it valid.
-    optimizer = torch.optim.Adam([
+    param_groups = [
         {"params": head_params, "lr": HYPERPARAMS["lr_heads"]},
         {"params": judger_params, "lr": HYPERPARAMS["lr_judger"]},
-    ])
+    ]
+    if encoder_params:
+        param_groups.append({"params": encoder_params, "lr": HYPERPARAMS.get("lr_encoder", 1e-5)})
+    optimizer = torch.optim.Adam(param_groups)
 
     bs = HYPERPARAMS["batch_size"]
     for epoch in range(HYPERPARAMS["epochs"]):
@@ -126,10 +154,11 @@ def main():
             # (Fixed 2026-09-24: a fixed-size target mismatched the real batch
             # size on the final partial batch -> ValueError in cross_entropy.)
             b = min(bs, len(labels) - i)
+            with_grad = (unfreeze_layers > 0)
             if is_pairwise:
-                vecs = mean_pool_pairwise(cols["question"][i : i + b], cols["choices"][i : i + b], HYPERPARAMS["max_len"], device)
+                vecs = mean_pool_pairwise(cols["question"][i : i + b], cols["choices"][i : i + b], HYPERPARAMS["max_len"], device, with_grad=with_grad)
             else:
-                vecs = mean_pool_texts(cols["text"][i : i + b], HYPERPARAMS["max_len"], device)
+                vecs = mean_pool_texts(cols["text"][i : i + b], HYPERPARAMS["max_len"], device, with_grad=with_grad)
             lab = torch.tensor(labels[i : i + b], device=device)  # (b,)
 
             best, conf, pruned, confs, logits, emb, scores = sys2(vecs)
@@ -189,7 +218,16 @@ def main():
 
     import os
     os.makedirs(os.path.dirname(args.save) or ".", exist_ok=True)
-    torch.save(sys2.state_dict(), args.save)
+    save_dict = {
+        "sys2": sys2.state_dict(),
+    }
+    if unfreeze_layers > 0:
+        top_keys = [f"layers.{28 - i - 1}" for i in range(unfreeze_layers)] + ["final_norm"]
+        save_dict["encoder_top2"] = {
+            k: v.cpu() for k, v in model.state_dict().items()
+            if any(tk in k for tk in top_keys)
+        }
+    torch.save(save_dict, args.save)
     print(f"saved {args.save}")
 
 
