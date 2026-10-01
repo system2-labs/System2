@@ -65,7 +65,12 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
     state = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     if isinstance(state, dict) and "sys2" in state:
         sys2_state = state["sys2"]
-        if "encoder_top2" in state:
+        if "lora" in state:
+            from lora import apply_lora
+            cfg = state.get("lora_config", {"r": 16, "alpha": 16, "num_layers": 4})
+            apply_lora(model, r=cfg.get("r", 16), alpha=cfg.get("alpha", 16), num_layers=cfg.get("num_layers", 4))
+            model.load_state_dict(state["lora"], strict=False)
+        elif "encoder_top2" in state:
             model.load_state_dict(state["encoder_top2"], strict=False)
     else:
         sys2_state = state
