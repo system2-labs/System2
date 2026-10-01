@@ -70,7 +70,8 @@ $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{task}} + 0.5 \mathcal{L}_{\tex
 | Run # | Experiment Description | Result Metric | Accuracy | Brier Score | Outcome / Status |
 | :---: | :--- | :---: | :---: | :---: | :--- |
 | **0** | **Phase 2 Baseline (AI2 ARC, 5 heads, blended bag)** | **0.5353** | **26.69%** | **0.1962** | **COMMITTED**: Baseline established (random chance is 25.0%) |
-| **1** | **Pairwise Question-Choice Hypothesis Encoding** | **0.5948** | **43.97%** | **0.2500** | **COMMITTED (NEW SOTA)**: Accuracy leaped by **+17.28%** over baseline; metric increased by +0.0595 |
+| **1** | **Pairwise Question-Choice Hypothesis Encoding** | **0.5948** | **43.97%** | **0.2500** | **COMMITTED (SOTA)**: Accuracy leaped by **+17.28%**; metric rose +0.0595 |
+| **2** | **Scaled Training Data (20k Science Mix: ARC+OBQA+SciQ)** | **0.5893** | **42.92%** | **0.2506** | **REVERTED**: 0.5893 <= 0.5948; SciQ trivia diluted multi-step causal reasoning |
 
 ---
 
@@ -92,11 +93,22 @@ $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{task}} + 0.5 \mathcal{L}_{\tex
    The pairwise cosine diversity penalty $\lambda_{\text{div}} = 0.01$ pushed the head correlation down to $-0.146$, meaning the 5 parallel heads developed distinct internal criteria for ranking options.
    The `Judger` cross-attended between the 5 heads and drove its selection loss down from $1.537 \to 1.014$, learning which head to trust for different question styles.
 
+### 5.2 Diagnostic Analysis of Run 2 (20k Science Mix Scaling & The Quality vs. Quantity Trade-off):
+- **Result**: Accuracy **42.92%**, Brier **0.2506**, Composite Metric **0.5893** (vs SOTA **0.5948** / 43.97%).
+- **Protocol Action**: AutoResearch cleanly reverted `train.py`, keeping the 0.5948 benchmark safe.
+- **Scientific Diagnosis**:
+  1. **Domain Shift & Task Nature**:
+     SciQ accounted for 11,679 of the 19,994 samples (~58%). SciQ consists primarily of direct factual recall and definition questions generated with machine-generated distractors. In contrast, ARC (Abstraction and Reasoning Corpus) was specifically curated to defeat keyword matching and requires multi-step physical, causal, and comparative deduction. Flooding the 50M parameter head capacity with 58% factual trivia diluted the heads' focus on deep causal comparison.
+  2. **Gradient Dynamics on Scaled Data**:
+     In Run 2, `ce` went from $1.359$ in epoch 1 to $1.386$ in epoch 2, indicating that a fixed learning rate of `1e-3` across 20,000 samples experienced late-epoch oscillation without learning rate decay.
+  3. **Strategic Takeaway**:
+     Data quality and task alignment trump raw quantity. In-domain causal reasoning data (ARC + OpenBookQA or curated multi-step problems) yields higher per-step learning signal than generic multiple-choice recall.
+
 ---
 
-## 6. Thinking on the Problem with More Data & Scaling
+## 6. Next Steps: Intra-Head Difference Features (Option B) & Calibration Tuning (Option C)
 
-While 43.97% is a massive step up from 26.69% on a challenging reasoning benchmark with a frozen encoder, ARC middle-school science requires deep common-sense and physical knowledge.
+With raw data expansion tested and analyzed, our next high-leverage focus turns to architectural inductive biases and calibration:
 
 ### 1. The Data Volume Bottleneck:
 - Our current training set is only **3,358 samples** (ARC-Challenge + ARC-Easy train splits).
