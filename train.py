@@ -38,12 +38,14 @@ HYPERPARAMS = {
     "batch_size": 16,
     "max_len": 128,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
-    "epochs": 2,       # 2 epochs on 8.3k samples = 1,040 steps (1.6x of Run 8)
-    "train_size": 8500,
+    "epochs": 3,
+    "train_size": 3500,
     "lambda_div": 0.01,
-    "data_dir": "./data/arc_obqa",
+    "data_dir": "./data/arc",
     "pairwise": True,
     "diff_features": True,
+    "lora_train_norms": False,
+    "lr_norm": 5e-5,
 }
 
 
@@ -110,17 +112,24 @@ def main():
     device = HYPERPARAMS["device"]
 
     use_lora = HYPERPARAMS.get("use_lora", False)
+    train_norms = HYPERPARAMS.get("lora_train_norms", False)
     unfreeze_layers = HYPERPARAMS.get("unfreeze_encoder_layers", 0)
     for p in model.parameters():
         p.requires_grad = False
 
     encoder_params = []
+    norm_params = []
     if use_lora:
         from lora import apply_lora
         r = HYPERPARAMS.get("lora_r", 16)
         alpha = HYPERPARAMS.get("lora_alpha", 16)
         num_layers = HYPERPARAMS.get("lora_layers", 4)
-        encoder_params = apply_lora(model, r=r, alpha=alpha, num_layers=num_layers)
+        res = apply_lora(model, r=r, alpha=alpha, num_layers=num_layers, train_norms=train_norms)
+        if train_norms:
+            encoder_params, norm_params = res
+        else:
+            encoder_params = res
+            norm_params = []
         model.train()
     elif unfreeze_layers > 0:
         for layer in model.layers[-unfreeze_layers:]:
@@ -156,6 +165,9 @@ def main():
     if encoder_params:
         enc_lr = HYPERPARAMS.get("lr_lora", 2e-4) if use_lora else HYPERPARAMS.get("lr_encoder", 1e-5)
         param_groups.append({"params": encoder_params, "lr": enc_lr})
+    if norm_params:
+        norm_lr = HYPERPARAMS.get("lr_norm", 5e-5)
+        param_groups.append({"params": norm_params, "lr": norm_lr})
     optimizer = torch.optim.Adam(param_groups)
 
     bs = HYPERPARAMS["batch_size"]
@@ -241,7 +253,13 @@ def main():
             "r": HYPERPARAMS.get("lora_r", 16),
             "alpha": HYPERPARAMS.get("lora_alpha", 16),
             "num_layers": HYPERPARAMS.get("lora_layers", 4),
+            "train_norms": train_norms,
         }
+        if train_norms:
+            save_dict["lora_norms"] = {
+                k: v.cpu() for k, v in model.state_dict().items()
+                if ("attn_norm" in k or "mlp_norm" in k or "final_norm" in k)
+            }
     elif unfreeze_layers > 0:
         top_keys = [f"layers.{28 - i - 1}" for i in range(unfreeze_layers)] + ["final_norm"]
         save_dict["encoder_top2"] = {

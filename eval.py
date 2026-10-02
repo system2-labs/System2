@@ -68,8 +68,11 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
         if "lora" in state:
             from lora import apply_lora
             cfg = state.get("lora_config", {"r": 16, "alpha": 16, "num_layers": 4})
-            apply_lora(model, r=cfg.get("r", 16), alpha=cfg.get("alpha", 16), num_layers=cfg.get("num_layers", 4))
+            train_norms = cfg.get("train_norms", False) or ("lora_norms" in state)
+            apply_lora(model, r=cfg.get("r", 16), alpha=cfg.get("alpha", 16), num_layers=cfg.get("num_layers", 4), train_norms=train_norms)
             model.load_state_dict(state["lora"], strict=False)
+            if "lora_norms" in state:
+                model.load_state_dict(state["lora_norms"], strict=False)
         elif "encoder_top2" in state:
             model.load_state_dict(state["encoder_top2"], strict=False)
     else:
