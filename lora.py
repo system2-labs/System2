@@ -29,15 +29,18 @@ class LoRALinear(nn.Module):
         return base + lora
 
 
-def apply_lora(model, r=16, alpha=16, num_layers=4):
+def apply_lora(model, r=16, alpha=16, num_layers=4, train_norms=False):
     """Inject LoRA into Wqkv and Wo projections of the top num_layers of ModernBERT.
 
     All base weights remain strictly frozen. Only lora_A and lora_B are trainable.
+    If train_norms=True, also unfreezes layer normalizations (mlp_norm, final_norm)
+    for scale calibration without representation drift.
     """
     for p in model.parameters():
         p.requires_grad = False
 
     lora_params = []
+    norm_params = []
     target_layers = model.layers[-num_layers:] if num_layers > 0 else model.layers
     for layer in target_layers:
         if not isinstance(layer.attn.Wqkv, LoRALinear):
@@ -48,4 +51,15 @@ def apply_lora(model, r=16, alpha=16, num_layers=4):
             layer.attn.Wqkv.lora_A, layer.attn.Wqkv.lora_B,
             layer.attn.Wo.lora_A, layer.attn.Wo.lora_B,
         ])
+        if train_norms:
+            for p in layer.mlp_norm.parameters():
+                p.requires_grad = True
+                norm_params.append(p)
+
+    if train_norms:
+        for p in model.final_norm.parameters():
+            p.requires_grad = True
+            norm_params.append(p)
+        return lora_params, norm_params
+
     return lora_params
