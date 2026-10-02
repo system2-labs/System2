@@ -52,9 +52,10 @@ def apply_lora(model, r=16, alpha=16, num_layers=4, train_norms=False):
             layer.attn.Wo.lora_A, layer.attn.Wo.lora_B,
         ])
         if train_norms:
-            for p in layer.mlp_norm.parameters():
-                p.requires_grad = True
-                norm_params.append(p)
+            for norm in (layer.attn_norm, layer.mlp_norm):
+                for p in norm.parameters():
+                    p.requires_grad = True
+                    norm_params.append(p)
 
     if train_norms:
         for p in model.final_norm.parameters():
