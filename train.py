@@ -38,10 +38,10 @@ HYPERPARAMS = {
     "batch_size": 16,
     "max_len": 128,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
-    "epochs": 3,
-    "train_size": 3500,
+    "epochs": 2,       # 2 epochs on 8.3k samples = 1,040 steps (1.6x of Run 8)
+    "train_size": 8500,
     "lambda_div": 0.01,
-    "data_dir": "./data/arc",
+    "data_dir": "./data/arc_obqa",
     "pairwise": True,
     "diff_features": True,
 }
