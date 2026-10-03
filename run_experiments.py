@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs 3 sequential AutoResearch experiments back-to-back.
 
-Test 1: Deeper LoRA (top-14 layers, rank 16)
-Test 2: LoRA Rank Expansion (rank 32, alpha 32)
-Test 3: Judger Temperature Scaling (learnable tau)
+Path 1: Supervised Domain-Gated MoTE (ARC experts 0&1, OBQA experts 2&3, 8.3k dataset)
+Path 2: Logit-Ensemble MoE (Loss on routed ensemble, lambda_aux=0.10, 8.3k dataset)
+Path 3: Pure In-Domain ARC with Dynamic SoftCentroid MoTE (4 heads, pure ARC 3.5k dataset)
 """
 import json
 import os
@@ -86,27 +86,78 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Test 1: Deeper LoRA (top-14 layers, rank 16)
+    # Path 1: Supervised Domain-Gated MoTE (ARC experts 0&1, OBQA experts 2&3)
     r1 = run_experiment(
-        name="Test 1: Deeper LoRA (top-14 layers)",
-        hyperparams={"lora_layers": 14, "lora_r": 16, "lora_alpha": 16, "learnable_temp": False},
-        description="Phase 2: Frozen ModernBERT + Deeper LoRA (top-14 layers, rank 16)",
+        name="Path 1: Supervised Domain-Gated MoTE",
+        hyperparams={
+            "use_mote": True,
+            "mote_mode": "supervised",
+            "data_dir": "./data/arc_obqa",
+            "train_size": 8500,
+            "epochs": 2,
+            "num_experts": 4,
+            "mote_top_k": 2,
+            "soft_centroid": True,
+            "lr_router": 5e-4,
+            "lr_heads": 1e-3,
+            "lr_judger": 3e-4,
+            "lr_lora": 2e-4,
+            "lora_r": 32,
+            "lora_alpha": 32,
+            "lora_layers": 8,
+            "lambda_aux": 0.10,
+            "task_prefixes": False,
+        },
+        description="Phase 2: Supervised Domain-Gated MoTE (ARC experts 0&1, OBQA experts 2&3, 8.3k)",
     )
     results.append(r1)
 
-    # Test 2: LoRA Rank Expansion (rank 32, alpha 32)
+    # Path 2: Logit-Ensemble MoE with Load Balancing (Loss on routed ensemble)
     r2 = run_experiment(
-        name="Test 2: LoRA Rank Expansion (r=32, alpha=32)",
-        hyperparams={"lora_r": 32, "lora_alpha": 32, "learnable_temp": False},
-        description="Phase 2: LoRA Rank Expansion (rank 32, alpha 32)",
+        name="Path 2: Logit-Ensemble MoE",
+        hyperparams={
+            "use_mote": True,
+            "mote_mode": "ensemble",
+            "data_dir": "./data/arc_obqa",
+            "train_size": 8500,
+            "epochs": 2,
+            "num_experts": 4,
+            "mote_top_k": 2,
+            "soft_centroid": True,
+            "lr_router": 5e-4,
+            "lr_heads": 1e-3,
+            "lr_judger": 3e-4,
+            "lr_lora": 2e-4,
+            "lora_r": 32,
+            "lora_alpha": 32,
+            "lora_layers": 8,
+            "lambda_aux": 0.10,
+            "task_prefixes": False,
+        },
+        description="Phase 2: Logit-Ensemble MoE (Loss on routed ensemble, lambda_aux=0.10, 8.3k)",
     )
     results.append(r2)
 
-    # Test 3: Judger Temperature Scaling
+    # Path 3: Pure In-Domain ARC with Dynamic SoftCentroid MoTE
     r3 = run_experiment(
-        name="Test 3: Judger Temperature Scaling (learnable tau)",
-        hyperparams={"learnable_temp": True},
-        description="Phase 2: Judger Temperature Scaling (learnable tau)",
+        name="Path 3: Pure ARC with SoftCentroid MoTE",
+        hyperparams={
+            "use_mote": True,
+            "mote_mode": "arc_soft",
+            "data_dir": "./data/arc",
+            "train_size": 3500,
+            "epochs": 3,
+            "num_experts": 4,
+            "soft_centroid": True,
+            "lr_heads": 1e-3,
+            "lr_judger": 3e-4,
+            "lr_lora": 2e-4,
+            "lora_r": 32,
+            "lora_alpha": 32,
+            "lora_layers": 8,
+            "task_prefixes": False,
+        },
+        description="Phase 2: Pure ARC with SoftCentroid MoTE (4 heads, dynamic candidate attention)",
     )
     results.append(r3)
 
