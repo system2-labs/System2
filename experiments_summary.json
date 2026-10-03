@@ -1,0 +1,46 @@
+[
+  {
+    "name": "Test 1: Deeper LoRA (top-14 layers)",
+    "description": "Phase 2: Frozen ModernBERT + Deeper LoRA (top-14 layers, rank 16)",
+    "hyperparams": {
+      "lora_layers": 14,
+      "lora_r": 16,
+      "lora_alpha": 16,
+      "learnable_temp": false
+    },
+    "metric": 0.6259,
+    "accuracy": 0.5088,
+    "brier": 0.257,
+    "committed": false,
+    "duration_sec": 784.4,
+    "new_best_metric": 0.6406
+  },
+  {
+    "name": "Test 2: LoRA Rank Expansion (r=32, alpha=32)",
+    "description": "Phase 2: LoRA Rank Expansion (rank 32, alpha 32)",
+    "hyperparams": {
+      "lora_r": 32,
+      "lora_alpha": 32,
+      "learnable_temp": false
+    },
+    "metric": 0.6429,
+    "accuracy": 0.5371,
+    "brier": 0.2513,
+    "committed": true,
+    "duration_sec": 724.3,
+    "new_best_metric": 0.6429
+  },
+  {
+    "name": "Test 3: Judger Temperature Scaling (learnable tau)",
+    "description": "Phase 2: Judger Temperature Scaling (learnable tau)",
+    "hyperparams": {
+      "learnable_temp": true
+    },
+    "metric": 0.6224,
+    "accuracy": 0.4983,
+    "brier": 0.2536,
+    "committed": false,
+    "duration_sec": 735.0,
+    "new_best_metric": 0.6429
+  }
+]
