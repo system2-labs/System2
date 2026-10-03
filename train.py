@@ -27,11 +27,11 @@ from system import System2
 
 # --- TUNABLES (autoresearch subject: the loop edits this block) ---
 HYPERPARAMS = {
-    "use_mote": True,
+    "use_mote": False,
     "num_experts": 4,
     "mote_top_k": 2,
     "soft_centroid": True,
-    "num_heads": 4,
+    "num_heads": 5,
     "lr_heads": 1e-3,
     "lr_router": 5e-4,
     "lr_soft_centroid": 1e-3,
@@ -44,14 +44,14 @@ HYPERPARAMS = {
     "batch_size": 16,
     "max_len": 128,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
-    "epochs": 2,       # 2 epochs on 8.3k multi-domain samples = 1,040 steps
-    "train_size": 8500,
+    "epochs": 3,
+    "train_size": 3500,
     "lambda_div": 0.01,
     "lambda_aux": 0.01,
-    "data_dir": "./data/arc_obqa",
+    "data_dir": "./data/arc",
     "pairwise": True,
     "diff_features": True,
-    "task_prefixes": True,
+    "task_prefixes": False,
     "lora_train_norms": False,
     "lr_norm": 5e-5,
     "learnable_temp": False,
