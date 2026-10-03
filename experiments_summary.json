@@ -1,7 +1,7 @@
 [
   {
-    "name": "Option 1: Parallel Head Count Scaling (N=8)",
-    "description": "Phase 2: Parallel Head Count Scaling (N=8 dense parallel heads on pure ARC)",
+    "name": "Test 1: Cosine Annealing LR Schedule",
+    "description": "Phase 2: Cosine Annealing LR Schedule (eta_min=1e-5 across 3 epochs on SOTA)",
     "hyperparams": {
       "use_mote": false,
       "data_dir": "./data/arc",
@@ -9,7 +9,7 @@
       "epochs": 3,
       "batch_size": 16,
       "max_len": 128,
-      "num_heads": 8,
+      "num_heads": 5,
       "head_layers": 2,
       "use_lora": true,
       "lora_r": 32,
@@ -22,18 +22,21 @@
       "pairwise": true,
       "diff_features": true,
       "task_prefixes": false,
-      "learnable_temp": false
+      "learnable_temp": false,
+      "use_scheduler": true,
+      "scheduler_min_lr": 1e-05,
+      "soft_judge_targets": false
     },
-    "metric": 0.6165,
-    "accuracy": 0.4997,
-    "brier": 0.2668,
-    "committed": false,
-    "duration_sec": 619.7,
-    "new_best_metric": 0.6429
+    "metric": 0.651,
+    "accuracy": 0.5575,
+    "brier": 0.2555,
+    "committed": true,
+    "duration_sec": 653.8,
+    "new_best_metric": 0.651
   },
   {
-    "name": "Option 2: LoRA Rank Expansion (r=64, alpha=64)",
-    "description": "Phase 2: LoRA Rank Expansion (r=64, alpha=64 on top 8 ModernBERT layers)",
+    "name": "Test 2: Judger Soft Target Distillation",
+    "description": "Phase 2: Judger Soft Target Distillation (tau=0.5, margin-weighted over correct heads)",
     "hyperparams": {
       "use_mote": false,
       "data_dir": "./data/arc",
@@ -43,38 +46,6 @@
       "max_len": 128,
       "num_heads": 5,
       "head_layers": 2,
-      "use_lora": true,
-      "lora_r": 64,
-      "lora_alpha": 64,
-      "lora_layers": 8,
-      "lr_heads": 0.001,
-      "lr_judger": 0.0003,
-      "lr_lora": 0.0002,
-      "lambda_div": 0.01,
-      "pairwise": true,
-      "diff_features": true,
-      "task_prefixes": false,
-      "learnable_temp": false
-    },
-    "metric": 0.6223,
-    "accuracy": 0.496,
-    "brier": 0.2515,
-    "committed": false,
-    "duration_sec": 687.7,
-    "new_best_metric": 0.6429
-  },
-  {
-    "name": "Option 3: Deeper Intra-Choice Depth (head_layers=3)",
-    "description": "Phase 2: Deeper Intra-Choice Depth (head_layers=3 Transformer layers per ThoughtHead)",
-    "hyperparams": {
-      "use_mote": false,
-      "data_dir": "./data/arc",
-      "train_size": 3500,
-      "epochs": 3,
-      "batch_size": 16,
-      "max_len": 128,
-      "num_heads": 5,
-      "head_layers": 3,
       "use_lora": true,
       "lora_r": 32,
       "lora_alpha": 32,
@@ -86,13 +57,17 @@
       "pairwise": true,
       "diff_features": true,
       "task_prefixes": false,
-      "learnable_temp": false
+      "learnable_temp": false,
+      "use_scheduler": true,
+      "scheduler_min_lr": 1e-05,
+      "soft_judge_targets": true,
+      "soft_target_tau": 0.5
     },
-    "metric": 0.5749,
-    "accuracy": 0.3878,
-    "brier": 0.238,
+    "metric": 0.6457,
+    "accuracy": 0.5416,
+    "brier": 0.2502,
     "committed": false,
-    "duration_sec": 703.1,
-    "new_best_metric": 0.6429
+    "duration_sec": 670.0,
+    "new_best_metric": 0.651
   }
 ]
