@@ -36,14 +36,21 @@ def mean_pool_texts(texts, device, max_len=192):
         return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
 
 
-def mean_pool_pairwise(questions, choices_list, device, max_len=128):
+def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=None, task_prefixes=False):
     """Pairwise encoding: (b questions, 4 choices) -> (b, 4, 1024)."""
     b = len(questions)
-    flat_texts = [
-        f"Question: {questions[idx]} Answer: {choices_list[idx][c]}"
-        for idx in range(b)
-        for c in range(4)
-    ]
+    if task_prefixes:
+        flat_texts = [
+            f"{'[Task: Scientific Facts] ' if (sources and sources[idx] == 'openbookqa') else '[Task: Causal Reasoning] '}Question: {questions[idx]} Answer: {choices_list[idx][c]}"
+            for idx in range(b)
+            for c in range(4)
+        ]
+    else:
+        flat_texts = [
+            f"Question: {questions[idx]} Answer: {choices_list[idx][c]}"
+            for idx in range(b)
+            for c in range(4)
+        ]
     inputs = tokenizer(flat_texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(device)
     with torch.no_grad():
         last_hidden = model(**inputs).last_hidden_state
@@ -109,13 +116,17 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
     sys2.to(device)
     sys2.eval()
 
+    task_prefixes = (isinstance(state, dict) and state.get("task_prefixes", False)) or ("router.gate.weight" in sys2_state)
+    sources = cols.get("source") if hasattr(cols, "get") and "source" in cols else None
+
     correct = 0
     ece_sum = 0.0
     with torch.no_grad():
         for i in range(0, n, batch):
             b = min(batch, n - i)
             if has_choices and is_pairwise:
-                vecs = mean_pool_pairwise(cols["question"][i : i + b], cols["choices"][i : i + b], device)
+                src_slice = sources[i : i + b] if sources else None
+                vecs = mean_pool_pairwise(cols["question"][i : i + b], cols["choices"][i : i + b], device, sources=src_slice, task_prefixes=task_prefixes)
             else:
                 vecs = mean_pool_texts(cols["text"][i : i + b], device)
             best, conf, pruned, confs, logits, emb, scores = sys2(vecs)[:7]
