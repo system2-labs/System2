@@ -57,6 +57,10 @@ HYPERPARAMS = {
     "lora_train_norms": False,
     "lr_norm": 5e-5,
     "learnable_temp": False,
+    "use_scheduler": False,
+    "scheduler_min_lr": 1e-5,
+    "soft_judge_targets": False,
+    "soft_target_tau": 0.5,
 }
 
 
@@ -220,6 +224,15 @@ def main():
         param_groups.append({"params": norm_params, "lr": norm_lr})
     optimizer = torch.optim.Adam(param_groups)
 
+    use_scheduler = HYPERPARAMS.get("use_scheduler", False)
+    if use_scheduler:
+        total_steps = HYPERPARAMS["epochs"] * ((len(labels) + HYPERPARAMS["batch_size"] - 1) // HYPERPARAMS["batch_size"])
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=total_steps, eta_min=HYPERPARAMS.get("scheduler_min_lr", 1e-5)
+        )
+    else:
+        scheduler = None
+
     task_prefixes = HYPERPARAMS.get("task_prefixes", False)
     sources = cols.get("source") if "source" in cols else None
 
@@ -285,8 +298,23 @@ def main():
             else:
                 cal_loss = cal_per_head.mean()
 
-            # 3. Judger Selection: target is most confident among active heads
-            if use_mote:
+            # 3. Judger Selection: target is most confident among active heads or soft distillation
+            if HYPERPARAMS.get("soft_judge_targets", False):
+                with torch.no_grad():
+                    head_preds = logits.max(dim=2).indices  # (b, N)
+                    is_head_correct = (head_preds == lab.unsqueeze(1))  # (b, N) bool
+                    ce_per_h = torch.stack([
+                        torch.nn.functional.cross_entropy(h, lab, reduction='none')
+                        for h in logits.unbind(1)
+                    ], dim=1)  # (b, N)
+                    tau = HYPERPARAMS.get("soft_target_tau", 0.5)
+                    masked_scores = torch.where(is_head_correct, confs / tau, torch.full_like(confs, -1e9))
+                    has_correct = is_head_correct.any(dim=1, keepdim=True)
+                    fallback_scores = -ce_per_h / tau
+                    target_logits = torch.where(has_correct, masked_scores, fallback_scores)
+                    q = torch.softmax(target_logits, dim=-1)
+                judge_loss = torch.nn.functional.cross_entropy(scores, q)
+            elif use_mote:
                 active_confs = confs.masked_fill(~active_mask, -1e9)
                 target = active_confs.max(dim=1).indices
                 judge_loss = torch.nn.functional.cross_entropy(scores, target)
@@ -324,6 +352,8 @@ def main():
             optimizer.zero_grad()
             total_loss.backward()
             optimizer.step()
+            if scheduler is not None:
+                scheduler.step()
 
             total_ce += ce_loss.item()
             total_cal += cal_loss.item()
