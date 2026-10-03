@@ -34,15 +34,15 @@ HYPERPARAMS = {
     "soft_centroid": True,
     "num_heads": 5,
     "head_layers": 2,
-    "lr_heads": 1e-3,
+    "lr_heads": 0.001,
     "lr_router": 5e-4,
     "lr_soft_centroid": 1e-3,
-    "lr_judger": 3e-4,
+    "lr_judger": 0.0003,
     "use_lora": True,
     "lora_r": 32,
     "lora_alpha": 32,
     "lora_layers": 8,  # adapt top 8 layers of ModernBERT via LoRA
-    "lr_lora": 2e-4,
+    "lr_lora": 0.0002,
     "batch_size": 16,
     "max_len": 128,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
@@ -57,8 +57,8 @@ HYPERPARAMS = {
     "lora_train_norms": False,
     "lr_norm": 5e-5,
     "learnable_temp": False,
-    "use_scheduler": False,
-    "scheduler_min_lr": 1e-5,
+    "use_scheduler": True,
+    "scheduler_min_lr": 1e-05,
     "soft_judge_targets": False,
     "soft_target_tau": 0.5,
 }
@@ -373,8 +373,8 @@ def main():
     os.makedirs(os.path.dirname(args.save) or ".", exist_ok=True)
     save_dict = {
         "sys2": sys2.state_dict(),
-        "task_prefixes": task_prefixes,
-        "use_mote": use_mote,
+        "task_prefixes": False,
+        "use_mote": False,
         "mote_mode": mote_mode if use_mote else "baseline",
     }
     if use_lora:
