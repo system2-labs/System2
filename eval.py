@@ -92,13 +92,19 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
         is_pairwise = (hypo_w is not None and hypo_w.shape[0] == 1)
         num_classes = 1 if is_pairwise else 4
 
-    kwargs = {"num_heads": num_heads, "num_classes": num_classes, "pairwise": is_pairwise, "diff_features": has_diff}
-    if "judger.log_temp" in sys2_state:
-        kwargs["learnable_temp"] = True
-    import inspect
-    if "recurrence" in inspect.signature(System2.__init__).parameters:
-        kwargs["recurrence"] = has_recurrence
-    sys2 = System2(**kwargs)
+    is_mote = "router.gate.weight" in sys2_state
+    if is_mote:
+        from mote import MoTESystem2
+        has_soft = any("soft_centroids" in k for k in sys2_state.keys())
+        sys2 = MoTESystem2(num_experts=num_heads, diff_features=has_diff, soft_centroid=has_soft)
+    else:
+        kwargs = {"num_heads": num_heads, "num_classes": num_classes, "pairwise": is_pairwise, "diff_features": has_diff}
+        if "judger.log_temp" in sys2_state:
+            kwargs["learnable_temp"] = True
+        import inspect
+        if "recurrence" in inspect.signature(System2.__init__).parameters:
+            kwargs["recurrence"] = has_recurrence
+        sys2 = System2(**kwargs)
     sys2.load_state_dict(sys2_state, strict=False)
     sys2.to(device)
     sys2.eval()
@@ -112,7 +118,7 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
                 vecs = mean_pool_pairwise(cols["question"][i : i + b], cols["choices"][i : i + b], device)
             else:
                 vecs = mean_pool_texts(cols["text"][i : i + b], device)
-            best, conf, pruned, confs, logits, emb, scores = sys2(vecs)
+            best, conf, pruned, confs, logits, emb, scores = sys2(vecs)[:7]
             win_logits = logits[torch.arange(b), best]  # (b, 4)
             preds = win_logits.max(dim=1).indices
             correct += (preds == labels[i : i + b]).sum().item()
