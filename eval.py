@@ -93,6 +93,8 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
         num_classes = 1 if is_pairwise else 4
 
     kwargs = {"num_heads": num_heads, "num_classes": num_classes, "pairwise": is_pairwise, "diff_features": has_diff}
+    if "judger.log_temp" in sys2_state:
+        kwargs["learnable_temp"] = True
     import inspect
     if "recurrence" in inspect.signature(System2.__init__).parameters:
         kwargs["recurrence"] = has_recurrence

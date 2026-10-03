@@ -11,8 +11,11 @@ class Judger(nn.Module):
     The best one is the one the encoder context supports most.
     """
 
-    def __init__(self, head_dim=512):
+    def __init__(self, head_dim=512, learnable_temp=False):
         super().__init__()
+        self.learnable_temp = learnable_temp
+        if learnable_temp:
+            self.log_temp = nn.Parameter(torch.zeros(1))
         self.attention = nn.MultiheadAttention(
             embed_dim=head_dim, num_heads=8, batch_first=True)
         self.score = nn.Sequential(
@@ -26,7 +29,12 @@ class Judger(nn.Module):
         attended, _ = self.attention(embeddings, embeddings, embeddings)
         scores = self.score(attended).squeeze(-1)  # (B, N)
         best = scores.max(dim=-1).indices        # (B,)
-        best_conf = torch.sigmoid(scores.gather(1, best.unsqueeze(1))).squeeze(1)
+        best_score = scores.gather(1, best.unsqueeze(1)).squeeze(1)
+        if hasattr(self, "log_temp") and self.learnable_temp:
+            temp = torch.exp(self.log_temp).clamp(min=0.1, max=10.0)
+            best_conf = torch.sigmoid(best_score / temp)
+        else:
+            best_conf = torch.sigmoid(best_score)
         pruned = (scores < 0.3).sum(dim=-1)
         return best, best_conf, pruned, scores
 
@@ -39,7 +47,7 @@ class System2(nn.Module):
     2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False):
         super().__init__()
         self.pairwise = pairwise
         self.diff_features = diff_features
@@ -49,7 +57,7 @@ class System2(nn.Module):
             ThoughtHead(num_classes=head_classes, diff_features=diff_features)
             for _ in range(num_heads)
         ])
-        self.judger = Judger()
+        self.judger = Judger(learnable_temp=learnable_temp)
 
     def forward(self, encoder_output):
         if encoder_output.dim() == 3:
