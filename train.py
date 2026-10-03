@@ -31,8 +31,8 @@ HYPERPARAMS = {
     "lr_heads": 1e-3,
     "lr_judger": 3e-4,
     "use_lora": True,
-    "lora_r": 16,
-    "lora_alpha": 16,
+    "lora_r": 32,
+    "lora_alpha": 32,
     "lora_layers": 8,  # adapt top 8 layers of ModernBERT via LoRA
     "lr_lora": 2e-4,
     "batch_size": 16,
