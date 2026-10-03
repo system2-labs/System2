@@ -46,6 +46,7 @@ HYPERPARAMS = {
     "diff_features": True,
     "lora_train_norms": False,
     "lr_norm": 5e-5,
+    "learnable_temp": False,
 }
 
 
@@ -150,6 +151,7 @@ def main():
         num_classes=1 if is_pairwise else 4,
         pairwise=is_pairwise,
         diff_features=diff_features,
+        learnable_temp=HYPERPARAMS.get("learnable_temp", False),
     )
     sys2.to(device)
     sys2.train()
