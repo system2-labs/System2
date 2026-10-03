@@ -2,8 +2,11 @@
 
 Components:
 1. SoftCentroid: Attention-weighted dynamic group centroid for contrastive candidate features.
-2. ThoughtRouter: Top-K noisy gating router with Switch Transformer load-balancing auxiliary loss.
-3. MoTESystem2: Multi-expert architecture routing diverse question styles to specialized ThoughtHeads.
+2. ThoughtRouter: Multi-mode router supporting:
+   - "supervised": Domain-conditioned routing (ARC -> Experts 0 & 1, OBQA -> Experts 2 & 3).
+   - "ensemble": Noisy top-2 dispatch with load-balancing loss for logit ensembling.
+   - "arc_soft": In-domain all-expert activation for pure ARC reasoning.
+3. MoTESystem2: Modular reasoning architecture with masked Judger arbitration.
 """
 import torch
 import torch.nn as nn
@@ -35,45 +38,76 @@ class SoftCentroid(nn.Module):
 
 
 class ThoughtRouter(nn.Module):
-    """Dispatches inputs to top-K thought experts with load balancing."""
+    """Dispatches inputs to specialized thought experts."""
 
     def __init__(self, d_in=1024, num_experts=4, top_k=2):
         super().__init__()
         self.num_experts = num_experts
         self.top_k = min(top_k, num_experts)
         self.gate = nn.Linear(d_in, num_experts)
+        self.domain_clf = nn.Linear(d_in, 2)  # 2-class domain classifier (0: ARC, 1: OBQA)
 
-    def forward(self, x_ctx, training=True):
-        logits = self.gate(x_ctx)  # (B, E)
-        if training:
-            noise = torch.randn_like(logits) * (1.0 / (self.num_experts ** 2))
-            noisy_logits = logits + noise
-        else:
-            noisy_logits = logits
+    def forward(self, x_ctx, training=True, mode="supervised", domain_ids=None):
+        B = x_ctx.size(0)
+        device = x_ctx.device
 
-        full_probs = torch.softmax(logits, dim=-1)  # (B, E)
-        topk_vals, topk_indices = torch.topk(noisy_logits, self.top_k, dim=-1)  # (B, K)
-        topk_gates = torch.softmax(topk_vals, dim=-1)  # (B, K)
+        if mode == "supervised":
+            domain_logits = self.domain_clf(x_ctx)  # (B, 2)
+            if domain_ids is None:
+                pred_domain = domain_logits.argmax(dim=-1)
+            else:
+                pred_domain = domain_ids
 
-        # Dense gate weights (B, E) - strictly non-zero only for active top-K
-        dense_gates = torch.zeros_like(full_probs).scatter_(1, topk_indices, topk_gates)
+            active_mask = torch.zeros(B, self.num_experts, dtype=torch.bool, device=device)
+            dense_gates = torch.zeros(B, self.num_experts, device=device)
+            for b in range(B):
+                d = pred_domain[b].item()
+                if d == 0:  # ARC -> Experts 0 & 1
+                    active_mask[b, 0] = active_mask[b, 1] = True
+                    dense_gates[b, 0] = dense_gates[b, 1] = 0.5
+                else:       # OpenBookQA -> Experts 2 & 3
+                    active_mask[b, 2] = active_mask[b, 3] = True
+                    dense_gates[b, 2] = dense_gates[b, 3] = 0.5
 
-        # Switch Transformer load balancing auxiliary loss
-        mask = torch.zeros_like(full_probs).scatter_(1, topk_indices, 1.0)
-        f = mask.mean(dim=0)      # (E,) fraction of samples assigned to expert e
-        P = full_probs.mean(dim=0) # (E,) average routing probability for expert e
-        aux_loss = self.num_experts * torch.sum(f * P)
+            if domain_ids is not None:
+                domain_loss = nn.functional.cross_entropy(domain_logits, domain_ids)
+            else:
+                domain_loss = torch.tensor(0.0, device=device)
 
-        return topk_indices, dense_gates, full_probs, aux_loss
+            return active_mask, dense_gates, dense_gates, domain_loss
+
+        elif mode == "ensemble":
+            logits = self.gate(x_ctx)  # (B, E)
+            if training:
+                noise = torch.randn_like(logits) * (1.0 / (self.num_experts ** 2))
+                noisy_logits = logits + noise
+            else:
+                noisy_logits = logits
+
+            full_probs = torch.softmax(logits, dim=-1)  # (B, E)
+            topk_vals, topk_indices = torch.topk(noisy_logits, self.top_k, dim=-1)  # (B, K)
+            topk_gates = torch.softmax(topk_vals, dim=-1)  # (B, K)
+
+            dense_gates = torch.zeros_like(full_probs).scatter_(1, topk_indices, topk_gates)
+            active_mask = torch.zeros_like(full_probs, dtype=torch.bool).scatter_(1, topk_indices, True)
+
+            # Switch Transformer load balancing auxiliary loss
+            mask_float = torch.zeros_like(full_probs).scatter_(1, topk_indices, 1.0)
+            f = mask_float.mean(dim=0)
+            P = full_probs.mean(dim=0)
+            aux_loss = self.num_experts * torch.sum(f * P)
+
+            return active_mask, dense_gates, full_probs, aux_loss
+
+        else:  # "arc_soft" / all experts active
+            active_mask = torch.ones(B, self.num_experts, dtype=torch.bool, device=device)
+            dense_gates = torch.full((B, self.num_experts), 1.0 / self.num_experts, device=device)
+            aux_loss = torch.tensor(0.0, device=device)
+            return active_mask, dense_gates, dense_gates, aux_loss
 
 
 class MoTESystem2(nn.Module):
-    """Sparse Mixture of Thought Experts System2 Architecture.
-
-    1. ThoughtRouter dispatches each question context to top-K specialized heads.
-    2. Active heads compute candidates with learned SoftCentroid contrast.
-    3. Judger cross-attends across all expert embeddings to select winning hypothesis.
-    """
+    """Sparse Mixture of Thought Experts System2 Architecture."""
 
     def __init__(
         self,
@@ -83,12 +117,14 @@ class MoTESystem2(nn.Module):
         head_dim=512,
         diff_features=True,
         soft_centroid=True,
+        mote_mode="supervised",
     ):
         super().__init__()
         self.num_experts = num_experts
         self.top_k = top_k
         self.diff_features = diff_features
         self.soft_centroid = soft_centroid
+        self.mote_mode = mote_mode
 
         self.router = ThoughtRouter(d_in=hidden_size, num_experts=num_experts, top_k=top_k)
         self.heads = nn.ModuleList([
@@ -104,11 +140,13 @@ class MoTESystem2(nn.Module):
 
         self.judger = Judger(head_dim=head_dim)
 
-    def forward(self, encoder_output):
-        # encoder_output: (B, 4, 1024)
+    def forward(self, encoder_output, domain_ids=None, mode=None):
+        mode = mode or self.mote_mode
         B = encoder_output.size(0)
         x_ctx = encoder_output.mean(dim=1)  # (B, 1024)
-        topk_indices, dense_gates, full_probs, aux_loss = self.router(x_ctx, training=self.training)
+        active_mask, dense_gates, full_probs, aux_loss = self.router(
+            x_ctx, training=self.training, mode=mode, domain_ids=domain_ids
+        )
 
         all_logits, confidences, embeddings = [], [], []
         for i, head in enumerate(self.heads):
@@ -134,6 +172,16 @@ class MoTESystem2(nn.Module):
         embeddings = torch.stack(embeddings, dim=1)    # (B, E, 512)
         confidences = torch.stack(confidences, dim=1)  # (B, E)
         logits = torch.stack(all_logits, dim=1)        # (B, E, 4)
-        best, best_conf, pruned, scores = self.judger(embeddings)
 
-        return best, best_conf, pruned, confidences, logits, embeddings, scores, dense_gates, aux_loss
+        # Cross-attending Judger
+        raw_best, _, pruned, scores = self.judger(embeddings)
+
+        # Mask Judger scores by active_mask
+        masked_scores = scores.masked_fill(~active_mask, -1e9)
+        best = masked_scores.max(dim=-1).indices
+        best_conf = torch.sigmoid(scores.gather(1, best.unsqueeze(1))).squeeze(1)
+
+        # Logit ensemble
+        ens_logits = (logits * dense_gates.unsqueeze(-1)).sum(dim=1)  # (B, 4)
+
+        return best, best_conf, pruned, confidences, logits, embeddings, masked_scores, dense_gates, aux_loss, ens_logits, active_mask

@@ -28,6 +28,7 @@ from system import System2
 # --- TUNABLES (autoresearch subject: the loop edits this block) ---
 HYPERPARAMS = {
     "use_mote": False,
+    "mote_mode": "arc_soft",  # "supervised" (Path 1), "ensemble" (Path 2), "arc_soft" (Path 3)
     "num_experts": 4,
     "mote_top_k": 2,
     "soft_centroid": True,
@@ -47,7 +48,7 @@ HYPERPARAMS = {
     "epochs": 3,
     "train_size": 3500,
     "lambda_div": 0.01,
-    "lambda_aux": 0.01,
+    "lambda_aux": 0.10,
     "data_dir": "./data/arc",
     "pairwise": True,
     "diff_features": True,
@@ -162,6 +163,7 @@ def main():
     model.to(device)
 
     use_mote = HYPERPARAMS.get("use_mote", False)
+    mote_mode = HYPERPARAMS.get("mote_mode", "supervised")
     if use_mote:
         from mote import MoTESystem2
         sys2 = MoTESystem2(
@@ -171,6 +173,7 @@ def main():
             head_dim=512,
             diff_features=diff_features,
             soft_centroid=HYPERPARAMS.get("soft_centroid", True),
+            mote_mode=mote_mode,
         )
     else:
         sys2 = System2(
@@ -239,17 +242,34 @@ def main():
             lab = torch.tensor(labels[i : i + b], device=device)  # (b,)
 
             if use_mote:
-                best, conf, pruned, confs, logits, emb, scores, dense_gates, aux_loss = sys2(vecs)
-                # Routed CE loss
-                ce_per_expert = torch.stack([
-                    torch.nn.functional.cross_entropy(h, lab, reduction='none')
-                    for h in logits.unbind(1)
-                ], dim=1)  # (b, E)
-                ce_loss = (ce_per_expert * dense_gates).sum(dim=1).mean()
+                domain_ids = torch.zeros(b, dtype=torch.long, device=device)
+                if src_slice:
+                    domain_ids = torch.tensor([1 if s == "openbookqa" else 0 for s in src_slice], device=device)
+
+                best, conf, pruned, confs, logits, emb, scores, dense_gates, aux_loss, ens_logits, active_mask = sys2(
+                    vecs, domain_ids=domain_ids, mode=mote_mode
+                )
+
+                if mote_mode == "ensemble":
+                    ce_loss = torch.nn.functional.cross_entropy(ens_logits, lab)
+                    win_logits = ens_logits
+                elif mote_mode == "supervised":
+                    ce_per_expert = torch.stack([
+                        torch.nn.functional.cross_entropy(h, lab, reduction='none')
+                        for h in logits.unbind(1)
+                    ], dim=1)  # (b, E)
+                    act_float = active_mask.float()
+                    ce_loss = (ce_per_expert * (act_float / act_float.sum(dim=1, keepdim=True).clamp(min=1.0))).sum(dim=1).mean()
+                    win_logits = logits[torch.arange(b), best]
+                else:  # arc_soft
+                    ce = torch.stack([torch.nn.functional.cross_entropy(h, lab) for h in logits.unbind(1)])
+                    ce_loss = ce.mean()
+                    win_logits = logits[torch.arange(b), best]
             else:
                 best, conf, pruned, confs, logits, emb, scores = sys2(vecs)
                 ce = torch.stack([torch.nn.functional.cross_entropy(h, lab) for h in logits.unbind(1)])
                 ce_loss = ce.mean()
+                win_logits = logits[torch.arange(b), best]
                 aux_loss = torch.tensor(0.0, device=device)
 
             # --- losses (all computed, then ONE combined backward) ---
@@ -257,15 +277,23 @@ def main():
             # 2. Head Calibration: head's confidence -> 1[that head is correct]
             with torch.no_grad():
                 head_correct = (logits.max(dim=2).indices == lab.unsqueeze(1)).float()  # (b, N)
-            cal_loss = torch.nn.functional.binary_cross_entropy(confs, head_correct)
+            cal_per_head = torch.nn.functional.binary_cross_entropy(confs, head_correct, reduction='none')
+            if use_mote and mote_mode == "supervised":
+                cal_loss = (cal_per_head * active_mask.float()).sum() / active_mask.float().sum().clamp(min=1.0)
+            else:
+                cal_loss = cal_per_head.mean()
 
-            # 3. Judger Selection: cross-entropy with label smoothing to prevent logit explosion
-            target = confs.max(dim=1).indices  # (b,)
-            judge_loss = torch.nn.functional.cross_entropy(scores, target, label_smoothing=0.15)
+            # 3. Judger Selection: target is most confident among active heads
+            if use_mote:
+                active_confs = confs.masked_fill(~active_mask, -1e9)
+                target = active_confs.max(dim=1).indices
+                judge_loss = torch.nn.functional.cross_entropy(scores, target)
+            else:
+                target = confs.max(dim=1).indices
+                judge_loss = torch.nn.functional.cross_entropy(scores, target, label_smoothing=0.15)
 
             # 4. Direct Judger Output Calibration: train winning conf against actual accuracy
             with torch.no_grad():
-                win_logits = logits[torch.arange(len(vecs)), best]
                 preds = win_logits.max(dim=1).indices
                 is_correct = (preds == lab).float()
             judge_cal_loss = torch.nn.functional.binary_cross_entropy(conf, is_correct)
@@ -281,13 +309,14 @@ def main():
                 div_loss = torch.tensor(0.0, device=device)
 
             # Weighted single loss -> single backward keeps the shared graph valid.
+            aux_weight = HYPERPARAMS.get("lambda_aux", 0.10) if (use_mote and mote_mode in ["supervised", "ensemble"]) else 0.0
             total_loss = (
                 ce_loss
                 + 0.5 * cal_loss
                 + 0.1 * judge_loss
                 + 0.5 * judge_cal_loss
                 + HYPERPARAMS.get("lambda_div", 0) * div_loss
-                + HYPERPARAMS.get("lambda_aux", 0.01) * aux_loss
+                + aux_weight * aux_loss
             )
 
             optimizer.zero_grad()
@@ -314,6 +343,7 @@ def main():
         "sys2": sys2.state_dict(),
         "task_prefixes": task_prefixes,
         "use_mote": use_mote,
+        "mote_mode": mote_mode if use_mote else "baseline",
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
