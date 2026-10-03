@@ -100,10 +100,11 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
         num_classes = 1 if is_pairwise else 4
 
     is_mote = "router.gate.weight" in sys2_state
+    mote_mode = state.get("mote_mode", "supervised") if isinstance(state, dict) else "supervised"
     if is_mote:
         from mote import MoTESystem2
         has_soft = any("soft_centroids" in k for k in sys2_state.keys())
-        sys2 = MoTESystem2(num_experts=num_heads, diff_features=has_diff, soft_centroid=has_soft)
+        sys2 = MoTESystem2(num_experts=num_heads, diff_features=has_diff, soft_centroid=has_soft, mote_mode=mote_mode)
     else:
         kwargs = {"num_heads": num_heads, "num_classes": num_classes, "pairwise": is_pairwise, "diff_features": has_diff}
         if "judger.log_temp" in sys2_state:
@@ -116,7 +117,7 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
     sys2.to(device)
     sys2.eval()
 
-    task_prefixes = (isinstance(state, dict) and state.get("task_prefixes", False)) or ("router.gate.weight" in sys2_state)
+    task_prefixes = isinstance(state, dict) and state.get("task_prefixes", False)
     sources = cols.get("source") if hasattr(cols, "get") and "source" in cols else None
 
     correct = 0
@@ -129,8 +130,22 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
                 vecs = mean_pool_pairwise(cols["question"][i : i + b], cols["choices"][i : i + b], device, sources=src_slice, task_prefixes=task_prefixes)
             else:
                 vecs = mean_pool_texts(cols["text"][i : i + b], device)
-            best, conf, pruned, confs, logits, emb, scores = sys2(vecs)[:7]
-            win_logits = logits[torch.arange(b), best]  # (b, 4)
+
+            if is_mote:
+                domain_ids = torch.zeros(b, dtype=torch.long, device=device)
+                if src_slice:
+                    domain_ids = torch.tensor([1 if s == "openbookqa" else 0 for s in src_slice], device=device)
+                best, conf, pruned, confs, logits, emb, masked_scores, dense_gates, aux_loss, ens_logits, active_mask = sys2(
+                    vecs, domain_ids=domain_ids, mode=mote_mode
+                )
+                if mote_mode == "ensemble":
+                    win_logits = ens_logits
+                else:
+                    win_logits = logits[torch.arange(b), best]
+            else:
+                best, conf, pruned, confs, logits, emb, scores = sys2(vecs)[:7]
+                win_logits = logits[torch.arange(b), best]  # (b, 4)
+
             preds = win_logits.max(dim=1).indices
             correct += (preds == labels[i : i + b]).sum().item()
             ece_sum += ((conf - (preds == labels[i : i + b]).float()) ** 2).sum().item()
