@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""run_experiments.py - Runs 3 sequential AutoResearch experiments back-to-back.
+"""run_experiments.py - Runs 2 sequential AutoResearch experiments back-to-back.
 
-Option 1: Parallel Head Count Scaling (N=8 dense parallel heads on pure ARC)
-Option 2: LoRA Rank Expansion (r=64, alpha=64 on top 8 ModernBERT layers)
-Option 3: Deeper Intra-Choice Depth (head_layers=3 Transformer layers per ThoughtHead)
+Test 1: Cosine Annealing LR Schedule (decay to 1e-5 on SOTA)
+Test 2: Judger Soft Target Distillation (distribute mass across correct heads, eliminate winner-take-all)
 """
 import json
 import os
@@ -92,25 +91,23 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active baseline state
-    active_num_heads = 5
-    active_lora_r = 32
-    active_lora_alpha = 32
-    active_head_layers = 2
+    # Active baseline state (SOTA: 53.71% accuracy, 0.2513 Brier, 0.6429 metric)
+    active_use_scheduler = False
+    active_soft_judge = False
 
-    # Option 1: Parallel Head Count Scaling (N = 5 -> 8)
-    opt1_params = {
+    # Test 1: Cosine Annealing Learning Rate Decay
+    t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
         "train_size": 3500,
         "epochs": 3,
         "batch_size": 16,
         "max_len": 128,
-        "num_heads": 8,
-        "head_layers": active_head_layers,
+        "num_heads": 5,
+        "head_layers": 2,
         "use_lora": True,
-        "lora_r": active_lora_r,
-        "lora_alpha": active_lora_alpha,
+        "lora_r": 32,
+        "lora_alpha": 32,
         "lora_layers": 8,
         "lr_heads": 1e-3,
         "lr_judger": 3e-4,
@@ -120,33 +117,36 @@ def main():
         "diff_features": True,
         "task_prefixes": False,
         "learnable_temp": False,
+        "use_scheduler": True,
+        "scheduler_min_lr": 1e-5,
+        "soft_judge_targets": False,
     }
     r1 = run_experiment(
-        name="Option 1: Parallel Head Count Scaling (N=8)",
-        hyperparams=opt1_params,
-        description="Phase 2: Parallel Head Count Scaling (N=8 dense parallel heads on pure ARC)",
+        name="Test 1: Cosine Annealing LR Schedule",
+        hyperparams=t1_params,
+        description="Phase 2: Cosine Annealing LR Schedule (eta_min=1e-5 across 3 epochs on SOTA)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        active_num_heads = 8
-        print(f">>> Option 1 committed as new SOTA! Adopting num_heads={active_num_heads} for subsequent tests.")
+        active_use_scheduler = True
+        print(f">>> Test 1 committed as new SOTA! Adopting use_scheduler=True for subsequent test.")
     else:
-        print(f">>> Option 1 reverted. Retaining num_heads={active_num_heads}.")
+        print(f">>> Test 1 reverted. Retaining use_scheduler=False.")
 
-    # Option 2: LoRA Rank Expansion (r = 32 -> 64)
-    opt2_params = {
+    # Test 2: Judger Soft Target Distillation
+    t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
         "train_size": 3500,
         "epochs": 3,
         "batch_size": 16,
         "max_len": 128,
-        "num_heads": active_num_heads,
-        "head_layers": active_head_layers,
+        "num_heads": 5,
+        "head_layers": 2,
         "use_lora": True,
-        "lora_r": 64,
-        "lora_alpha": 64,
+        "lora_r": 32,
+        "lora_alpha": 32,
         "lora_layers": 8,
         "lr_heads": 1e-3,
         "lr_judger": 3e-4,
@@ -156,53 +156,20 @@ def main():
         "diff_features": True,
         "task_prefixes": False,
         "learnable_temp": False,
+        "use_scheduler": active_use_scheduler,
+        "scheduler_min_lr": 1e-5,
+        "soft_judge_targets": True,
+        "soft_target_tau": 0.5,
     }
     r2 = run_experiment(
-        name="Option 2: LoRA Rank Expansion (r=64, alpha=64)",
-        hyperparams=opt2_params,
-        description="Phase 2: LoRA Rank Expansion (r=64, alpha=64 on top 8 ModernBERT layers)",
+        name="Test 2: Judger Soft Target Distillation",
+        hyperparams=t2_params,
+        description="Phase 2: Judger Soft Target Distillation (tau=0.5, margin-weighted over correct heads)",
     )
     results.append(r2)
 
-    if r2["committed"]:
-        active_lora_r = 64
-        active_lora_alpha = 64
-        print(f">>> Option 2 committed as new SOTA! Adopting lora_r={active_lora_r} for subsequent tests.")
-    else:
-        print(f">>> Option 2 reverted. Retaining lora_r={active_lora_r}.")
-
-    # Option 3: Deeper Intra-Choice Transformer Depth (Depth 2 -> 3)
-    opt3_params = {
-        "use_mote": False,
-        "data_dir": "./data/arc",
-        "train_size": 3500,
-        "epochs": 3,
-        "batch_size": 16,
-        "max_len": 128,
-        "num_heads": active_num_heads,
-        "head_layers": 3,
-        "use_lora": True,
-        "lora_r": active_lora_r,
-        "lora_alpha": active_lora_alpha,
-        "lora_layers": 8,
-        "lr_heads": 1e-3,
-        "lr_judger": 3e-4,
-        "lr_lora": 2e-4,
-        "lambda_div": 0.01,
-        "pairwise": True,
-        "diff_features": True,
-        "task_prefixes": False,
-        "learnable_temp": False,
-    }
-    r3 = run_experiment(
-        name="Option 3: Deeper Intra-Choice Depth (head_layers=3)",
-        hyperparams=opt3_params,
-        description="Phase 2: Deeper Intra-Choice Depth (head_layers=3 Transformer layers per ThoughtHead)",
-    )
-    results.append(r3)
-
     print("\n" + "=" * 80)
-    print("ALL 3 EXPERIMENTS COMPLETED - SUMMARY REPORT")
+    print("ALL TESTS COMPLETED - SUMMARY REPORT")
     print("=" * 80)
     print(f"{'Experiment':<48} | {'Metric':<8} | {'Accuracy':<10} | {'Brier':<8} | {'Status'}")
     print("-" * 80)
