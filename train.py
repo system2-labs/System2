@@ -27,8 +27,14 @@ from system import System2
 
 # --- TUNABLES (autoresearch subject: the loop edits this block) ---
 HYPERPARAMS = {
-    "num_heads": 5,
+    "use_mote": True,
+    "num_experts": 4,
+    "mote_top_k": 2,
+    "soft_centroid": True,
+    "num_heads": 4,
     "lr_heads": 1e-3,
+    "lr_router": 5e-4,
+    "lr_soft_centroid": 1e-3,
     "lr_judger": 3e-4,
     "use_lora": True,
     "lora_r": 32,
@@ -38,12 +44,14 @@ HYPERPARAMS = {
     "batch_size": 16,
     "max_len": 128,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
-    "epochs": 3,
-    "train_size": 3500,
+    "epochs": 2,       # 2 epochs on 8.3k multi-domain samples = 1,040 steps
+    "train_size": 8500,
     "lambda_div": 0.01,
-    "data_dir": "./data/arc",
+    "lambda_aux": 0.01,
+    "data_dir": "./data/arc_obqa",
     "pairwise": True,
     "diff_features": True,
+    "task_prefixes": True,
     "lora_train_norms": False,
     "lr_norm": 5e-5,
     "learnable_temp": False,
@@ -63,13 +71,20 @@ def mean_pool_texts(texts, max_len, device, with_grad=False):
             return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
 
 
-def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False):
+def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False, sources=None, task_prefixes=False):
     b = len(questions)
-    flat_texts = [
-        f"Question: {questions[idx]} Answer: {choices_list[idx][c]}"
-        for idx in range(b)
-        for c in range(4)
-    ]
+    if task_prefixes:
+        flat_texts = [
+            f"{'[Task: Scientific Facts] ' if (sources and sources[idx] == 'openbookqa') else '[Task: Causal Reasoning] '}Question: {questions[idx]} Answer: {choices_list[idx][c]}"
+            for idx in range(b)
+            for c in range(4)
+        ]
+    else:
+        flat_texts = [
+            f"Question: {questions[idx]} Answer: {choices_list[idx][c]}"
+            for idx in range(b)
+            for c in range(4)
+        ]
     inputs = tokenizer(flat_texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(device)
     if with_grad:
         last_hidden = model(**inputs).last_hidden_state
@@ -146,24 +161,52 @@ def main():
 
     model.to(device)
 
-    sys2 = System2(
-        num_heads=HYPERPARAMS["num_heads"],
-        num_classes=1 if is_pairwise else 4,
-        pairwise=is_pairwise,
-        diff_features=diff_features,
-        learnable_temp=HYPERPARAMS.get("learnable_temp", False),
-    )
+    use_mote = HYPERPARAMS.get("use_mote", False)
+    if use_mote:
+        from mote import MoTESystem2
+        sys2 = MoTESystem2(
+            num_experts=HYPERPARAMS.get("num_experts", 4),
+            top_k=HYPERPARAMS.get("mote_top_k", 2),
+            hidden_size=1024,
+            head_dim=512,
+            diff_features=diff_features,
+            soft_centroid=HYPERPARAMS.get("soft_centroid", True),
+        )
+    else:
+        sys2 = System2(
+            num_heads=HYPERPARAMS["num_heads"],
+            num_classes=1 if is_pairwise else 4,
+            pairwise=is_pairwise,
+            diff_features=diff_features,
+            learnable_temp=HYPERPARAMS.get("learnable_temp", False),
+        )
     sys2.to(device)
     sys2.train()
 
-    head_params = [p for h in sys2.heads for p in h.parameters()]
-    judger_params = list(sys2.judger.parameters())
-    for p in head_params + judger_params:
-        assert p.requires_grad
-    param_groups = [
-        {"params": head_params, "lr": HYPERPARAMS["lr_heads"]},
-        {"params": judger_params, "lr": HYPERPARAMS["lr_judger"]},
-    ]
+    if use_mote:
+        expert_params = [p for h in sys2.heads for p in h.parameters()]
+        soft_params = [p for sc in sys2.soft_centroids for p in sc.parameters()] if sys2.soft_centroids else []
+        router_params = list(sys2.router.parameters())
+        judger_params = list(sys2.judger.parameters())
+        for p in expert_params + router_params + soft_params + judger_params:
+            assert p.requires_grad
+        param_groups = [
+            {"params": expert_params, "lr": HYPERPARAMS["lr_heads"]},
+            {"params": router_params, "lr": HYPERPARAMS.get("lr_router", 5e-4)},
+            {"params": judger_params, "lr": HYPERPARAMS["lr_judger"]},
+        ]
+        if soft_params:
+            param_groups.append({"params": soft_params, "lr": HYPERPARAMS.get("lr_soft_centroid", 1e-3)})
+    else:
+        head_params = [p for h in sys2.heads for p in h.parameters()]
+        judger_params = list(sys2.judger.parameters())
+        for p in head_params + judger_params:
+            assert p.requires_grad
+        param_groups = [
+            {"params": head_params, "lr": HYPERPARAMS["lr_heads"]},
+            {"params": judger_params, "lr": HYPERPARAMS["lr_judger"]},
+        ]
+
     if encoder_params:
         enc_lr = HYPERPARAMS.get("lr_lora", 2e-4) if use_lora else HYPERPARAMS.get("lr_encoder", 1e-5)
         param_groups.append({"params": encoder_params, "lr": enc_lr})
@@ -172,6 +215,9 @@ def main():
         param_groups.append({"params": norm_params, "lr": norm_lr})
     optimizer = torch.optim.Adam(param_groups)
 
+    task_prefixes = HYPERPARAMS.get("task_prefixes", False)
+    sources = cols.get("source") if "source" in cols else None
+
     bs = HYPERPARAMS["batch_size"]
     for epoch in range(HYPERPARAMS["epochs"]):
         total_ce = total_cal = total_judge = total_div = 0.0
@@ -179,23 +225,34 @@ def main():
         for i in range(0, len(labels), bs):
             n_batches += 1
             # CRITICAL: slice the batch first, derive everything from the slice.
-            # (Fixed 2026-09-24: a fixed-size target mismatched the real batch
-            # size on the final partial batch -> ValueError in cross_entropy.)
             b = min(bs, len(labels) - i)
             with_grad = use_lora or (unfreeze_layers > 0)
             if is_pairwise:
-                vecs = mean_pool_pairwise(cols["question"][i : i + b], cols["choices"][i : i + b], HYPERPARAMS["max_len"], device, with_grad=with_grad)
+                src_slice = sources[i : i + b] if sources else None
+                vecs = mean_pool_pairwise(
+                    cols["question"][i : i + b], cols["choices"][i : i + b],
+                    HYPERPARAMS["max_len"], device, with_grad=with_grad,
+                    sources=src_slice, task_prefixes=task_prefixes
+                )
             else:
                 vecs = mean_pool_texts(cols["text"][i : i + b], HYPERPARAMS["max_len"], device, with_grad=with_grad)
             lab = torch.tensor(labels[i : i + b], device=device)  # (b,)
 
-            best, conf, pruned, confs, logits, emb, scores = sys2(vecs)
+            if use_mote:
+                best, conf, pruned, confs, logits, emb, scores, dense_gates, aux_loss = sys2(vecs)
+                # Routed CE loss
+                ce_per_expert = torch.stack([
+                    torch.nn.functional.cross_entropy(h, lab, reduction='none')
+                    for h in logits.unbind(1)
+                ], dim=1)  # (b, E)
+                ce_loss = (ce_per_expert * dense_gates).sum(dim=1).mean()
+            else:
+                best, conf, pruned, confs, logits, emb, scores = sys2(vecs)
+                ce = torch.stack([torch.nn.functional.cross_entropy(h, lab) for h in logits.unbind(1)])
+                ce_loss = ce.mean()
+                aux_loss = torch.tensor(0.0, device=device)
 
             # --- losses (all computed, then ONE combined backward) ---
-
-            # 1. Classification: every head learns the true label
-            ce = torch.stack([torch.nn.functional.cross_entropy(h, lab) for h in logits.unbind(1)])
-            ce_loss = ce.mean()
 
             # 2. Head Calibration: head's confidence -> 1[that head is correct]
             with torch.no_grad():
@@ -224,7 +281,14 @@ def main():
                 div_loss = torch.tensor(0.0, device=device)
 
             # Weighted single loss -> single backward keeps the shared graph valid.
-            total_loss = ce_loss + 0.5 * cal_loss + 0.1 * judge_loss + 0.5 * judge_cal_loss + HYPERPARAMS.get("lambda_div", 0) * div_loss
+            total_loss = (
+                ce_loss
+                + 0.5 * cal_loss
+                + 0.1 * judge_loss
+                + 0.5 * judge_cal_loss
+                + HYPERPARAMS.get("lambda_div", 0) * div_loss
+                + HYPERPARAMS.get("lambda_aux", 0.01) * aux_loss
+            )
 
             optimizer.zero_grad()
             total_loss.backward()
@@ -248,13 +312,15 @@ def main():
     os.makedirs(os.path.dirname(args.save) or ".", exist_ok=True)
     save_dict = {
         "sys2": sys2.state_dict(),
+        "task_prefixes": task_prefixes,
+        "use_mote": use_mote,
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
         save_dict["lora_config"] = {
-            "r": HYPERPARAMS.get("lora_r", 16),
-            "alpha": HYPERPARAMS.get("lora_alpha", 16),
-            "num_layers": HYPERPARAMS.get("lora_layers", 4),
+            "r": HYPERPARAMS.get("lora_r", 32),
+            "alpha": HYPERPARAMS.get("lora_alpha", 32),
+            "num_layers": HYPERPARAMS.get("lora_layers", 8),
             "train_norms": train_norms,
         }
         if train_norms:
