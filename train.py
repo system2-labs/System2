@@ -33,7 +33,7 @@ HYPERPARAMS = {
     "use_lora": True,
     "lora_r": 16,
     "lora_alpha": 16,
-    "lora_layers": 4,  # adapt top 4 layers of ModernBERT via LoRA
+    "lora_layers": 8,  # adapt top 8 layers of ModernBERT via LoRA
     "lr_lora": 2e-4,
     "batch_size": 16,
     "max_len": 128,
