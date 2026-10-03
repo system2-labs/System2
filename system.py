@@ -47,14 +47,14 @@ class System2(nn.Module):
     2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2):
         super().__init__()
         self.pairwise = pairwise
         self.diff_features = diff_features
         self.num_classes = num_classes
         head_classes = 1 if pairwise else num_classes
         self.heads = nn.ModuleList([
-            ThoughtHead(num_classes=head_classes, diff_features=diff_features)
+            ThoughtHead(num_classes=head_classes, diff_features=diff_features, num_layers=head_layers)
             for _ in range(num_heads)
         ])
         self.judger = Judger(learnable_temp=learnable_temp)

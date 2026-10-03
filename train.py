@@ -33,6 +33,7 @@ HYPERPARAMS = {
     "mote_top_k": 2,
     "soft_centroid": True,
     "num_heads": 5,
+    "head_layers": 2,
     "lr_heads": 1e-3,
     "lr_router": 5e-4,
     "lr_soft_centroid": 1e-3,
@@ -182,6 +183,7 @@ def main():
             pairwise=is_pairwise,
             diff_features=diff_features,
             learnable_temp=HYPERPARAMS.get("learnable_temp", False),
+            head_layers=HYPERPARAMS.get("head_layers", 2),
         )
     sys2.to(device)
     sys2.train()

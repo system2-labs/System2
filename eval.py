@@ -106,7 +106,9 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
         has_soft = any("soft_centroids" in k for k in sys2_state.keys())
         sys2 = MoTESystem2(num_experts=num_heads, diff_features=has_diff, soft_centroid=has_soft, mote_mode=mote_mode)
     else:
-        kwargs = {"num_heads": num_heads, "num_classes": num_classes, "pairwise": is_pairwise, "diff_features": has_diff}
+        layer_indices = [int(k.split(".")[4]) for k in sys2_state.keys() if "layers.layers." in k]
+        head_layers = max(layer_indices) + 1 if layer_indices else 2
+        kwargs = {"num_heads": num_heads, "num_classes": num_classes, "pairwise": is_pairwise, "diff_features": has_diff, "head_layers": head_layers}
         if "judger.log_temp" in sys2_state:
             kwargs["learnable_temp"] = True
         import inspect

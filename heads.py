@@ -11,14 +11,14 @@ class ThoughtHead(nn.Module):
     Params: ~40M  (4-bit: ~160MB)
     """
 
-    def __init__(self, hidden_size=1024, head_dim=512, vocab_size=30522, num_classes=None, diff_features=False):
+    def __init__(self, hidden_size=1024, head_dim=512, vocab_size=30522, num_classes=None, diff_features=False, num_layers=2):
         super().__init__()
         self.diff_features = diff_features
 
         # 1024 -> 512 projection
         self.input_proj = nn.Linear(hidden_size, head_dim)
 
-        # 2 transformer encoder layers (512 dim, 8 heads)
+        # Transformer encoder layers (512 dim, 8 heads)
         layer = nn.TransformerEncoderLayer(
             d_model=head_dim,
             nhead=8,
@@ -27,7 +27,7 @@ class ThoughtHead(nn.Module):
             batch_first=True,
             dropout=0.0,
         )
-        self.layers = nn.TransformerEncoder(layer, num_layers=2)
+        self.layers = nn.TransformerEncoder(layer, num_layers=num_layers)
 
         # Confidence machine: 512 -> 64 -> 1 (logit)
         self.confidence_head = nn.Sequential(
