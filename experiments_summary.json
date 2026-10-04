@@ -1,12 +1,12 @@
 [
   {
-    "name": "Test 1: Cosine Annealing LR Schedule",
-    "description": "Phase 2: Cosine Annealing LR Schedule (eta_min=1e-5 across 3 epochs on SOTA)",
+    "name": "Test 1: Extended Convergence Depth (epochs=4)",
+    "description": "Phase 2: Extended Convergence Depth (epochs=4 with cosine decay to 1e-5 on SOTA)",
     "hyperparams": {
       "use_mote": false,
       "data_dir": "./data/arc",
       "train_size": 3500,
-      "epochs": 3,
+      "epochs": 4,
       "batch_size": 16,
       "max_len": 128,
       "num_heads": 5,
@@ -27,28 +27,28 @@
       "scheduler_min_lr": 1e-05,
       "soft_judge_targets": false
     },
-    "metric": 0.651,
-    "accuracy": 0.5575,
-    "brier": 0.2555,
+    "metric": 0.6602,
+    "accuracy": 0.5663,
+    "brier": 0.2458,
     "committed": true,
-    "duration_sec": 653.8,
-    "new_best_metric": 0.651
+    "duration_sec": 801.9,
+    "new_best_metric": 0.6602
   },
   {
-    "name": "Test 2: Judger Soft Target Distillation",
-    "description": "Phase 2: Judger Soft Target Distillation (tau=0.5, margin-weighted over correct heads)",
+    "name": "Test 2: LoRA Rank-48 Expansion (r=48, alpha=48)",
+    "description": "Phase 2: LoRA Rank-48 Expansion (r=48, alpha=48 on top 8 layers with cosine decay)",
     "hyperparams": {
       "use_mote": false,
       "data_dir": "./data/arc",
       "train_size": 3500,
-      "epochs": 3,
+      "epochs": 4,
       "batch_size": 16,
       "max_len": 128,
       "num_heads": 5,
       "head_layers": 2,
       "use_lora": true,
-      "lora_r": 32,
-      "lora_alpha": 32,
+      "lora_r": 48,
+      "lora_alpha": 48,
       "lora_layers": 8,
       "lr_heads": 0.001,
       "lr_judger": 0.0003,
@@ -60,14 +60,13 @@
       "learnable_temp": false,
       "use_scheduler": true,
       "scheduler_min_lr": 1e-05,
-      "soft_judge_targets": true,
-      "soft_target_tau": 0.5
+      "soft_judge_targets": false
     },
-    "metric": 0.6457,
-    "accuracy": 0.5416,
-    "brier": 0.2502,
+    "metric": 0.6517,
+    "accuracy": 0.5629,
+    "brier": 0.2596,
     "committed": false,
-    "duration_sec": 670.0,
-    "new_best_metric": 0.651
+    "duration_sec": 904.0,
+    "new_best_metric": 0.6602
   }
 ]
