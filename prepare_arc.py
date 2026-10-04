@@ -7,11 +7,11 @@ saves to ./data/arc on disk.
 from datasets import Dataset, DatasetDict, load_dataset
 
 
-def format_split(arc_challenge_split, arc_easy_split):
+def format_split(*splits):
     label_map = {"A": 0, "B": 1, "C": 2, "D": 3, "1": 0, "2": 1, "3": 2, "4": 3}
     records = []
     
-    for split_data in [arc_challenge_split, arc_easy_split]:
+    for split_data in splits:
         for ex in split_data:
             key = ex.get("answerKey")
             choices = ex.get("choices", {})
@@ -42,8 +42,13 @@ def main():
     challenge = load_dataset("allenai/ai2_arc", "ARC-Challenge")
     easy = load_dataset("allenai/ai2_arc", "ARC-Easy")
     
-    print("Formatting train split (Challenge + Easy)...")
-    train_ds = format_split(challenge["train"], easy["train"])
+    print("Formatting train split (Challenge Train/Val + Easy Train/Val)...")
+    train_ds = format_split(
+        challenge["train"],
+        easy["train"],
+        challenge["validation"],
+        easy["validation"],
+    )
     
     print("Formatting test split (Challenge + Easy)...")
     test_ds = format_split(challenge["test"], easy["test"])
