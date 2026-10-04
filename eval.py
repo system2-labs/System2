@@ -120,6 +120,7 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
     sys2.eval()
 
     task_prefixes = isinstance(state, dict) and state.get("task_prefixes", False)
+    eval_max_len = state.get("max_len", 128) if isinstance(state, dict) else 128
     sources = cols.get("source") if hasattr(cols, "get") and "source" in cols else None
 
     correct = 0
@@ -129,7 +130,7 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             b = min(batch, n - i)
             if has_choices and is_pairwise:
                 src_slice = sources[i : i + b] if sources else None
-                vecs = mean_pool_pairwise(cols["question"][i : i + b], cols["choices"][i : i + b], device, sources=src_slice, task_prefixes=task_prefixes)
+                vecs = mean_pool_pairwise(cols["question"][i : i + b], cols["choices"][i : i + b], device, max_len=eval_max_len, sources=src_slice, task_prefixes=task_prefixes)
             else:
                 vecs = mean_pool_texts(cols["text"][i : i + b], device)
 
