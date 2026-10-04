@@ -44,7 +44,7 @@ HYPERPARAMS = {
     "lora_layers": 8,  # adapt top 8 layers of ModernBERT via LoRA
     "lr_lora": 0.0002,
     "batch_size": 16,
-    "max_len": 128,
+    "max_len": 160,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
     "epochs": 4,
     "train_size": 3500,
@@ -371,12 +371,13 @@ def main():
 
     import os
     os.makedirs(os.path.dirname(args.save) or ".", exist_ok=True)
+    save_max_len = HYPERPARAMS.get("max_len", 128)
     save_dict = {
         "sys2": sys2.state_dict(),
         "task_prefixes": task_prefixes,
         "use_mote": use_mote,
         "mote_mode": mote_mode if use_mote else "baseline",
-        "max_len": HYPERPARAMS.get("max_len", 128),
+        "max_len": save_max_len,
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}

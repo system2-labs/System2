@@ -21,7 +21,15 @@ def set_hyperparam(key, value):
         val_str = "True" if value else "False"
     else:
         val_str = str(value)
-    new_content = re.sub(rf'"{key}":\s*[^,\n]+,', f'"{key}": {val_str},', content)
+    
+    m = re.search(r'(HYPERPARAMS\s*=\s*\{.*?\n\})', content, flags=re.DOTALL)
+    if m:
+        block = m.group(1)
+        new_block = re.sub(rf'"{key}":\s*[^,\n]+,', f'"{key}": {val_str},', block)
+        new_content = content[:m.start(1)] + new_block + content[m.end(1):]
+    else:
+        new_content = re.sub(rf'"{key}":\s*[^,\n]+,', f'"{key}": {val_str},', content, count=1)
+        
     with open("train.py", "w") as f:
         f.write(new_content)
 
