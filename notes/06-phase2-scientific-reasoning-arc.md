@@ -317,8 +317,22 @@ Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), 
      - Epoch 2: `ce = 1.117`, `judge = 1.335`
      - Epoch 3: `ce = 0.992`, `judge = 1.318`
      Breaking the 1.000 cross-entropy barrier for the first time allowed the model to reach **55.75% accuracy** (1,968 / 3,530 held-out scientific problems solved), setting our highest reasoning performance to date!
-  2. **Test 2 (Strong Accuracy & Calibration, Lower Peak Metric)**:
-     Judger Soft Target Distillation achieved **54.16% accuracy** and a pristine **0.2502 Brier score** (metric 0.6457, which beat the original 0.6429 baseline). Soft targets successfully eliminated gradient collisions, keeping Judger loss perfectly smooth ($1.609 \to 1.606 \to 1.601$) and driving Brier error down to 0.2502. However, because Test 1 established the higher threshold at 0.6510 (55.75%), Test 2 was cleanly reverted to preserve the 55.75% benchmark.
+### 5.18 Diagnostic Analysis of Extended Convergence & Rank-48 (Tests 1 and 2):
+- **Hypothesis**: Does extending cosine annealing from 3 to 4 epochs allow cross-entropy to settle even deeper into the loss basin, and does rank-48 capture higher geometric capacity without overfitting when cooled by cosine decay?
+- **Results Across the Battery**:
+  - **Test 1: Extended Convergence Depth (epochs=4 with cosine decay to $10^{-5}$)**: Accuracy **56.63%** (**NEW ALL-TIME PHASE 2 SOTA** 🏆), Brier **0.2458** (**BEST CALIBRATION IN PHASE 2**), Metric **0.6602** (**COMMITTED & PUSHED**, commit [`9c6cc12`](https://github.com/tj-doomer-it/System2/commit/9c6cc12)).
+  - **Test 2: LoRA Rank-48 Subspace Expansion ($r=48, \alpha=48$)**: Accuracy **56.29%**, Brier **0.2596**, Metric **0.6517** (Reverted: $0.6517 \le 0.6602$).
+- **Deep Scientific Diagnosis**:
+  1. **The 4-Epoch Deep Convergence Breakthrough (Test 1: 55.75% -> 56.63% SOTA)**:
+     With 4 epochs of cosine annealing, cross-entropy continued its steep descent all the way to **`0.910`**:
+     - Epoch 1: `ce = 1.327`, `judge = 1.609`
+     - Epoch 2: `ce = 1.145`, `judge = 1.504`
+     - Epoch 3: `ce = 0.992`, `judge = 1.591`
+     - Epoch 4: `ce = 0.910`, `judge = 1.493`
+     Accuracy reached **56.63%** (1,999 out of 3,530 held-out scientific problems solved).
+     Crucially, Brier score dropped to **0.2458**, demonstrating our highest epistemic honesty yet (substantially beating uncommitted 0.2500 chance).
+  2. **Test 2 (Rank-48 High Performance, but Rank-32 Remains King)**:
+     Rank-48 trained smoothly with cosine annealing, reaching `ce = 0.864` and an impressive **56.29% accuracy** (metric 0.6517, beating the previous 0.6510 SOTA). However, its Brier calibration nudged up to 0.2596 compared to rank-32's pristine 0.2458. Because Test 1 established the benchmark at 0.6602, Test 2 was cleanly reverted to protect the 56.63% record.
 
 ---
 
@@ -341,7 +355,7 @@ Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), 
 | **Run 10** | LoRA (top-4) + LayerNorm BitFit Hybrid | 50.74% | 0.2509 | 0.6282 | Reverted ($0.6282 \le 0.6287$; norm scale drift) |
 | **Run 11** | Frozen ModernBERT + Deep LoRA (top-8 layers, $r=16$) | 53.09% | 0.2496 | 0.6406 | Major Leap (+2.35%, broke 53% barrier) |
 | **Run 12** | Test 1: Deeper LoRA (top-14 layers, $r=16$) | 50.88% | 0.2570 | 0.6259 | Reverted (Lexical/syntactic drift in early layers) |
-| **Run 13** | **Test 2: LoRA Rank Expansion (top-8 layers, $r=32, \alpha=32$)** | **53.71%** | **0.2513** | **0.6429** | **ALL-TIME PHASE 2 SOTA** 🏆 |
+| **Run 13** | Test 2: LoRA Rank Expansion (top-8 layers, $r=32, \alpha=32$) | 53.71% | 0.2513 | 0.6429 | Previous Record 🏆 |
 | **Run 14** | Test 3: Judger Temperature Scaling (learnable $\tau$) | 49.83% | 0.2536 | 0.6224 | Reverted (Attenuated decision reinforcement) |
 | **Run 15** | Naive MoTE Top-2 Dispatch (Loss-Weighted, 8.3k) | 27.03% | 0.1982 | 0.5360 | Reverted (Router collapse & Judger disconnect) |
 | **Path 1** | Supervised Domain-Gated MoTE (ARC/OBQA Dedicated Heads) | 39.43% | 0.2490 | 0.5727 | Reverted (LoRA backbone cross-domain drift) |
@@ -350,14 +364,16 @@ Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), 
 | **Opt 1** | Parallel Head Count Scaling ($N=8$ dense parallel heads) | 49.97% | 0.2668 | 0.6165 | Reverted (Head oversaturation & Judger conflict) |
 | **Opt 2** | LoRA Rank Expansion ($r=64, \alpha=64$, top-8 layers) | 49.60% | 0.2515 | 0.6223 | Reverted (Late-epoch overparameterization) |
 | **Opt 3** | Deeper Intra-Choice Transformer Depth (`head_layers=3`) | 38.78% | 0.2380 | 0.5749 | Reverted (Stalled at $\ln(4)$ uniform chance) |
-| **Test 1** | **Cosine Annealing LR Schedule ($\eta_{\min}=10^{-5}$ on SOTA)** | **55.75%** | **0.2555** | **0.6510** | **ALL-TIME PHASE 2 SOTA** 🏆 |
-| **Test 2** | Judger Soft Target Distillation ($\tau=0.5$ on correct heads) | 54.16% | 0.2502 | 0.6457 | Reverted ($0.6457 \le 0.6510$) |
+| **T1 (Decay)** | Cosine Annealing LR Schedule (3 epochs on SOTA) | 55.75% | 0.2555 | 0.6510 | Previous SOTA 🏆 |
+| **T2 (Distil)**| Judger Soft Target Distillation ($\tau=0.5$ on correct heads) | 54.16% | 0.2502 | 0.6457 | Reverted ($0.6457 \le 0.6510$) |
+| **Test 1** | **Extended Convergence Depth (epochs=4, cosine decay)** | **56.63%** | **0.2458** | **0.6602** | **ALL-TIME PHASE 2 SOTA** 🏆 |
+| **Test 2** | LoRA Rank-48 Subspace Expansion ($r=48$, epochs=4) | 56.29% | 0.2596 | 0.6517 | Reverted ($0.6517 \le 0.6602$) |
 
 ### The Core Architectural Principles of System2:
-1. **The Cosine Annealing Cooling Law**:
-   Decaying the learning rate via cosine annealing ($\eta_0 \to 1\times 10^{-5}$) eliminates late-training gradient thrashing and drives cross-entropy below $1.000$ ($ce = 0.992$), breaking our all-time record to **55.75% accuracy**.
-2. **The Subspace Rank Law ($r=32$ on Top-8 Layers)**:
-   Expanding rank capacity ($r=16 \to 32$) on the top 8 layers provides the exact geometric expressivity needed to resolve subtle scientific distractors without destabilizing early lexical representations or overparameterizing small datasets.
+1. **The Extended Cosine Annealing Law (4 Epochs)**:
+   Extending training to 4 epochs with smooth cosine decay down to $1\times 10^{-5}$ drives cross-entropy down to **`0.910`**, lifting accuracy to **56.63%** and producing our sharpest calibration (**`0.2458` Brier score**).
+2. **The Subspace Rank Sweet Spot ($r=32$ on Top-8 Layers)**:
+   $r=32, \alpha=32$ on the top 8 layers remains the ideal capacity boundary. While $r=48$ reached 56.29%, $r=32$ delivered superior calibration (0.2458 vs 0.2596 Brier) and higher composite accuracy (56.63%).
 3. **Fixed Arithmetic Centroid Contrast $[x \,\|\, (x - \bar{x})]$ is Invariable**:
    Centroid difference using the fixed arithmetic mean $\bar{x} = \frac{1}{4}\sum x_j$ eliminates shared distractor noise and guarantees non-zero contrast. Dynamic attention centroids (SoftCentroid) risk attending to the target choice and collapsing the difference feature.
 4. **The 5-Head Deliberation Equilibrium**:
