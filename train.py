@@ -46,7 +46,7 @@ HYPERPARAMS = {
     "batch_size": 16,
     "max_len": 128,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
-    "epochs": 3,
+    "epochs": 4,
     "train_size": 3500,
     "lambda_div": 0.01,
     "lambda_aux": 0.10,
