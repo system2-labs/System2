@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs 2 sequential AutoResearch experiments back-to-back.
 
-Test 1: Extended Convergence Depth (epochs=4 with cosine decay down to 1e-5 on SOTA)
-Test 2: LoRA Rank-48 Subspace Expansion (r=48, alpha=48 on top 8 layers with cosine decay)
+Test 1: Pure In-Domain ARC Data Scaling (4.2k train samples with validation split, epochs=4, cosine)
+Test 2: Context Truncation Elimination (max_len=160, 4.2k train samples, epochs=4, cosine)
 """
 import json
 import os
@@ -91,24 +91,22 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active SOTA baseline state (55.75% accuracy, 0.2555 Brier, 0.6510 metric)
-    active_epochs = 3
-    active_lora_r = 32
-    active_lora_alpha = 32
+    # Active SOTA baseline state (56.63% accuracy, 0.2458 Brier, 0.6602 metric)
+    active_train_size = 3500
 
-    # Test 1: Extended Convergence Depth (epochs = 3 -> 4)
+    # Test 1: Pure In-Domain ARC Data Scaling (4.2k train samples)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
-        "train_size": 3500,
+        "train_size": 4300,
         "epochs": 4,
         "batch_size": 16,
         "max_len": 128,
         "num_heads": 5,
         "head_layers": 2,
         "use_lora": True,
-        "lora_r": active_lora_r,
-        "lora_alpha": active_lora_alpha,
+        "lora_r": 32,
+        "lora_alpha": 32,
         "lora_layers": 8,
         "lr_heads": 1e-3,
         "lr_judger": 3e-4,
@@ -123,31 +121,31 @@ def main():
         "soft_judge_targets": False,
     }
     r1 = run_experiment(
-        name="Test 1: Extended Convergence Depth (epochs=4)",
+        name="Test 1: In-Domain Data Scaling (4.2k samples)",
         hyperparams=t1_params,
-        description="Phase 2: Extended Convergence Depth (epochs=4 with cosine decay to 1e-5 on SOTA)",
+        description="Phase 2: In-Domain Data Scaling (4.2k train samples with validation split, 4 epochs, cosine)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        active_epochs = 4
-        print(f">>> Test 1 committed as new SOTA! Adopting epochs={active_epochs} for subsequent test.")
+        active_train_size = 4300
+        print(f">>> Test 1 committed as new SOTA! Adopting train_size={active_train_size} for subsequent test.")
     else:
-        print(f">>> Test 1 reverted. Retaining epochs={active_epochs}.")
+        print(f">>> Test 1 reverted. Retaining train_size={active_train_size}.")
 
-    # Test 2: LoRA Rank-48 Subspace Expansion
+    # Test 2: Context Truncation Elimination (max_len = 160)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
-        "train_size": 3500,
-        "epochs": active_epochs,
+        "train_size": active_train_size,
+        "epochs": 4,
         "batch_size": 16,
-        "max_len": 128,
+        "max_len": 160,
         "num_heads": 5,
         "head_layers": 2,
         "use_lora": True,
-        "lora_r": 48,
-        "lora_alpha": 48,
+        "lora_r": 32,
+        "lora_alpha": 32,
         "lora_layers": 8,
         "lr_heads": 1e-3,
         "lr_judger": 3e-4,
@@ -162,9 +160,9 @@ def main():
         "soft_judge_targets": False,
     }
     r2 = run_experiment(
-        name="Test 2: LoRA Rank-48 Expansion (r=48, alpha=48)",
+        name="Test 2: Context Truncation Elimination (max_len=160)",
         hyperparams=t2_params,
-        description="Phase 2: LoRA Rank-48 Expansion (r=48, alpha=48 on top 8 layers with cosine decay)",
+        description="Phase 2: Context Truncation Elimination (max_len=160, 4 epochs, cosine)",
     )
     results.append(r2)
 
