@@ -99,15 +99,15 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active SOTA baseline state (56.63% accuracy, 0.2458 Brier, 0.6602 metric)
-    active_train_size = 3500
+    # Active SOTA baseline state (56.83% accuracy, 0.2466 Brier, 0.6608 metric)
+    active_epochs = 4
 
-    # Test 1: Pure In-Domain ARC Data Scaling (4.2k train samples)
+    # Test 1: Extended Convergence Depth (epochs=5, cosine decay to 1e-5)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
         "train_size": 4300,
-        "epochs": 4,
+        "epochs": 5,
         "batch_size": 16,
         "max_len": 128,
         "num_heads": 5,
@@ -126,29 +126,34 @@ def main():
         "learnable_temp": False,
         "use_scheduler": True,
         "scheduler_min_lr": 1e-5,
+        "warmup_ratio": 0.0,
+        "weight_decay": 0.0,
+        "lambda_judge": 0.10,
+        "lambda_cal": 0.50,
+        "lambda_judge_cal": 0.50,
         "soft_judge_targets": False,
     }
     r1 = run_experiment(
-        name="Test 1: In-Domain Data Scaling (4.2k samples)",
+        name="Test 1: Extended Convergence Depth (epochs=5)",
         hyperparams=t1_params,
-        description="Phase 2: In-Domain Data Scaling (4.2k train samples with validation split, 4 epochs, cosine)",
+        description="Phase 2: Extended Convergence Depth (epochs=5, cosine decay to 1e-5 on 4.2k in-domain ARC)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        active_train_size = 4300
-        print(f">>> Test 1 committed as new SOTA! Adopting train_size={active_train_size} for subsequent test.")
+        active_epochs = 5
+        print(f">>> Test 1 committed as new SOTA! Adopting epochs={active_epochs} for subsequent test.")
     else:
-        print(f">>> Test 1 reverted. Retaining train_size={active_train_size}.")
+        print(f">>> Test 1 reverted. Retaining epochs={active_epochs}.")
 
-    # Test 2: Context Truncation Elimination (max_len = 160)
+    # Test 2: Linear Warmup + Cosine Annealing (5% warmup)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
-        "train_size": active_train_size,
-        "epochs": 4,
+        "train_size": 4300,
+        "epochs": active_epochs,
         "batch_size": 16,
-        "max_len": 160,
+        "max_len": 128,
         "num_heads": 5,
         "head_layers": 2,
         "use_lora": True,
@@ -165,31 +170,44 @@ def main():
         "learnable_temp": False,
         "use_scheduler": True,
         "scheduler_min_lr": 1e-5,
+        "warmup_ratio": 0.05,
+        "weight_decay": 0.0,
+        "lambda_judge": 0.10,
+        "lambda_cal": 0.50,
+        "lambda_judge_cal": 0.50,
         "soft_judge_targets": False,
     }
     r2 = run_experiment(
-        name="Test 2: Context Truncation Elimination (max_len=160)",
+        name="Test 2: Linear Warmup + Cosine Cooling (warmup_ratio=0.05)",
         hyperparams=t2_params,
-        description="Phase 2: Context Truncation Elimination (max_len=160, 4 epochs, cosine)",
+        description="Phase 2: Linear Warmup + Cosine Cooling (5% warmup, cosine decay to 1e-5)",
     )
     results.append(r2)
 
     print("\n" + "=" * 80)
     print("ALL TESTS COMPLETED - SUMMARY REPORT")
     print("=" * 80)
-    print(f"{'Experiment':<48} | {'Metric':<8} | {'Accuracy':<10} | {'Brier':<8} | {'Status'}")
+    print(f"{'Experiment':<52} | {'Metric':<8} | {'Accuracy':<10} | {'Brier':<8} | {'Status'}")
     print("-" * 80)
     for r in results:
         status = "COMMITTED (NEW SOTA 🏆)" if r["committed"] else "REVERTED"
         m_str = f"{r['metric']:.4f}" if r["metric"] is not None else "N/A"
         a_str = f"{r['accuracy']*100:.2f}%" if r["accuracy"] is not None else "N/A"
         b_str = f"{r['brier']:.4f}" if r["brier"] is not None else "N/A"
-        print(f"{r['name']:<48} | {m_str:<8} | {a_str:<10} | {b_str:<8} | {status}")
+        print(f"{r['name']:<52} | {m_str:<8} | {a_str:<10} | {b_str:<8} | {status}")
     print("=" * 80)
     print(f"Final .best_metric: {get_best_metric():.4f}\n")
 
+    try:
+        with open("experiments_summary.json", "r") as f:
+            all_history = json.load(f)
+            if not isinstance(all_history, list):
+                all_history = []
+    except Exception:
+        all_history = []
+    all_history.extend(results)
     with open("experiments_summary.json", "w") as f:
-        json.dump(results, f, indent=2)
+        json.dump(all_history, f, indent=2)
 
 
 if __name__ == "__main__":
