@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs 2 sequential AutoResearch experiments back-to-back.
 
-Test 1: Cosine Annealing LR Schedule (decay to 1e-5 on SOTA)
-Test 2: Judger Soft Target Distillation (distribute mass across correct heads, eliminate winner-take-all)
+Test 1: Extended Convergence Depth (epochs=4 with cosine decay down to 1e-5 on SOTA)
+Test 2: LoRA Rank-48 Subspace Expansion (r=48, alpha=48 on top 8 layers with cosine decay)
 """
 import json
 import os
@@ -91,23 +91,24 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active baseline state (SOTA: 53.71% accuracy, 0.2513 Brier, 0.6429 metric)
-    active_use_scheduler = False
-    active_soft_judge = False
+    # Active SOTA baseline state (55.75% accuracy, 0.2555 Brier, 0.6510 metric)
+    active_epochs = 3
+    active_lora_r = 32
+    active_lora_alpha = 32
 
-    # Test 1: Cosine Annealing Learning Rate Decay
+    # Test 1: Extended Convergence Depth (epochs = 3 -> 4)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
         "train_size": 3500,
-        "epochs": 3,
+        "epochs": 4,
         "batch_size": 16,
         "max_len": 128,
         "num_heads": 5,
         "head_layers": 2,
         "use_lora": True,
-        "lora_r": 32,
-        "lora_alpha": 32,
+        "lora_r": active_lora_r,
+        "lora_alpha": active_lora_alpha,
         "lora_layers": 8,
         "lr_heads": 1e-3,
         "lr_judger": 3e-4,
@@ -122,31 +123,31 @@ def main():
         "soft_judge_targets": False,
     }
     r1 = run_experiment(
-        name="Test 1: Cosine Annealing LR Schedule",
+        name="Test 1: Extended Convergence Depth (epochs=4)",
         hyperparams=t1_params,
-        description="Phase 2: Cosine Annealing LR Schedule (eta_min=1e-5 across 3 epochs on SOTA)",
+        description="Phase 2: Extended Convergence Depth (epochs=4 with cosine decay to 1e-5 on SOTA)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        active_use_scheduler = True
-        print(f">>> Test 1 committed as new SOTA! Adopting use_scheduler=True for subsequent test.")
+        active_epochs = 4
+        print(f">>> Test 1 committed as new SOTA! Adopting epochs={active_epochs} for subsequent test.")
     else:
-        print(f">>> Test 1 reverted. Retaining use_scheduler=False.")
+        print(f">>> Test 1 reverted. Retaining epochs={active_epochs}.")
 
-    # Test 2: Judger Soft Target Distillation
+    # Test 2: LoRA Rank-48 Subspace Expansion
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
         "train_size": 3500,
-        "epochs": 3,
+        "epochs": active_epochs,
         "batch_size": 16,
         "max_len": 128,
         "num_heads": 5,
         "head_layers": 2,
         "use_lora": True,
-        "lora_r": 32,
-        "lora_alpha": 32,
+        "lora_r": 48,
+        "lora_alpha": 48,
         "lora_layers": 8,
         "lr_heads": 1e-3,
         "lr_judger": 3e-4,
@@ -156,15 +157,14 @@ def main():
         "diff_features": True,
         "task_prefixes": False,
         "learnable_temp": False,
-        "use_scheduler": active_use_scheduler,
+        "use_scheduler": True,
         "scheduler_min_lr": 1e-5,
-        "soft_judge_targets": True,
-        "soft_target_tau": 0.5,
+        "soft_judge_targets": False,
     }
     r2 = run_experiment(
-        name="Test 2: Judger Soft Target Distillation",
+        name="Test 2: LoRA Rank-48 Expansion (r=48, alpha=48)",
         hyperparams=t2_params,
-        description="Phase 2: Judger Soft Target Distillation (tau=0.5, margin-weighted over correct heads)",
+        description="Phase 2: LoRA Rank-48 Expansion (r=48, alpha=48 on top 8 layers with cosine decay)",
     )
     results.append(r2)
 
