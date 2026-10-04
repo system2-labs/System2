@@ -49,6 +49,11 @@ HYPERPARAMS = {
     "epochs": 4,
     "train_size": 4300,
     "lambda_div": 0.01,
+    "lambda_judge": 0.10,
+    "lambda_cal": 0.50,
+    "lambda_judge_cal": 0.50,
+    "weight_decay": 0.0,
+    "warmup_ratio": 0.0,
     "lambda_aux": 0.10,
     "data_dir": "./data/arc",
     "pairwise": True,
@@ -222,14 +227,29 @@ def main():
     if norm_params:
         norm_lr = HYPERPARAMS.get("lr_norm", 5e-5)
         param_groups.append({"params": norm_params, "lr": norm_lr})
-    optimizer = torch.optim.Adam(param_groups)
+    weight_decay = HYPERPARAMS.get("weight_decay", 0.0)
+    optimizer = torch.optim.AdamW(param_groups, weight_decay=weight_decay)
 
     use_scheduler = HYPERPARAMS.get("use_scheduler", False)
     if use_scheduler:
         total_steps = HYPERPARAMS["epochs"] * ((len(labels) + HYPERPARAMS["batch_size"] - 1) // HYPERPARAMS["batch_size"])
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=total_steps, eta_min=HYPERPARAMS.get("scheduler_min_lr", 1e-5)
-        )
+        warmup_ratio = HYPERPARAMS.get("warmup_ratio", 0.0)
+        warmup_steps = int(total_steps * warmup_ratio)
+        min_lr = HYPERPARAMS.get("scheduler_min_lr", 1e-5)
+        if warmup_steps > 0:
+            s1 = torch.optim.lr_scheduler.LinearLR(
+                optimizer, start_factor=0.01, end_factor=1.0, total_iters=warmup_steps
+            )
+            s2 = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, T_max=max(1, total_steps - warmup_steps), eta_min=min_lr
+            )
+            scheduler = torch.optim.lr_scheduler.SequentialLR(
+                optimizer, schedulers=[s1, s2], milestones=[warmup_steps]
+            )
+        else:
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, T_max=total_steps, eta_min=min_lr
+            )
     else:
         scheduler = None
 
@@ -340,12 +360,16 @@ def main():
 
             # Weighted single loss -> single backward keeps the shared graph valid.
             aux_weight = HYPERPARAMS.get("lambda_aux", 0.10) if (use_mote and mote_mode in ["supervised", "ensemble"]) else 0.0
+            lambda_cal = HYPERPARAMS.get("lambda_cal", 0.5)
+            lambda_judge = HYPERPARAMS.get("lambda_judge", 0.1)
+            lambda_judge_cal = HYPERPARAMS.get("lambda_judge_cal", 0.5)
+            lambda_div = HYPERPARAMS.get("lambda_div", 0.01)
             total_loss = (
                 ce_loss
-                + 0.5 * cal_loss
-                + 0.1 * judge_loss
-                + 0.5 * judge_cal_loss
-                + HYPERPARAMS.get("lambda_div", 0) * div_loss
+                + lambda_cal * cal_loss
+                + lambda_judge * judge_loss
+                + lambda_judge_cal * judge_cal_loss
+                + lambda_div * div_loss
                 + aux_weight * aux_loss
             )
 
