@@ -373,9 +373,10 @@ def main():
     os.makedirs(os.path.dirname(args.save) or ".", exist_ok=True)
     save_dict = {
         "sys2": sys2.state_dict(),
-        "task_prefixes": False,
-        "use_mote": False,
+        "task_prefixes": task_prefixes,
+        "use_mote": use_mote,
         "mote_mode": mote_mode if use_mote else "baseline",
+        "max_len": HYPERPARAMS.get("max_len", 128),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
