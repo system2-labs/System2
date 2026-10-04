@@ -44,10 +44,10 @@ HYPERPARAMS = {
     "lora_layers": 8,  # adapt top 8 layers of ModernBERT via LoRA
     "lr_lora": 0.0002,
     "batch_size": 16,
-    "max_len": 160,
+    "max_len": 128,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
     "epochs": 4,
-    "train_size": 3500,
+    "train_size": 4300,
     "lambda_div": 0.01,
     "lambda_aux": 0.10,
     "data_dir": "./data/arc",
