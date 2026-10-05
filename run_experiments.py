@@ -102,7 +102,7 @@ def main():
     # Active SOTA baseline state (57.37% accuracy, 0.2499 Brier, 0.6619 metric)
     active_oracle = True
 
-    # Test 1: Oracle-Supervised Judger (Avenue 1) + Per-Epoch Shuffle (Avenue 3)
+    # Test 1: Avenue 1B - Detached Oracle Judger (lambda_judge=0.15)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -128,27 +128,28 @@ def main():
         "scheduler_min_lr": 1e-5,
         "warmup_ratio": 0.0,
         "weight_decay": 0.0,
-        "lambda_judge": 0.20,
+        "lambda_judge": 0.15,
         "lambda_cal": 0.50,
         "lambda_judge_cal": 0.50,
         "oracle_judge_target": True,
+        "detach_judger": True,
         "shuffle_per_epoch": True,
         "seed": 42,
         "soft_judge_targets": False,
     }
     r1 = run_experiment(
-        name="Test 1: Oracle Judger Target + Epoch Shuffle (Avenue 1+3)",
+        name="Test 1: Detached Oracle Judger (Avenue 1B, lambda_judge=0.15)",
         hyperparams=t1_params,
-        description="Phase 2: Oracle Judger Target + Epoch Shuffle (epochs=5, cosine decay to 1e-5, lambda_judge=0.20)",
+        description="Phase 2: Detached Oracle Judger (epochs=5, cosine decay to 1e-5, lambda_judge=0.15, Avenue 1B)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        print(f">>> Test 1 committed as new SOTA! Retaining oracle_judge_target=True.")
+        print(f">>> Test 1 committed as new SOTA! Retaining detach_judger=True.")
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Oracle Judger + AdamW Weight Decay (0.01)
+    # Test 2: Avenue 1B - Detached Oracle Judger (lambda_judge=0.25)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -173,19 +174,20 @@ def main():
         "use_scheduler": True,
         "scheduler_min_lr": 1e-5,
         "warmup_ratio": 0.0,
-        "weight_decay": 0.01,
-        "lambda_judge": 0.20,
+        "weight_decay": 0.0,
+        "lambda_judge": 0.25,
         "lambda_cal": 0.50,
         "lambda_judge_cal": 0.50,
         "oracle_judge_target": True,
+        "detach_judger": True,
         "shuffle_per_epoch": True,
         "seed": 42,
         "soft_judge_targets": False,
     }
     r2 = run_experiment(
-        name="Test 2: Oracle Judger + AdamW Weight Decay 0.01",
+        name="Test 2: Detached Oracle Judger (Avenue 1B, lambda_judge=0.25)",
         hyperparams=t2_params,
-        description="Phase 2: Oracle Judger + AdamW Weight Decay 0.01 (epochs=5, cosine decay to 1e-5)",
+        description="Phase 2: Detached Oracle Judger (epochs=5, cosine decay to 1e-5, lambda_judge=0.25, Avenue 1B)",
     )
     results.append(r2)
 

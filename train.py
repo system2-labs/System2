@@ -55,6 +55,7 @@ HYPERPARAMS = {
     "weight_decay": 0.0,
     "warmup_ratio": 0.0,
     "oracle_judge_target": True,
+    "detach_judger": True,
     "shuffle_per_epoch": True,
     "seed": 42,
     "lambda_aux": 0.10,
@@ -305,7 +306,7 @@ def main():
                     domain_ids = torch.tensor([1 if s == "openbookqa" else 0 for s in src_slice], device=device)
 
                 best, conf, pruned, confs, logits, emb, scores, dense_gates, aux_loss, ens_logits, active_mask = sys2(
-                    vecs, domain_ids=domain_ids, mode=mote_mode
+                    vecs, domain_ids=domain_ids, mode=mote_mode, detach_judger=HYPERPARAMS.get("detach_judger", False)
                 )
 
                 if mote_mode == "ensemble":
@@ -324,7 +325,9 @@ def main():
                     ce_loss = ce.mean()
                     win_logits = logits[torch.arange(b), best]
             else:
-                best, conf, pruned, confs, logits, emb, scores = sys2(vecs)
+                best, conf, pruned, confs, logits, emb, scores = sys2(
+                    vecs, detach_judger=HYPERPARAMS.get("detach_judger", False)
+                )
                 ce = torch.stack([torch.nn.functional.cross_entropy(h, lab) for h in logits.unbind(1)])
                 ce_loss = ce.mean()
                 win_logits = logits[torch.arange(b), best]
