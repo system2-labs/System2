@@ -99,10 +99,10 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active SOTA baseline state (56.83% accuracy, 0.2466 Brier, 0.6608 metric)
-    active_epochs = 4
+    # Active SOTA baseline state (57.37% accuracy, 0.2499 Brier, 0.6619 metric)
+    active_oracle = True
 
-    # Test 1: Extended Convergence Depth (epochs=5, cosine decay to 1e-5)
+    # Test 1: Oracle-Supervised Judger (Avenue 1) + Per-Epoch Shuffle (Avenue 3)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -128,30 +128,32 @@ def main():
         "scheduler_min_lr": 1e-5,
         "warmup_ratio": 0.0,
         "weight_decay": 0.0,
-        "lambda_judge": 0.10,
+        "lambda_judge": 0.20,
         "lambda_cal": 0.50,
         "lambda_judge_cal": 0.50,
+        "oracle_judge_target": True,
+        "shuffle_per_epoch": True,
+        "seed": 42,
         "soft_judge_targets": False,
     }
     r1 = run_experiment(
-        name="Test 1: Extended Convergence Depth (epochs=5)",
+        name="Test 1: Oracle Judger Target + Epoch Shuffle (Avenue 1+3)",
         hyperparams=t1_params,
-        description="Phase 2: Extended Convergence Depth (epochs=5, cosine decay to 1e-5 on 4.2k in-domain ARC)",
+        description="Phase 2: Oracle Judger Target + Epoch Shuffle (epochs=5, cosine decay to 1e-5, lambda_judge=0.20)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        active_epochs = 5
-        print(f">>> Test 1 committed as new SOTA! Adopting epochs={active_epochs} for subsequent test.")
+        print(f">>> Test 1 committed as new SOTA! Retaining oracle_judge_target=True.")
     else:
-        print(f">>> Test 1 reverted. Retaining epochs={active_epochs}.")
+        print(f">>> Test 1 reverted.")
 
-    # Test 2: Linear Warmup + Cosine Annealing (5% warmup)
+    # Test 2: Oracle Judger + AdamW Weight Decay (0.01)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
         "train_size": 4300,
-        "epochs": active_epochs,
+        "epochs": 5,
         "batch_size": 16,
         "max_len": 128,
         "num_heads": 5,
@@ -170,17 +172,20 @@ def main():
         "learnable_temp": False,
         "use_scheduler": True,
         "scheduler_min_lr": 1e-5,
-        "warmup_ratio": 0.05,
-        "weight_decay": 0.0,
-        "lambda_judge": 0.10,
+        "warmup_ratio": 0.0,
+        "weight_decay": 0.01,
+        "lambda_judge": 0.20,
         "lambda_cal": 0.50,
         "lambda_judge_cal": 0.50,
+        "oracle_judge_target": True,
+        "shuffle_per_epoch": True,
+        "seed": 42,
         "soft_judge_targets": False,
     }
     r2 = run_experiment(
-        name="Test 2: Linear Warmup + Cosine Cooling (warmup_ratio=0.05)",
+        name="Test 2: Oracle Judger + AdamW Weight Decay 0.01",
         hyperparams=t2_params,
-        description="Phase 2: Linear Warmup + Cosine Cooling (5% warmup, cosine decay to 1e-5)",
+        description="Phase 2: Oracle Judger + AdamW Weight Decay 0.01 (epochs=5, cosine decay to 1e-5)",
     )
     results.append(r2)
 
