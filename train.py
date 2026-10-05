@@ -49,11 +49,14 @@ HYPERPARAMS = {
     "epochs": 5,
     "train_size": 4300,
     "lambda_div": 0.01,
-    "lambda_judge": 0.1,
-    "lambda_cal": 0.5,
-    "lambda_judge_cal": 0.5,
+    "lambda_judge": 0.20,
+    "lambda_cal": 0.50,
+    "lambda_judge_cal": 0.50,
     "weight_decay": 0.0,
     "warmup_ratio": 0.0,
+    "oracle_judge_target": True,
+    "shuffle_per_epoch": True,
+    "seed": 42,
     "lambda_aux": 0.10,
     "data_dir": "./data/arc",
     "pairwise": True,
@@ -109,6 +112,18 @@ def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False
     return pooled.view(b, 4, -1)
 
 
+def set_seed(seed=42):
+    import random
+    import numpy as np
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        torch.mps.manual_seed(seed)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--save", default="./models/system2.pt")
@@ -135,7 +150,7 @@ def main():
     is_pairwise = HYPERPARAMS.get("pairwise", False) and "choices" in cols and cols["choices"] is not None
     diff_features = HYPERPARAMS.get("diff_features", False) and is_pairwise
 
-    torch.manual_seed(0)
+    set_seed(HYPERPARAMS.get("seed", 42))
     device = HYPERPARAMS["device"]
 
     use_lora = HYPERPARAMS.get("use_lora", False)
@@ -260,21 +275,29 @@ def main():
     for epoch in range(HYPERPARAMS["epochs"]):
         total_ce = total_cal = total_judge = total_div = 0.0
         n_batches = 0
+        if HYPERPARAMS.get("shuffle_per_epoch", True):
+            perm = torch.randperm(len(labels)).tolist()
+        else:
+            perm = list(range(len(labels)))
+
         for i in range(0, len(labels), bs):
             n_batches += 1
-            # CRITICAL: slice the batch first, derive everything from the slice.
-            b = min(bs, len(labels) - i)
+            batch_idx = perm[i : i + bs]
+            b = len(batch_idx)
             with_grad = use_lora or (unfreeze_layers > 0)
             if is_pairwise:
-                src_slice = sources[i : i + b] if sources else None
+                src_slice = [sources[idx] for idx in batch_idx] if sources else None
+                q_slice = [cols["question"][idx] for idx in batch_idx]
+                c_slice = [cols["choices"][idx] for idx in batch_idx]
                 vecs = mean_pool_pairwise(
-                    cols["question"][i : i + b], cols["choices"][i : i + b],
+                    q_slice, c_slice,
                     HYPERPARAMS["max_len"], device, with_grad=with_grad,
                     sources=src_slice, task_prefixes=task_prefixes
                 )
             else:
-                vecs = mean_pool_texts(cols["text"][i : i + b], HYPERPARAMS["max_len"], device, with_grad=with_grad)
-            lab = torch.tensor(labels[i : i + b], device=device)  # (b,)
+                t_slice = [cols["text"][idx] for idx in batch_idx]
+                vecs = mean_pool_texts(t_slice, HYPERPARAMS["max_len"], device, with_grad=with_grad)
+            lab = torch.tensor([labels[idx] for idx in batch_idx], device=device)  # (b,)
 
             if use_mote:
                 domain_ids = torch.zeros(b, dtype=torch.long, device=device)
@@ -339,8 +362,15 @@ def main():
                 target = active_confs.max(dim=1).indices
                 judge_loss = torch.nn.functional.cross_entropy(scores, target)
             else:
-                target = confs.max(dim=1).indices
-                judge_loss = torch.nn.functional.cross_entropy(scores, target, label_smoothing=0.15)
+                if HYPERPARAMS.get("oracle_judge_target", True):
+                    with torch.no_grad():
+                        # Mask non-correct heads: Judger must learn to select a head that got the question right!
+                        masked_confs = torch.where(head_correct.bool(), confs, torch.full_like(confs, -1e9))
+                        has_correct = head_correct.bool().any(dim=1)
+                        target = torch.where(has_correct, masked_confs.max(dim=1).indices, confs.max(dim=1).indices)
+                else:
+                    target = confs.max(dim=1).indices
+                judge_loss = torch.nn.functional.cross_entropy(scores, target, label_smoothing=0.10)
 
             # 4. Direct Judger Output Calibration: train winning conf against actual accuracy
             with torch.no_grad():
