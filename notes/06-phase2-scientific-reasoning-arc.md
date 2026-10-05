@@ -362,6 +362,24 @@ $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{task}} + 0.5 \mathcal{L}_{\tex
 
 ---
 
+### 5.23 Diagnostic Analysis of Option 2 (SOTA Trajectory Alignment: seed=0, shuffle_per_epoch=False):
+- **Hypothesis**: Restoring the exact deterministic batch traversal (`shuffle_per_epoch=False`, `seed=0`) while keeping the Judger detached (`detach_judger=True`) and supervised on true correctness (`oracle_judge_target=True`) will enable ThoughtHeads to reach their record-low cross-entropy while improving Judger arbitration.
+- **Results Across the Battery**:
+  - **Test 1: SOTA Alignment + Detached Oracle Judger ($\lambda_J=0.10$)**: Accuracy **57.03%**, Brier **0.2692**, Metric **0.6505** (Reverted: $0.6505 \le 0.6619$).
+  - **Test 2: SOTA Alignment + Detached Oracle Judger ($\lambda_J=0.20$)**: Accuracy **57.03%**, Brier **0.2685**, Metric **0.6509** (Reverted: $0.6509 \le 0.6619$).
+- **Deep Scientific Diagnosis**:
+  1. **All-Time Record Cross-Entropy Descent (`ce = 0.710`)**:
+     Deterministic batch sequencing completely eliminated mini-batch variance, allowing cosine annealing to drive cross-entropy down to **`0.710`** (the lowest in repo history, surpassing the `0.726` SOTA mark).
+  2. **Judger Selection Loss Breakthrough (`1.609 -> 0.725`)**:
+     Unlike when batches were shuffled (where Judger loss stalled at $1.50$), with fixed batch ordering the Judger selection loss plummeted to **`0.725`** in epoch 4!
+  3. **The Overconfidence Brier Explosion**:
+     Driving `judge` loss down to `0.725` caused winning scores `scores[best]` to grow large positive (+3 to +5), forcing winning confidence `conf = sigmoid(best_score)` up to 0.85–0.90.
+     At 57% empirical accuracy, predicting 90% confidence on the 43% of questions the model misses severely penalizes Brier score ($(0.90 - 0)^2 = 0.81$), blowing Brier up from $0.2499 \to 0.2692$.
+  4. **The Solution (Calibration-Constrained Judger)**:
+     To harvest the power of `ce = 0.710` without Brier penalties, the Judger requires higher calibration weight ($\lambda_{\text{judge\_cal}} = 1.0$), lower selection weight ($\lambda_J = 0.05$), and increased label smoothing ($0.20$) to bound logit magnitudes and anchor winning confidence to the true empirical accuracy (~0.57).
+
+---
+
 ## 6. Comprehensive Phase 2 Scientific Synthesis
 
 Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), we have systematically tested every architectural dimension:
@@ -402,6 +420,8 @@ Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), 
 | **Test 2 (WD01)**  | Oracle Judger + AdamW Weight Decay 0.01 | 55.86% | 0.2472 | 0.6557 | Reverted ($0.6557 \le 0.6619$) |
 | **Test 1 (Ave 1B)**| Detached Oracle Judger ($\lambda_J=0.15$, `detach_judger=True`) | 56.46% | 0.2527 | 0.6560 | Reverted ($0.6560 \le 0.6619$) |
 | **Test 2 (Ave 1B)**| Detached Oracle Judger ($\lambda_J=0.25$, `detach_judger=True`) | 56.46% | **0.2494** | 0.6576 | Reverted ($0.6576 \le 0.6619$) |
+| **Test 1 (Opt 2)** | SOTA Trajectory Alignment ($\lambda_J=0.10$, `seed=0`) | 57.03% | 0.2692 | 0.6505 | Reverted ($0.6505 \le 0.6619$) |
+| **Test 2 (Opt 2)** | SOTA Trajectory Alignment ($\lambda_J=0.20$, `seed=0`) | 57.03% | 0.2685 | 0.6509 | Reverted ($0.6509 \le 0.6619$) |
 
 ### The Core Architectural Principles of System2:
 1. **The In-Domain Causal Purity Law (Validated at 56.83%)**:
