@@ -59,7 +59,7 @@ class System2(nn.Module):
         ])
         self.judger = Judger(learnable_temp=learnable_temp)
 
-    def forward(self, encoder_output):
+    def forward(self, encoder_output, detach_judger=False):
         if encoder_output.dim() == 3:
             # Pairwise candidate reasoning: (B, num_choices, 1024)
             all_logits, confidences, embeddings = [], [], []
@@ -81,7 +81,8 @@ class System2(nn.Module):
             embeddings = torch.stack(embeddings, dim=1)    # (B, N, 512)
             confidences = torch.stack(confidences, dim=1)  # (B, N)
             logits = torch.stack(all_logits, dim=1)        # (B, N, num_choices)
-            best, best_conf, pruned, scores = self.judger(embeddings)
+            judger_in = embeddings.detach() if detach_judger else embeddings
+            best, best_conf, pruned, scores = self.judger(judger_in)
             return best, best_conf, pruned, confidences, logits, embeddings, scores
         else:
             # Single-vector classification: (B, 1024)
@@ -95,7 +96,8 @@ class System2(nn.Module):
             confidences = torch.stack(confidences, dim=1)  # (B, N)
             head_logits = [self.heads[n].hypothesis_head(embeddings[:, n, :]) for n in range(embeddings.size(1))]
             logits = torch.stack(head_logits, dim=1)  # (B, N, C)
-            best, best_conf, pruned, scores = self.judger(embeddings)
+            judger_in = embeddings.detach() if detach_judger else embeddings
+            best, best_conf, pruned, scores = self.judger(judger_in)
             return best, best_conf, pruned, confidences, logits, embeddings, scores
 
 

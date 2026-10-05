@@ -140,7 +140,7 @@ class MoTESystem2(nn.Module):
 
         self.judger = Judger(head_dim=head_dim)
 
-    def forward(self, encoder_output, domain_ids=None, mode=None):
+    def forward(self, encoder_output, domain_ids=None, mode=None, detach_judger=False):
         mode = mode or self.mote_mode
         B = encoder_output.size(0)
         x_ctx = encoder_output.mean(dim=1)  # (B, 1024)
@@ -174,7 +174,8 @@ class MoTESystem2(nn.Module):
         logits = torch.stack(all_logits, dim=1)        # (B, E, 4)
 
         # Cross-attending Judger
-        raw_best, _, pruned, scores = self.judger(embeddings)
+        judger_in = embeddings.detach() if detach_judger else embeddings
+        raw_best, _, pruned, scores = self.judger(judger_in)
 
         # Mask Judger scores by active_mask
         masked_scores = scores.masked_fill(~active_mask, -1e9)
