@@ -265,28 +265,6 @@ $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{task}} + 0.5 \mathcal{L}_{\tex
      In Path 3 (pure ARC), accuracy fell from 53.71% to 35.30% because the dynamic `SoftCentroid` attention weights $\alpha_j = \text{softmax}(w_c^T x_j)$ tended to attend to the most salient candidate $x_0$. As $\bar{x}_{\text{soft}} \to x_0$, the contrastive difference feature $x_0 - \bar{x}_{\text{soft}} \to 0$ collapsed toward zero, neutralizing the exact inductive bias that drove our Run 3 leap (+5.66%). Fixed arithmetic mean $\bar{x} = \frac{1}{4}\sum x_j$ remains mathematically superior because it guarantees non-zero contrast.
 
 ---
-
-## 6. Comprehensive Phase 2 Scientific Synthesis
-
-Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), we have systematically tested every architectural dimension:
-
-| Run | Architecture / Hypothesis | Accuracy | Brier | Metric | Status |
-| :--- | :--- | :---: | :---: | :---: | :---: |
-| **Run 0** | Naive Blended Bag Baseline ($Q \oplus C_{1..4}$) | 26.69% | **0.1962** | 0.5353 | Baseline (random chance = 25.0%) |
-| **Run 1** | Pairwise Hypothesis Framing ($(Q \oplus C_i)$) | 43.97% | 0.2500 | 0.5948 | Major Leap (+17.28%) |
-| **Run 2** | Option A: 20k Science Mix Scaling (+SciQ +OBQA) | 42.92% | 0.2506 | 0.5893 | Reverted (SciQ diluted causal focus) |
-| **Run 3** | Option B: Intra-Head Centroid Contrast ($[x \| (x - \bar{x})]$) | 49.63% | 0.2501 | 0.6231 | Major Leap (+5.66%) |
-| **Run 4** | Option C: Direct MSE Brier on Slices | 47.93% | 0.2649 | 0.6072 | Reverted (Overconfidence penalty) |
-| **Run 5** | Option 1: Detached Margin Calibrator Layer | 45.21% | 0.2481 | 0.6020 | Reverted (Severed Judger RLCD gradient) |
-| **Run 6** | Direction 2: Gated 2-Pass Iterative Recurrence | 47.28% | 0.2492 | 0.6118 | Reverted (Consensus blurring, gate $\to -0.05$) |
-| **Run 7** | Top-2 ModernBERT Layer Fine-Tuning | 49.55% | 0.2836 | 0.6059 | Reverted (Confidence over-scaling) |
-| **Run 8** | Frozen ModernBERT + LoRA ($r=16$, top-4 layers) | 50.74% | 0.2500 | 0.6287 | Major Leap (+1.11%, broke 50% barrier) |
-| **Run 9** | Option 3: Clean Data Expansion (ARC + OBQA 8.3k) | 40.37% | 0.2622 | 0.5707 | Reverted (Sentence completion format shift) |
-| **Run 10** | LoRA (top-4) + LayerNorm BitFit Hybrid | 50.74% | 0.2509 | 0.6282 | Reverted ($0.6282 \le 0.6287$; norm scale drift) |
-| **Run 11** | Frozen ModernBERT + Deep LoRA (top-8 layers, $r=16$) | 53.09% | 0.2496 | 0.6406 | Major Leap (+2.35%, broke 53% barrier) |
-| **Run 12** | Test 1: Deeper LoRA (top-14 layers, $r=16$) | 50.88% | 0.2570 | 0.6259 | Reverted (Lexical/syntactic drift in early layers) |
-| **Run 13** | **Test 2: LoRA Rank Expansion (top-8 layers, $r=32, \alpha=32$)** | **53.71%** | **0.2513** | **0.6429** | **ALL-TIME PHASE 2 SOTA** 🏆 |
-| **Run 14** | Test 3: Judger Temperature Scaling (learnable $\tau$) | 49.83% | 0.2536 | 0.6224 | Reverted (Attenuated decision reinforcement) |
 ### 5.16 Diagnostic Analysis of the Dense Reasoning Battery (Options 1, 2, and 3):
 - **Hypothesis**: Can scaling dense parallel deliberation on pure in-domain ARC (expanding heads, doubling LoRA rank, or deepening candidate self-attention) break through the 53.71% SOTA ceiling without domain contamination?
 - **Results Across the Battery**:
@@ -351,6 +329,22 @@ Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), 
 
 ---
 
+### 5.21 Diagnostic Analysis of Avenue 1 & 3 (Oracle Judger & Seed/Epoch Shuffle):
+- **Hypothesis**: Does supervising the Judger to target the most confident *correct* head (`oracle_judge_target=True`, $\lambda_{\text{judge}}=0.20$) and adding deterministic seeding with per-epoch dataset shuffling unlock the gap between 57% and the 72.44% Oracle Head ceiling?
+- **Results Across the Battery**:
+  - **Test 1: Oracle Judger Target + Epoch Shuffle ($\lambda_J=0.20$)**: Accuracy **56.83%**, Brier **0.2598**, Metric **0.6542** (Reverted: $0.6542 \le 0.6619$).
+  - **Test 2: Oracle Judger + AdamW Weight Decay 0.01**: Accuracy **55.86%**, Brier **0.2472**, Metric **0.6557** (Reverted: $0.6557 \le 0.6619$).
+- **Deep Scientific Diagnosis**:
+  1. **The Shared-Backbone Gradient Interference Problem**:
+     In the 57.37% SOTA run, `ce_loss` had weight 1.0 while `judge_loss` had weight 0.10 with a static target. That allowed ThoughtHead cross-entropy to plunge all the way to **`0.726`**!
+     In Test 1, doubling $\lambda_{\text{judge}}$ to 0.20 with a dynamic target caused `judge` loss to plunge ($1.436 \to 0.776$), but it sent strong backpropagation gradients through the head embeddings into the shared ModernBERT LoRA adapters. This pulled the shared representations to satisfy head separability rather than candidate classification, causing `ce` to stall at **`1.137`** (vs `0.726`).
+  2. **The Detached-Judger Invariant**:
+     To prevent the Judger from disrupting the ThoughtHeads' descent to `ce = 0.726`, the Judger should evaluate *detached* embeddings (`embeddings.detach()`). This allows ThoughtHeads and LoRA to focus 100% on driving `ce` to 0.726, while the Judger learns to select the correct head over those fixed representations without gradient conflict.
+  3. **Verification of the `runner.sh` Checkpoint Integrity Fix**:
+     The fix in `runner.sh` (training to `./models/candidate.pt` and only promoting to `./models/system2.pt` upon beating `.best_metric`) performed flawlessly: both failed trials were deleted from disk without touching `./models/system2.pt`, permanently fixing the checkpoint overwrite leak!
+
+---
+
 ## 6. Comprehensive Phase 2 Scientific Synthesis
 
 Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), we have systematically tested every architectural dimension:
@@ -387,6 +381,8 @@ Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), 
 | **Test 2 (Len)**  | Context Truncation Elimination (`max_len=160`) | 56.74% | 0.2510 | 0.6582 | Reverted ($0.6582 \le 0.6608$) |
 | **Test 1 (5ep)**  | **Extended Convergence Depth (`epochs=5`, cosine decay)** | **57.37%** | 0.2499 | **0.6619** | **ALL-TIME PHASE 2 SOTA** 🏆 |
 | **Test 2 (Warmup)**| Linear Warmup + Cosine Cooling (`warmup_ratio=0.05`) | 56.54% | 0.2561 | 0.6547 | Reverted ($0.6547 \le 0.6619$) |
+| **Test 1 (Ave 1+3)**| Oracle Judger Target + Epoch Shuffle ($\lambda_J=0.20$) | 56.83% | 0.2598 | 0.6542 | Reverted ($0.6542 \le 0.6619$) |
+| **Test 2 (WD01)**  | Oracle Judger + AdamW Weight Decay 0.01 | 55.86% | 0.2472 | 0.6557 | Reverted ($0.6557 \le 0.6619$) |
 
 ### The Core Architectural Principles of System2:
 1. **The In-Domain Causal Purity Law (Validated at 56.83%)**:
