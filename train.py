@@ -58,6 +58,7 @@ HYPERPARAMS = {
     "detach_judger": True,
     "shuffle_per_epoch": True,
     "seed": 42,
+    "label_smoothing": 0.15,
     "lambda_aux": 0.10,
     "data_dir": "./data/arc",
     "pairwise": True,
@@ -373,7 +374,8 @@ def main():
                         target = torch.where(has_correct, masked_confs.max(dim=1).indices, confs.max(dim=1).indices)
                 else:
                     target = confs.max(dim=1).indices
-                judge_loss = torch.nn.functional.cross_entropy(scores, target, label_smoothing=0.10)
+                ls = HYPERPARAMS.get("label_smoothing", 0.15)
+                judge_loss = torch.nn.functional.cross_entropy(scores, target, label_smoothing=ls)
 
             # 4. Direct Judger Output Calibration: train winning conf against actual accuracy
             with torch.no_grad():

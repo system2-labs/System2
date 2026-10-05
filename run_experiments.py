@@ -102,7 +102,7 @@ def main():
     # Active SOTA baseline state (57.37% accuracy, 0.2499 Brier, 0.6619 metric)
     active_oracle = True
 
-    # Test 1: Avenue 1B - Detached Oracle Judger (lambda_judge=0.15)
+    # Test 1: SOTA Trajectory Alignment + Detached Oracle Judger (lambda_judge=0.10)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -128,19 +128,20 @@ def main():
         "scheduler_min_lr": 1e-5,
         "warmup_ratio": 0.0,
         "weight_decay": 0.0,
-        "lambda_judge": 0.15,
+        "lambda_judge": 0.10,
         "lambda_cal": 0.50,
         "lambda_judge_cal": 0.50,
         "oracle_judge_target": True,
         "detach_judger": True,
-        "shuffle_per_epoch": True,
-        "seed": 42,
+        "shuffle_per_epoch": False,
+        "seed": 0,
+        "label_smoothing": 0.15,
         "soft_judge_targets": False,
     }
     r1 = run_experiment(
-        name="Test 1: Detached Oracle Judger (Avenue 1B, lambda_judge=0.15)",
+        name="Test 1: SOTA Trajectory Alignment + Detached Oracle Judger (lambda_judge=0.10)",
         hyperparams=t1_params,
-        description="Phase 2: Detached Oracle Judger (epochs=5, cosine decay to 1e-5, lambda_judge=0.15, Avenue 1B)",
+        description="Phase 2: SOTA Trajectory Alignment + Detached Oracle Judger (epochs=5, cosine decay to 1e-5, lambda_judge=0.10, seed=0, shuffle_per_epoch=False)",
     )
     results.append(r1)
 
@@ -149,7 +150,7 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Avenue 1B - Detached Oracle Judger (lambda_judge=0.25)
+    # Test 2: SOTA Trajectory Alignment + Detached Oracle Judger (lambda_judge=0.20)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -175,19 +176,20 @@ def main():
         "scheduler_min_lr": 1e-5,
         "warmup_ratio": 0.0,
         "weight_decay": 0.0,
-        "lambda_judge": 0.25,
+        "lambda_judge": 0.20,
         "lambda_cal": 0.50,
         "lambda_judge_cal": 0.50,
         "oracle_judge_target": True,
         "detach_judger": True,
-        "shuffle_per_epoch": True,
-        "seed": 42,
+        "shuffle_per_epoch": False,
+        "seed": 0,
+        "label_smoothing": 0.10,
         "soft_judge_targets": False,
     }
     r2 = run_experiment(
-        name="Test 2: Detached Oracle Judger (Avenue 1B, lambda_judge=0.25)",
+        name="Test 2: SOTA Trajectory Alignment + Detached Oracle Judger (lambda_judge=0.20)",
         hyperparams=t2_params,
-        description="Phase 2: Detached Oracle Judger (epochs=5, cosine decay to 1e-5, lambda_judge=0.25, Avenue 1B)",
+        description="Phase 2: SOTA Trajectory Alignment + Detached Oracle Judger (epochs=5, cosine decay to 1e-5, lambda_judge=0.20, seed=0, shuffle_per_epoch=False)",
     )
     results.append(r2)
 
