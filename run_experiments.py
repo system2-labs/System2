@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""run_experiments.py - Runs 2 sequential AutoResearch experiments back-to-back.
+"""run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery: LoRA Subspace Dropout Regularization (Anti-Overfitting & Oracle Ceiling Hunt)
-Test 1: LoRA Subspace Dropout (lora_dropout=0.05, tau=1.5)
-Test 2: LoRA Subspace Dropout (lora_dropout=0.10, tau=1.5)
+Battery 1: Head Label Smoothing Regularization (Anti-Overfitting & Oracle Ceiling Hunt)
+- Test 1: Head Label Smoothing (head_label_smoothing=0.05, tau=1.5)
+- Test 2: Head Label Smoothing (head_label_smoothing=0.08, tau=1.5)
+
+Battery 2: External Hugging Face STEM Science Expansion (Out-of-Silo Causal Reasoning)
+- Test 3: External Hugging Face STEM Science Expansion (ARC + MMLU Science 6.2k samples, tau=1.5)
 """
 import json
 import os
@@ -22,7 +25,7 @@ def set_hyperparam(key, value):
         val_str = "True" if value else "False"
     else:
         val_str = str(value)
-    
+
     m = re.search(r'(HYPERPARAMS\s*=\s*\{.*?\n\})', content, flags=re.DOTALL)
     if m:
         block = m.group(1)
@@ -30,7 +33,7 @@ def set_hyperparam(key, value):
         new_content = content[:m.start(1)] + new_block + content[m.end(1):]
     else:
         new_content = re.sub(rf'"{key}":\s*[^,\n]+,', f'"{key}": {val_str},', content, count=1)
-        
+
     with open("train.py", "w") as f:
         f.write(new_content)
 
@@ -101,7 +104,7 @@ def main():
     results = []
 
     # Active SOTA baseline: 0.6625 (Accuracy 57.03%, Brier 0.2452)
-    # Test 1: LoRA Subspace Dropout (lora_dropout=0.05, tau=1.5)
+    # Test 1: Head Label Smoothing (head_label_smoothing=0.05, tau=1.5)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -145,23 +148,23 @@ def main():
         "lambda_head_balance": 0.0,
         "margin_features": False,
         "span_pooling": False,
-        "lora_dropout": 0.05,
+        "lora_dropout": 0.0,
         "head_dropout": 0.0,
-        "head_label_smoothing": 0.0,
+        "head_label_smoothing": 0.05,
     }
     r1 = run_experiment(
-        name="Test 1: LoRA Subspace Dropout (p=0.05, tau=1.5)",
+        name="Test 1: Head Label Smoothing (eps=0.05, tau=1.5)",
         hyperparams=t1_params,
-        description="Phase 2 Battery: LoRA Subspace Dropout (lora_dropout=0.05, tau=1.5, cal_smoothing=0.32)",
+        description="Phase 2 Battery: Head Label Smoothing (head_label_smoothing=0.05, tau=1.5, cal_smoothing=0.32)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        print(f">>> Test 1 committed as new SOTA! Retaining lora_dropout=0.05.")
+        print(f">>> Test 1 committed as new SOTA! Retaining head_label_smoothing=0.05.")
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: LoRA Subspace Dropout (lora_dropout=0.10, tau=1.5)
+    # Test 2: Head Label Smoothing (head_label_smoothing=0.08, tau=1.5)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -205,16 +208,76 @@ def main():
         "lambda_head_balance": 0.0,
         "margin_features": False,
         "span_pooling": False,
-        "lora_dropout": 0.10,
+        "lora_dropout": 0.0,
+        "head_dropout": 0.0,
+        "head_label_smoothing": 0.08,
+    }
+    r2 = run_experiment(
+        name="Test 2: Head Label Smoothing (eps=0.08, tau=1.5)",
+        hyperparams=t2_params,
+        description="Phase 2 Battery: Head Label Smoothing (head_label_smoothing=0.08, tau=1.5, cal_smoothing=0.32)",
+    )
+    results.append(r2)
+
+    if r2["committed"]:
+        print(f">>> Test 2 committed as new SOTA! Retaining head_label_smoothing=0.08.")
+    else:
+        print(f">>> Test 2 reverted.")
+
+    # Test 3: External Hugging Face STEM Science Expansion (ARC + MMLU Science 6.2k samples, tau=1.5)
+    t3_params = {
+        "use_mote": False,
+        "data_dir": "./data/arc_mmlu_science",
+        "train_size": 7000,
+        "epochs": 5,
+        "batch_size": 16,
+        "max_len": 128,
+        "num_heads": 5,
+        "head_layers": 2,
+        "use_lora": True,
+        "lora_r": 32,
+        "lora_alpha": 32,
+        "lora_layers": 8,
+        "lr_heads": 1e-3,
+        "lr_judger": 3e-4,
+        "lr_lora": 2e-4,
+        "lambda_div": 0.01,
+        "pairwise": True,
+        "diff_features": True,
+        "task_prefixes": False,
+        "learnable_temp": False,
+        "use_scheduler": True,
+        "scheduler_min_lr": 1e-5,
+        "warmup_ratio": 0.0,
+        "weight_decay": 0.0,
+        "lambda_judge": 0.10,
+        "lambda_cal": 0.50,
+        "lambda_judge_cal": 0.06,
+        "oracle_judge_target": False,
+        "detach_judger": True,
+        "shuffle_per_epoch": False,
+        "seed": 0,
+        "label_smoothing": 0.15,
+        "soft_judge_targets": False,
+        "ensemble_heads": True,
+        "centered_conf": False,
+        "judge_cal_smoothing": 0.32,
+        "lambda_ens_ce": 0.0,
+        "uniform_ensemble": False,
+        "ensemble_temp": 1.5,
+        "lambda_head_balance": 0.0,
+        "margin_features": False,
+        "span_pooling": False,
+        "lora_dropout": 0.0,
         "head_dropout": 0.0,
         "head_label_smoothing": 0.0,
     }
-    r2 = run_experiment(
-        name="Test 2: LoRA Subspace Dropout (p=0.10, tau=1.5)",
-        hyperparams=t2_params,
-        description="Phase 2 Battery: LoRA Subspace Dropout (lora_dropout=0.10, tau=1.5, cal_smoothing=0.32)",
+    r3 = run_experiment(
+        name="Test 3: HF STEM Science Expansion (ARC+MMLU 6.2k, tau=1.5)",
+        hyperparams=t3_params,
+        description="Phase 2 Battery: HF STEM Science Expansion (ARC + MMLU Pure Science 6.2k samples, tau=1.5)",
     )
-    results.append(r2)
+    results.append(r3)
 
     print("\n" + "=" * 80)
     print("ALL TESTS COMPLETED - SUMMARY REPORT")
