@@ -117,6 +117,8 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             kwargs["uniform_ensemble"] = True
         if isinstance(state, dict) and "ensemble_temp" in state:
             kwargs["ensemble_temp"] = state["ensemble_temp"]
+        if (isinstance(state, dict) and state.get("margin_features", False)) or ("judger.margin_norm.weight" in sys2_state):
+            kwargs["margin_features"] = True
         import inspect
         if "recurrence" in inspect.signature(System2.__init__).parameters:
             kwargs["recurrence"] = has_recurrence

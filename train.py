@@ -78,6 +78,7 @@ HYPERPARAMS = {
     "uniform_ensemble": False,
     "ensemble_temp": 1.5,
     "lambda_head_balance": 0.0,
+    "margin_features": False,
 }
 
 
@@ -220,6 +221,7 @@ def main():
             centered_conf=HYPERPARAMS.get("centered_conf", False),
             uniform_ensemble=HYPERPARAMS.get("uniform_ensemble", False),
             ensemble_temp=HYPERPARAMS.get("ensemble_temp", 1.0),
+            margin_features=HYPERPARAMS.get("margin_features", False),
         )
     sys2.to(device)
     sys2.train()
@@ -481,6 +483,7 @@ def main():
         "uniform_ensemble": HYPERPARAMS.get("uniform_ensemble", False),
         "ensemble_temp": HYPERPARAMS.get("ensemble_temp", 1.0),
         "lambda_head_balance": HYPERPARAMS.get("lambda_head_balance", 0.0),
+        "margin_features": HYPERPARAMS.get("margin_features", False),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}

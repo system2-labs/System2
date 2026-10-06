@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn as nn
 from bert import encode
@@ -11,24 +12,35 @@ class Judger(nn.Module):
     The best one is the one the encoder context supports most.
     """
 
-    def __init__(self, head_dim=512, learnable_temp=False, centered_conf=False):
+    def __init__(self, head_dim=512, learnable_temp=False, centered_conf=False, margin_features=False, margin_dim=3):
         super().__init__()
         self.learnable_temp = learnable_temp
         self.centered_conf = centered_conf
+        self.margin_features = margin_features
         if learnable_temp:
             self.log_temp = nn.Parameter(torch.zeros(1))
         self.attention = nn.MultiheadAttention(
             embed_dim=head_dim, num_heads=8, batch_first=True)
+        in_dim = head_dim + (margin_dim if margin_features else 0)
+        if margin_features:
+            self.margin_norm = nn.LayerNorm(margin_dim)
         self.score = nn.Sequential(
-            nn.Linear(head_dim, 64),
+            nn.Linear(in_dim, 64),
             nn.GELU(),
             nn.Linear(64, 1),
         )
 
-    def forward(self, embeddings):
+    def forward(self, embeddings, margin_feats=None):
         # embeddings: (B, N, 512) - one row per hypothesis
         attended, _ = self.attention(embeddings, embeddings, embeddings)
-        scores = self.score(attended).squeeze(-1)  # (B, N)
+        if self.margin_features:
+            if margin_feats is None:
+                margin_feats = torch.zeros(embeddings.size(0), embeddings.size(1), 3, device=embeddings.device, dtype=embeddings.dtype)
+            normed_margins = self.margin_norm(margin_feats)
+            score_in = torch.cat([attended, normed_margins], dim=-1)
+        else:
+            score_in = attended
+        scores = self.score(score_in).squeeze(-1)  # (B, N)
         best = scores.max(dim=-1).indices        # (B,)
         best_score = scores.gather(1, best.unsqueeze(1)).squeeze(1)
         if self.centered_conf:
@@ -52,19 +64,20 @@ class System2(nn.Module):
     2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False):
         super().__init__()
         self.pairwise = pairwise
         self.diff_features = diff_features
         self.num_classes = num_classes
         self.uniform_ensemble = uniform_ensemble
         self.ensemble_temp = ensemble_temp
+        self.margin_features = margin_features
         head_classes = 1 if pairwise else num_classes
         self.heads = nn.ModuleList([
             ThoughtHead(num_classes=head_classes, diff_features=diff_features, num_layers=head_layers)
             for _ in range(num_heads)
         ])
-        self.judger = Judger(learnable_temp=learnable_temp, centered_conf=centered_conf)
+        self.judger = Judger(learnable_temp=learnable_temp, centered_conf=centered_conf, margin_features=margin_features)
 
     def forward(self, encoder_output, detach_judger=False):
         if encoder_output.dim() == 3:
@@ -88,8 +101,21 @@ class System2(nn.Module):
             embeddings = torch.stack(embeddings, dim=1)    # (B, N, 512)
             confidences = torch.stack(confidences, dim=1)  # (B, N)
             logits = torch.stack(all_logits, dim=1)        # (B, N, num_choices)
+
+            if self.margin_features:
+                sorted_l, _ = torch.sort(logits, dim=-1, descending=True)
+                m1 = sorted_l[:, :, 0] - sorted_l[:, :, 1]
+                m_mean = sorted_l[:, :, 0] - logits.mean(dim=-1)
+                p = torch.softmax(logits, dim=-1)
+                ent = -(p * torch.log(p + 1e-8)).sum(dim=-1) / 1.38629
+                margin_feats = torch.stack([m1, m_mean, ent], dim=-1)
+                if detach_judger:
+                    margin_feats = margin_feats.detach()
+            else:
+                margin_feats = None
+
             judger_in = embeddings.detach() if detach_judger else embeddings
-            best, best_conf, pruned, scores = self.judger(judger_in)
+            best, best_conf, pruned, scores = self.judger(judger_in, margin_feats=margin_feats)
             if self.uniform_ensemble:
                 ens_logits = logits.mean(dim=1)
             else:
@@ -109,8 +135,22 @@ class System2(nn.Module):
             confidences = torch.stack(confidences, dim=1)  # (B, N)
             head_logits = [self.heads[n].hypothesis_head(embeddings[:, n, :]) for n in range(embeddings.size(1))]
             logits = torch.stack(head_logits, dim=1)  # (B, N, C)
+
+            if self.margin_features:
+                sorted_l, _ = torch.sort(logits, dim=-1, descending=True)
+                m1 = sorted_l[:, :, 0] - (sorted_l[:, :, 1] if sorted_l.size(-1) > 1 else sorted_l[:, :, 0])
+                m_mean = sorted_l[:, :, 0] - logits.mean(dim=-1)
+                p = torch.softmax(logits, dim=-1)
+                denom = math.log(float(logits.size(-1))) if logits.size(-1) > 1 else 1.0
+                ent = -(p * torch.log(p + 1e-8)).sum(dim=-1) / denom
+                margin_feats = torch.stack([m1, m_mean, ent], dim=-1)
+                if detach_judger:
+                    margin_feats = margin_feats.detach()
+            else:
+                margin_feats = None
+
             judger_in = embeddings.detach() if detach_judger else embeddings
-            best, best_conf, pruned, scores = self.judger(judger_in)
+            best, best_conf, pruned, scores = self.judger(judger_in, margin_feats=margin_feats)
             if self.uniform_ensemble:
                 ens_logits = logits.mean(dim=1)
             else:
