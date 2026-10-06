@@ -101,13 +101,12 @@ def main():
 
     # Active SOTA baseline state (57.37% accuracy, 0.2499 Brier, 0.6619 metric)
     active_oracle = True
-
-    # Test 1: Extended Convergence Depth (epochs=6, SOTA architecture)
+    # Test 1: Avenue 2A - Soft Logit Ensembling across ThoughtHeads
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
         "train_size": 4300,
-        "epochs": 6,
+        "epochs": 5,
         "batch_size": 16,
         "max_len": 128,
         "num_heads": 5,
@@ -132,30 +131,32 @@ def main():
         "lambda_cal": 0.50,
         "lambda_judge_cal": 0.50,
         "oracle_judge_target": False,
-        "detach_judger": False,
+        "detach_judger": True,
         "shuffle_per_epoch": False,
         "seed": 0,
         "label_smoothing": 0.15,
         "soft_judge_targets": False,
+        "ensemble_heads": True,
+        "centered_conf": False,
     }
     r1 = run_experiment(
-        name="Test 1: Extended Convergence Depth (epochs=6, cosine decay to 1e-5)",
+        name="Test 1: Avenue 2A - Soft Logit Ensembling across ThoughtHeads",
         hyperparams=t1_params,
-        description="Phase 2: Extended Convergence Depth (epochs=6, cosine decay to 1e-5 on 4.2k in-domain ARC)",
+        description="Phase 2 Avenue 2A: Soft Logit Ensembling across 5 ThoughtHeads (epochs=5, detach_judger=True)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        print(f">>> Test 1 committed as new SOTA! Retaining epochs=6.")
+        print(f">>> Test 1 committed as new SOTA! Retaining ensemble_heads=True.")
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Extended Convergence Depth (epochs=7, SOTA architecture)
+    # Test 2: Avenue 2B - Soft Logit Ensembling + Mean-Centered Confidence Calibration
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
         "train_size": 4300,
-        "epochs": 7,
+        "epochs": 5,
         "batch_size": 16,
         "max_len": 128,
         "num_heads": 5,
@@ -180,16 +181,18 @@ def main():
         "lambda_cal": 0.50,
         "lambda_judge_cal": 0.50,
         "oracle_judge_target": False,
-        "detach_judger": False,
+        "detach_judger": True,
         "shuffle_per_epoch": False,
         "seed": 0,
         "label_smoothing": 0.15,
         "soft_judge_targets": False,
+        "ensemble_heads": True,
+        "centered_conf": True,
     }
     r2 = run_experiment(
-        name="Test 2: Extended Convergence Depth (epochs=7, cosine decay to 1e-5)",
+        name="Test 2: Avenue 2B - Soft Logit Ensembling + Mean-Centered Conf Calibration",
         hyperparams=t2_params,
-        description="Phase 2: Extended Convergence Depth (epochs=7, cosine decay to 1e-5 on 4.2k in-domain ARC)",
+        description="Phase 2 Avenue 2B: Soft Logit Ensembling + Mean-Centered Conf Calibration (epochs=5, detach_judger=True)",
     )
     results.append(r2)
 
