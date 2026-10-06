@@ -74,6 +74,7 @@ HYPERPARAMS = {
     "ensemble_heads": False,
     "centered_conf": False,
     "judge_cal_smoothing": 0.0,
+    "lambda_ens_ce": 0.0,
 }
 
 
@@ -329,6 +330,7 @@ def main():
                     ce = torch.stack([torch.nn.functional.cross_entropy(h, lab) for h in logits.unbind(1)])
                     ce_loss = ce.mean()
                     win_logits = logits[torch.arange(b), best]
+                task_loss = ce_loss
             else:
                 out = sys2(
                     vecs, detach_judger=HYPERPARAMS.get("detach_judger", False)
@@ -338,8 +340,15 @@ def main():
                 ce_loss = ce.mean()
                 if HYPERPARAMS.get("ensemble_heads", False):
                     win_logits = out[7] if len(out) > 7 else torch.einsum('bn,bnc->bc', torch.softmax(scores, dim=-1), logits)
+                    lambda_ens_ce = HYPERPARAMS.get("lambda_ens_ce", 0.0)
+                    if lambda_ens_ce > 0.0:
+                        ens_ce = torch.nn.functional.cross_entropy(win_logits, lab)
+                        task_loss = (1.0 - lambda_ens_ce) * ce_loss + lambda_ens_ce * ens_ce
+                    else:
+                        task_loss = ce_loss
                 else:
                     win_logits = logits[torch.arange(b), best]
+                    task_loss = ce_loss
                 aux_loss = torch.tensor(0.0, device=device)
 
             # --- losses (all computed, then ONE combined backward) ---
@@ -413,7 +422,7 @@ def main():
             lambda_judge_cal = HYPERPARAMS.get("lambda_judge_cal", 0.5)
             lambda_div = HYPERPARAMS.get("lambda_div", 0.01)
             total_loss = (
-                ce_loss
+                task_loss
                 + lambda_cal * cal_loss
                 + lambda_judge * judge_loss
                 + lambda_judge_cal * judge_cal_loss
@@ -427,7 +436,7 @@ def main():
             if scheduler is not None:
                 scheduler.step()
 
-            total_ce += ce_loss.item()
+            total_ce += task_loss.item()
             total_cal += cal_loss.item()
             total_judge += judge_loss.item()
             total_div += div_loss.item()
@@ -453,6 +462,7 @@ def main():
         "ensemble_heads": HYPERPARAMS.get("ensemble_heads", False),
         "centered_conf": HYPERPARAMS.get("centered_conf", False),
         "judge_cal_smoothing": HYPERPARAMS.get("judge_cal_smoothing", 0.0),
+        "lambda_ens_ce": HYPERPARAMS.get("lambda_ens_ce", 0.0),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}

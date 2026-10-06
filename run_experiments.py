@@ -101,59 +101,8 @@ def main():
 
     # Active SOTA baseline state (57.37% accuracy, 0.2499 Brier, 0.6619 metric)
     active_oracle = True
-    # Test 1: Calibration Target Smoothing (judge_cal_smoothing=0.20, lambda_judge_cal=0.25)
+    # Test 1: Mixture of Deliberation (lambda_ens_ce=0.30, judge_cal_smoothing=0.15, lambda_judge_cal=0.10)
     t1_params = {
-        "use_mote": False,
-        "data_dir": "./data/arc",
-        "train_size": 4300,
-        "epochs": 5,
-        "batch_size": 16,
-        "max_len": 128,
-        "num_heads": 5,
-        "head_layers": 2,
-        "use_lora": True,
-        "lora_r": 32,
-        "lora_alpha": 32,
-        "lora_layers": 8,
-        "lr_heads": 1e-3,
-        "lr_judger": 3e-4,
-        "lr_lora": 2e-4,
-        "lambda_div": 0.01,
-        "pairwise": True,
-        "diff_features": True,
-        "task_prefixes": False,
-        "learnable_temp": False,
-        "use_scheduler": True,
-        "scheduler_min_lr": 1e-5,
-        "warmup_ratio": 0.0,
-        "weight_decay": 0.0,
-        "lambda_judge": 0.10,
-        "lambda_cal": 0.50,
-        "lambda_judge_cal": 0.25,
-        "oracle_judge_target": False,
-        "detach_judger": True,
-        "shuffle_per_epoch": False,
-        "seed": 0,
-        "label_smoothing": 0.15,
-        "soft_judge_targets": False,
-        "ensemble_heads": True,
-        "centered_conf": False,
-        "judge_cal_smoothing": 0.20,
-    }
-    r1 = run_experiment(
-        name="Test 1: Calibration Target Smoothing (cal_smoothing=0.20, lambda_cal=0.25)",
-        hyperparams=t1_params,
-        description="Phase 2: Calibration Target Smoothing (cal_smoothing=0.20, lambda_cal=0.25, ensemble_heads=True)",
-    )
-    results.append(r1)
-
-    if r1["committed"]:
-        print(f">>> Test 1 committed as new SOTA! Retaining ensemble_heads and calibration smoothing.")
-    else:
-        print(f">>> Test 1 reverted.")
-
-    # Test 2: Gentle Calibration Coupling (lambda_judge_cal=0.10, judge_cal_smoothing=0.15)
-    t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
         "train_size": 4300,
@@ -190,11 +139,64 @@ def main():
         "ensemble_heads": True,
         "centered_conf": False,
         "judge_cal_smoothing": 0.15,
+        "lambda_ens_ce": 0.30,
+    }
+    r1 = run_experiment(
+        name="Test 1: Mixture of Deliberation (lambda_ens_ce=0.30, cal_smoothing=0.15)",
+        hyperparams=t1_params,
+        description="Phase 2: Mixture of Deliberation (lambda_ens_ce=0.30, cal_smoothing=0.15, lambda_cal=0.10)",
+    )
+    results.append(r1)
+
+    if r1["committed"]:
+        print(f">>> Test 1 committed as new SOTA! Retaining ensemble_heads and MoD.")
+    else:
+        print(f">>> Test 1 reverted.")
+
+    # Test 2: Balanced MoD (lambda_ens_ce=0.50, judge_cal_smoothing=0.18, lambda_judge_cal=0.12)
+    t2_params = {
+        "use_mote": False,
+        "data_dir": "./data/arc",
+        "train_size": 4300,
+        "epochs": 5,
+        "batch_size": 16,
+        "max_len": 128,
+        "num_heads": 5,
+        "head_layers": 2,
+        "use_lora": True,
+        "lora_r": 32,
+        "lora_alpha": 32,
+        "lora_layers": 8,
+        "lr_heads": 1e-3,
+        "lr_judger": 3e-4,
+        "lr_lora": 2e-4,
+        "lambda_div": 0.01,
+        "pairwise": True,
+        "diff_features": True,
+        "task_prefixes": False,
+        "learnable_temp": False,
+        "use_scheduler": True,
+        "scheduler_min_lr": 1e-5,
+        "warmup_ratio": 0.0,
+        "weight_decay": 0.0,
+        "lambda_judge": 0.10,
+        "lambda_cal": 0.50,
+        "lambda_judge_cal": 0.12,
+        "oracle_judge_target": False,
+        "detach_judger": True,
+        "shuffle_per_epoch": False,
+        "seed": 0,
+        "label_smoothing": 0.15,
+        "soft_judge_targets": False,
+        "ensemble_heads": True,
+        "centered_conf": False,
+        "judge_cal_smoothing": 0.18,
+        "lambda_ens_ce": 0.50,
     }
     r2 = run_experiment(
-        name="Test 2: Gentle Calibration Coupling (lambda_cal=0.10, cal_smoothing=0.15)",
+        name="Test 2: Balanced MoD (lambda_ens_ce=0.50, cal_smoothing=0.18)",
         hyperparams=t2_params,
-        description="Phase 2: Gentle Calibration Coupling (lambda_cal=0.10, cal_smoothing=0.15, ensemble_heads=True)",
+        description="Phase 2: Balanced MoD (lambda_ens_ce=0.50, cal_smoothing=0.18, lambda_cal=0.12)",
     )
     results.append(r2)
 
