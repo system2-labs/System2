@@ -76,7 +76,7 @@ HYPERPARAMS = {
     "judge_cal_smoothing": 0.3,
     "lambda_ens_ce": 0.0,
     "uniform_ensemble": False,
-    "ensemble_temp": 1.5,
+    "ensemble_temp": 1.8,
     "lambda_head_balance": 0.0,
     "margin_features": False,
     "span_pooling": False,
