@@ -113,6 +113,8 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             kwargs["learnable_temp"] = True
         if isinstance(state, dict) and state.get("centered_conf", False):
             kwargs["centered_conf"] = True
+        if isinstance(state, dict) and state.get("uniform_ensemble", False):
+            kwargs["uniform_ensemble"] = True
         import inspect
         if "recurrence" in inspect.signature(System2.__init__).parameters:
             kwargs["recurrence"] = has_recurrence

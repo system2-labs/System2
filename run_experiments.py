@@ -101,7 +101,7 @@ def main():
 
     # Active SOTA baseline state (57.37% accuracy, 0.2499 Brier, 0.6619 metric)
     active_oracle = True
-    # Test 1: Mixture of Deliberation (lambda_ens_ce=0.30, judge_cal_smoothing=0.15, lambda_judge_cal=0.10)
+    # Test 1: Optimal Calibration Coupling (lambda_judge_cal=0.18, judge_cal_smoothing=0.16)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -129,7 +129,7 @@ def main():
         "weight_decay": 0.0,
         "lambda_judge": 0.10,
         "lambda_cal": 0.50,
-        "lambda_judge_cal": 0.10,
+        "lambda_judge_cal": 0.18,
         "oracle_judge_target": False,
         "detach_judger": True,
         "shuffle_per_epoch": False,
@@ -138,22 +138,23 @@ def main():
         "soft_judge_targets": False,
         "ensemble_heads": True,
         "centered_conf": False,
-        "judge_cal_smoothing": 0.15,
-        "lambda_ens_ce": 0.30,
+        "judge_cal_smoothing": 0.16,
+        "lambda_ens_ce": 0.0,
+        "uniform_ensemble": False,
     }
     r1 = run_experiment(
-        name="Test 1: Mixture of Deliberation (lambda_ens_ce=0.30, cal_smoothing=0.15)",
+        name="Test 1: Optimal Calibration Coupling (lambda_cal=0.18, cal_smoothing=0.16)",
         hyperparams=t1_params,
-        description="Phase 2: Mixture of Deliberation (lambda_ens_ce=0.30, cal_smoothing=0.15, lambda_cal=0.10)",
+        description="Phase 2: Optimal Calibration Coupling (lambda_cal=0.18, cal_smoothing=0.16, ensemble_heads=True)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        print(f">>> Test 1 committed as new SOTA! Retaining ensemble_heads and MoD.")
+        print(f">>> Test 1 committed as new SOTA! Retaining optimal calibration coupling.")
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Balanced MoD (lambda_ens_ce=0.50, judge_cal_smoothing=0.18, lambda_judge_cal=0.12)
+    # Test 2: Uniform Democratic Deliberation (uniform_ensemble=True, lambda_judge_cal=0.15, judge_cal_smoothing=0.16)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -181,7 +182,7 @@ def main():
         "weight_decay": 0.0,
         "lambda_judge": 0.10,
         "lambda_cal": 0.50,
-        "lambda_judge_cal": 0.12,
+        "lambda_judge_cal": 0.15,
         "oracle_judge_target": False,
         "detach_judger": True,
         "shuffle_per_epoch": False,
@@ -190,13 +191,14 @@ def main():
         "soft_judge_targets": False,
         "ensemble_heads": True,
         "centered_conf": False,
-        "judge_cal_smoothing": 0.18,
-        "lambda_ens_ce": 0.50,
+        "judge_cal_smoothing": 0.16,
+        "lambda_ens_ce": 0.0,
+        "uniform_ensemble": True,
     }
     r2 = run_experiment(
-        name="Test 2: Balanced MoD (lambda_ens_ce=0.50, cal_smoothing=0.18)",
+        name="Test 2: Uniform Democratic Deliberation (uniform_ensemble=True)",
         hyperparams=t2_params,
-        description="Phase 2: Balanced MoD (lambda_ens_ce=0.50, cal_smoothing=0.18, lambda_cal=0.12)",
+        description="Phase 2: Uniform Democratic Deliberation (uniform_ensemble=True, cal_smoothing=0.16, lambda_cal=0.15)",
     )
     results.append(r2)
 

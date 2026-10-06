@@ -75,6 +75,7 @@ HYPERPARAMS = {
     "centered_conf": False,
     "judge_cal_smoothing": 0.0,
     "lambda_ens_ce": 0.0,
+    "uniform_ensemble": False,
 }
 
 
@@ -215,6 +216,7 @@ def main():
             learnable_temp=HYPERPARAMS.get("learnable_temp", False),
             head_layers=HYPERPARAMS.get("head_layers", 2),
             centered_conf=HYPERPARAMS.get("centered_conf", False),
+            uniform_ensemble=HYPERPARAMS.get("uniform_ensemble", False),
         )
     sys2.to(device)
     sys2.train()
@@ -463,6 +465,7 @@ def main():
         "centered_conf": HYPERPARAMS.get("centered_conf", False),
         "judge_cal_smoothing": HYPERPARAMS.get("judge_cal_smoothing", 0.0),
         "lambda_ens_ce": HYPERPARAMS.get("lambda_ens_ce", 0.0),
+        "uniform_ensemble": HYPERPARAMS.get("uniform_ensemble", False),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
