@@ -51,7 +51,7 @@ HYPERPARAMS = {
     "lambda_div": 0.01,
     "lambda_judge": 0.1,
     "lambda_cal": 0.5,
-    "lambda_judge_cal": 0.08,
+    "lambda_judge_cal": 0.06,
     "weight_decay": 0.0,
     "warmup_ratio": 0.0,
     "oracle_judge_target": False,
@@ -73,7 +73,7 @@ HYPERPARAMS = {
     "soft_target_tau": 0.5,
     "ensemble_heads": True,
     "centered_conf": False,
-    "judge_cal_smoothing": 0.25,
+    "judge_cal_smoothing": 0.32,
     "lambda_ens_ce": 0.0,
     "uniform_ensemble": False,
 }
