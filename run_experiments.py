@@ -101,7 +101,7 @@ def main():
 
     # Active SOTA baseline state (57.37% accuracy, 0.2499 Brier, 0.6619 metric)
     active_oracle = True
-    # Test 1: Avenue 2A - Soft Logit Ensembling across ThoughtHeads
+    # Test 1: Calibration Target Smoothing (judge_cal_smoothing=0.20, lambda_judge_cal=0.25)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -129,7 +129,7 @@ def main():
         "weight_decay": 0.0,
         "lambda_judge": 0.10,
         "lambda_cal": 0.50,
-        "lambda_judge_cal": 0.50,
+        "lambda_judge_cal": 0.25,
         "oracle_judge_target": False,
         "detach_judger": True,
         "shuffle_per_epoch": False,
@@ -138,20 +138,21 @@ def main():
         "soft_judge_targets": False,
         "ensemble_heads": True,
         "centered_conf": False,
+        "judge_cal_smoothing": 0.20,
     }
     r1 = run_experiment(
-        name="Test 1: Avenue 2A - Soft Logit Ensembling across ThoughtHeads",
+        name="Test 1: Calibration Target Smoothing (cal_smoothing=0.20, lambda_cal=0.25)",
         hyperparams=t1_params,
-        description="Phase 2 Avenue 2A: Soft Logit Ensembling across 5 ThoughtHeads (epochs=5, detach_judger=True)",
+        description="Phase 2: Calibration Target Smoothing (cal_smoothing=0.20, lambda_cal=0.25, ensemble_heads=True)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        print(f">>> Test 1 committed as new SOTA! Retaining ensemble_heads=True.")
+        print(f">>> Test 1 committed as new SOTA! Retaining ensemble_heads and calibration smoothing.")
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Avenue 2B - Soft Logit Ensembling + Mean-Centered Confidence Calibration
+    # Test 2: Gentle Calibration Coupling (lambda_judge_cal=0.10, judge_cal_smoothing=0.15)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -179,7 +180,7 @@ def main():
         "weight_decay": 0.0,
         "lambda_judge": 0.10,
         "lambda_cal": 0.50,
-        "lambda_judge_cal": 0.50,
+        "lambda_judge_cal": 0.10,
         "oracle_judge_target": False,
         "detach_judger": True,
         "shuffle_per_epoch": False,
@@ -187,12 +188,13 @@ def main():
         "label_smoothing": 0.15,
         "soft_judge_targets": False,
         "ensemble_heads": True,
-        "centered_conf": True,
+        "centered_conf": False,
+        "judge_cal_smoothing": 0.15,
     }
     r2 = run_experiment(
-        name="Test 2: Avenue 2B - Soft Logit Ensembling + Mean-Centered Conf Calibration",
+        name="Test 2: Gentle Calibration Coupling (lambda_cal=0.10, cal_smoothing=0.15)",
         hyperparams=t2_params,
-        description="Phase 2 Avenue 2B: Soft Logit Ensembling + Mean-Centered Conf Calibration (epochs=5, detach_judger=True)",
+        description="Phase 2: Gentle Calibration Coupling (lambda_cal=0.10, cal_smoothing=0.15, ensemble_heads=True)",
     )
     results.append(r2)
 

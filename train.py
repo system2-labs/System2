@@ -73,6 +73,7 @@ HYPERPARAMS = {
     "soft_target_tau": 0.5,
     "ensemble_heads": False,
     "centered_conf": False,
+    "judge_cal_smoothing": 0.0,
 }
 
 
@@ -388,7 +389,12 @@ def main():
             with torch.no_grad():
                 preds = win_logits.max(dim=1).indices
                 is_correct = (preds == lab).float()
-            judge_cal_loss = torch.nn.functional.binary_cross_entropy(conf, is_correct)
+                cal_ls = HYPERPARAMS.get("judge_cal_smoothing", 0.0)
+                if cal_ls > 0.0:
+                    target_cal = is_correct * (1.0 - 2 * cal_ls) + cal_ls
+                else:
+                    target_cal = is_correct
+            judge_cal_loss = torch.nn.functional.binary_cross_entropy(conf, target_cal)
 
             # 5. Diversity: penalize pairwise cosine similarity between head embeddings
             N_heads = emb.size(1)
@@ -446,6 +452,7 @@ def main():
         "max_len": save_max_len,
         "ensemble_heads": HYPERPARAMS.get("ensemble_heads", False),
         "centered_conf": HYPERPARAMS.get("centered_conf", False),
+        "judge_cal_smoothing": HYPERPARAMS.get("judge_cal_smoothing", 0.0),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
