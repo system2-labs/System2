@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery: Higher Deliberation Temperature & Margin-Gated / Probability Arbitration Battery
-- Test 1: Higher Democratic Deliberation Temp (eps=0.08, cal_sm=0.30, tau=2.2)
-- Test 2: Margin-Gated Deliberation (eps=0.08, cal_sm=0.30, tau=1.8, margin_gamma=0.05)
-- Test 3: Probability-Simplex Ensembling (eps=0.08, cal_sm=0.30, tau=1.8, prob_ensemble=True)
+Battery: Pre-LN Gradient Highways & Judger Residual Stream Battery
+- Test 1: Pre-LN ThoughtHeads (head_norm_first=True, tau=1.8)
+- Test 2: Judger Residual Connection (judger_residual=True, tau=1.8)
+- Test 3: Dual Residual Stream (head_norm_first=True, judger_residual=True, tau=1.8)
 """
 import json
 import os
@@ -102,7 +102,7 @@ def main():
     results = []
 
     # Active SOTA baseline: 0.6645 (Accuracy 57.37%, Brier 0.2447)
-    # Test 1: Higher Democratic Deliberation Temp (tau=2.2)
+    # Test 1: Pre-LN ThoughtHeads (head_norm_first=True, tau=1.8)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -142,7 +142,7 @@ def main():
         "judge_cal_smoothing": 0.30,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
-        "ensemble_temp": 2.2,
+        "ensemble_temp": 1.8,
         "lambda_head_balance": 0.0,
         "margin_features": False,
         "span_pooling": False,
@@ -152,20 +152,22 @@ def main():
         "margin_gamma": 0.0,
         "prob_ensemble": False,
         "head_prob_temp": 1.0,
+        "head_norm_first": True,
+        "judger_residual": False,
     }
     r1 = run_experiment(
-        name="Test 1: Higher Deliberation Temp (eps=0.08, cal_sm=0.30, tau=2.2)",
+        name="Test 1: Pre-LN ThoughtHeads (head_norm_first=True, tau=1.8)",
         hyperparams=t1_params,
-        description="Phase 2 Battery: Higher Deliberation Temp (eps=0.08, cal_smoothing=0.30, tau=2.2)",
+        description="Phase 2 Battery: Pre-LN ThoughtHeads (head_norm_first=True, tau=1.8)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        print(f">>> Test 1 committed as new SOTA! Retaining tau=2.2.")
+        print(f">>> Test 1 committed as new SOTA! Retaining head_norm_first=True.")
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Margin-Gated Deliberation (margin_gamma=0.05, tau=1.8)
+    # Test 2: Judger Residual Connection (judger_residual=True, tau=1.8)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -212,23 +214,25 @@ def main():
         "lora_dropout": 0.0,
         "head_dropout": 0.0,
         "head_label_smoothing": 0.08,
-        "margin_gamma": 0.05,
+        "margin_gamma": 0.0,
         "prob_ensemble": False,
         "head_prob_temp": 1.0,
+        "head_norm_first": False,
+        "judger_residual": True,
     }
     r2 = run_experiment(
-        name="Test 2: Margin-Gated Deliberation (gamma=0.05, tau=1.8)",
+        name="Test 2: Judger Residual Stream (judger_residual=True, tau=1.8)",
         hyperparams=t2_params,
-        description="Phase 2 Battery: Margin-Gated Deliberation (eps=0.08, cal_smoothing=0.30, gamma=0.05, tau=1.8)",
+        description="Phase 2 Battery: Judger Residual Stream (judger_residual=True, tau=1.8)",
     )
     results.append(r2)
 
     if r2["committed"]:
-        print(f">>> Test 2 committed as new SOTA! Retaining margin_gamma=0.05.")
+        print(f">>> Test 2 committed as new SOTA! Retaining judger_residual=True.")
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Probability-Simplex Ensembling (prob_ensemble=True, tau=1.8)
+    # Test 3: Dual Residual Stream (head_norm_first=True, judger_residual=True, tau=1.8)
     t3_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -276,13 +280,15 @@ def main():
         "head_dropout": 0.0,
         "head_label_smoothing": 0.08,
         "margin_gamma": 0.0,
-        "prob_ensemble": True,
+        "prob_ensemble": False,
         "head_prob_temp": 1.0,
+        "head_norm_first": True,
+        "judger_residual": True,
     }
     r3 = run_experiment(
-        name="Test 3: Probability-Simplex Ensembling (prob_ens=True, tau=1.8)",
+        name="Test 3: Dual Residual Stream (norm_first=True, res=True, tau=1.8)",
         hyperparams=t3_params,
-        description="Phase 2 Battery: Probability-Simplex Ensembling (eps=0.08, cal_smoothing=0.30, prob_ens=True, tau=1.8)",
+        description="Phase 2 Battery: Dual Residual Stream (head_norm_first=True, judger_residual=True, tau=1.8)",
     )
     results.append(r3)
 
