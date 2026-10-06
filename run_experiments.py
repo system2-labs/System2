@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs 2 sequential AutoResearch experiments back-to-back.
 
-Option 2 Battery: Margin-Informed Judger Arbitration
-Test 1: Margin-Informed Judger Arbitration (margin_features=True, ensemble_temp=1.5, lambda_judge=0.10)
-Test 2: Decisive Margin-Informed Judger Arbitration (margin_features=True, ensemble_temp=1.5, lambda_judge=0.15)
+Option 3 Battery: Query-Conditioned Candidate Attention & Span Pooling
+Test 1: Balanced Dual-Span Pooling (span_pooling=True, span_weight=0.5, span_mode="mean")
+Test 2: Query-Conditioned Candidate Cross-Attention Pooling (span_pooling=True, span_weight=0.5, span_mode="attn")
 """
 import json
 import os
@@ -101,7 +101,7 @@ def main():
     results = []
 
     # Active SOTA baseline: 0.6625 (Accuracy 57.03%, Brier 0.2452)
-    # Test 1: Margin-Informed Judger Arbitration (margin_features=True, ensemble_temp=1.5, lambda_judge=0.10)
+    # Test 1: Balanced Dual-Span Pooling (span_pooling=True, span_weight=0.5, span_mode="mean")
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -143,21 +143,24 @@ def main():
         "uniform_ensemble": False,
         "ensemble_temp": 1.5,
         "lambda_head_balance": 0.0,
-        "margin_features": True,
+        "margin_features": False,
+        "span_pooling": True,
+        "span_weight": 0.5,
+        "span_mode": "mean",
     }
     r1 = run_experiment(
-        name="Test 1: Margin-Informed Judger Arbitration (margin_features=True, tau=1.5)",
+        name="Test 1: Balanced Dual-Span Pooling (50% Q, 50% A, span_mode=mean)",
         hyperparams=t1_params,
-        description="Option 2 Test 1: Margin-Informed Judger Arbitration (margin_features=True, ensemble_temp=1.5, lambda_judge=0.10)",
+        description="Option 3 Test 1: Balanced Dual-Span Pooling (span_pooling=True, span_weight=0.5, span_mode=mean, tau=1.5)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        print(f">>> Test 1 committed as new SOTA! Retaining margin features.")
+        print(f">>> Test 1 committed as new SOTA! Retaining span pooling.")
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Decisive Margin-Informed Judger Arbitration (margin_features=True, lambda_judge=0.15, tau=1.5)
+    # Test 2: Query-Conditioned Candidate Cross-Attention Pooling (span_mode="attn", span_weight=0.5)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -183,7 +186,7 @@ def main():
         "scheduler_min_lr": 1e-5,
         "warmup_ratio": 0.0,
         "weight_decay": 0.0,
-        "lambda_judge": 0.15,
+        "lambda_judge": 0.10,
         "lambda_cal": 0.50,
         "lambda_judge_cal": 0.06,
         "oracle_judge_target": False,
@@ -199,12 +202,15 @@ def main():
         "uniform_ensemble": False,
         "ensemble_temp": 1.5,
         "lambda_head_balance": 0.0,
-        "margin_features": True,
+        "margin_features": False,
+        "span_pooling": True,
+        "span_weight": 0.5,
+        "span_mode": "attn",
     }
     r2 = run_experiment(
-        name="Test 2: Decisive Margin-Informed Judger Arbitration (lambda_judge=0.15, margin_features=True)",
+        name="Test 2: Query-Conditioned Candidate Cross-Attention Pooling (span_mode=attn)",
         hyperparams=t2_params,
-        description="Option 2 Test 2: Decisive Margin-Informed Judger (lambda_judge=0.15, margin_features=True, ensemble_temp=1.5)",
+        description="Option 3 Test 2: Query-Conditioned Candidate Cross-Attention Pooling (span_mode=attn, span_weight=0.5, tau=1.5)",
     )
     results.append(r2)
 

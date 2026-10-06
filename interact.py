@@ -74,6 +74,9 @@ def load_system2(checkpoint_path="./models/system2.pt", device=None):
         "max_len": state.get("max_len", 128) if isinstance(state, dict) else 128,
         "ensemble_heads": state.get("ensemble_heads", True) if isinstance(state, dict) else True,
         "uniform_ensemble": state.get("uniform_ensemble", False) if isinstance(state, dict) else False,
+        "span_pooling": state.get("span_pooling", False) if isinstance(state, dict) else False,
+        "span_weight": state.get("span_weight", 0.5) if isinstance(state, dict) else 0.5,
+        "span_mode": state.get("span_mode", "mean") if isinstance(state, dict) else "mean",
         "device": device,
     }
     return sys2, meta
@@ -88,8 +91,42 @@ def deliberate(sys2, meta, question, choices):
     inputs = tokenizer(flat_texts, return_tensors="pt", padding=True, truncation=True, max_length=meta["max_len"]).to(device)
     with torch.no_grad():
         last_hidden = model(**inputs).last_hidden_state
-        mask = inputs["attention_mask"].unsqueeze(-1)
-        pooled = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
+        if meta.get("span_pooling", False):
+            import torch.nn.functional as F
+            input_ids = inputs["input_ids"]
+            attn_mask = inputs["attention_mask"]
+            B, T = input_ids.shape
+            match = (input_ids[:, :-1] == 37741) & (input_ids[:, 1:] == 27)
+            has_match = match.any(dim=1)
+            ans_pos = match.int().argmax(dim=1)
+            cols = torch.arange(T, device=device).unsqueeze(0).expand(B, T)
+            valid_lens = attn_mask.sum(dim=1) - 1
+
+            q_mask = (cols < ans_pos.unsqueeze(1)) & (attn_mask.bool())
+            a_mask = (cols >= (ans_pos + 2).unsqueeze(1)) & (cols < valid_lens.unsqueeze(1)) & (attn_mask.bool())
+
+            no_match = ~has_match.unsqueeze(1)
+            q_mask = torch.where(no_match, attn_mask.bool(), q_mask)
+            a_mask = torch.where(no_match, attn_mask.bool(), a_mask)
+
+            q_mask_f = q_mask.unsqueeze(-1).float()
+            a_mask_f = a_mask.unsqueeze(-1).float()
+            q_vec = (last_hidden * q_mask_f).sum(dim=1) / q_mask_f.sum(dim=1).clamp(min=1.0)
+            span_mode = meta.get("span_mode", "mean")
+            if span_mode == "attn":
+                H_norm = F.normalize(last_hidden, p=2, dim=-1)
+                q_norm = F.normalize(q_vec, p=2, dim=-1)
+                cos_sim = (H_norm * q_norm.unsqueeze(1)).sum(dim=-1)
+                scores = (cos_sim / 0.1).masked_fill(~a_mask, -1e9)
+                attn_weights = torch.softmax(scores, dim=-1).unsqueeze(-1)
+                a_vec = (last_hidden * attn_weights).sum(dim=1)
+            else:
+                a_vec = (last_hidden * a_mask_f).sum(dim=1) / a_mask_f.sum(dim=1).clamp(min=1.0)
+            span_weight = meta.get("span_weight", 0.5)
+            pooled = (1.0 - span_weight) * q_vec + span_weight * a_vec
+        else:
+            mask = inputs["attention_mask"].unsqueeze(-1)
+            pooled = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
         vecs = pooled.view(1, len(choices), -1)  # (1, 4, 1024)
 
         out = sys2(vecs)
