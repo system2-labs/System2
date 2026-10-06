@@ -79,6 +79,9 @@ HYPERPARAMS = {
     "ensemble_temp": 1.5,
     "lambda_head_balance": 0.0,
     "margin_features": False,
+    "span_pooling": False,
+    "span_weight": 0.5,
+    "span_mode": "mean",
 }
 
 
@@ -95,7 +98,7 @@ def mean_pool_texts(texts, max_len, device, with_grad=False):
             return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
 
 
-def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False, sources=None, task_prefixes=False):
+def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False, sources=None, task_prefixes=False, span_pooling=False, span_weight=0.5, span_mode="mean"):
     b = len(questions)
     if task_prefixes:
         flat_texts = [
@@ -112,13 +115,44 @@ def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False
     inputs = tokenizer(flat_texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(device)
     if with_grad:
         last_hidden = model(**inputs).last_hidden_state
-        mask = inputs["attention_mask"].unsqueeze(-1)
-        pooled = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
     else:
         with torch.no_grad():
             last_hidden = model(**inputs).last_hidden_state
-            mask = inputs["attention_mask"].unsqueeze(-1)
-            pooled = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
+
+    if span_pooling:
+        import torch.nn.functional as F
+        input_ids = inputs["input_ids"]
+        attn_mask = inputs["attention_mask"]
+        B, T = input_ids.shape
+        match = (input_ids[:, :-1] == 37741) & (input_ids[:, 1:] == 27)
+        has_match = match.any(dim=1)
+        ans_pos = match.int().argmax(dim=1)
+        cols = torch.arange(T, device=device).unsqueeze(0).expand(B, T)
+        valid_lens = attn_mask.sum(dim=1) - 1
+
+        q_mask = (cols < ans_pos.unsqueeze(1)) & (attn_mask.bool())
+        a_mask = (cols >= (ans_pos + 2).unsqueeze(1)) & (cols < valid_lens.unsqueeze(1)) & (attn_mask.bool())
+
+        no_match = ~has_match.unsqueeze(1)
+        q_mask = torch.where(no_match, attn_mask.bool(), q_mask)
+        a_mask = torch.where(no_match, attn_mask.bool(), a_mask)
+
+        q_mask_f = q_mask.unsqueeze(-1).float()
+        a_mask_f = a_mask.unsqueeze(-1).float()
+        q_vec = (last_hidden * q_mask_f).sum(dim=1) / q_mask_f.sum(dim=1).clamp(min=1.0)
+        if span_mode == "attn":
+            H_norm = F.normalize(last_hidden, p=2, dim=-1)
+            q_norm = F.normalize(q_vec, p=2, dim=-1)
+            cos_sim = (H_norm * q_norm.unsqueeze(1)).sum(dim=-1)
+            scores = (cos_sim / 0.1).masked_fill(~a_mask, -1e9)
+            attn_weights = torch.softmax(scores, dim=-1).unsqueeze(-1)
+            a_vec = (last_hidden * attn_weights).sum(dim=1)
+        else:
+            a_vec = (last_hidden * a_mask_f).sum(dim=1) / a_mask_f.sum(dim=1).clamp(min=1.0)
+        pooled = (1.0 - span_weight) * q_vec + span_weight * a_vec
+    else:
+        mask = inputs["attention_mask"].unsqueeze(-1)
+        pooled = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
     return pooled.view(b, 4, -1)
 
 
@@ -306,7 +340,10 @@ def main():
                 vecs = mean_pool_pairwise(
                     q_slice, c_slice,
                     HYPERPARAMS["max_len"], device, with_grad=with_grad,
-                    sources=src_slice, task_prefixes=task_prefixes
+                    sources=src_slice, task_prefixes=task_prefixes,
+                    span_pooling=HYPERPARAMS.get("span_pooling", False),
+                    span_weight=HYPERPARAMS.get("span_weight", 0.5),
+                    span_mode=HYPERPARAMS.get("span_mode", "mean"),
                 )
             else:
                 t_slice = [cols["text"][idx] for idx in batch_idx]
@@ -484,6 +521,9 @@ def main():
         "ensemble_temp": HYPERPARAMS.get("ensemble_temp", 1.0),
         "lambda_head_balance": HYPERPARAMS.get("lambda_head_balance", 0.0),
         "margin_features": HYPERPARAMS.get("margin_features", False),
+        "span_pooling": HYPERPARAMS.get("span_pooling", False),
+        "span_weight": HYPERPARAMS.get("span_weight", 0.5),
+        "span_mode": HYPERPARAMS.get("span_mode", "mean"),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
