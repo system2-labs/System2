@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs 2 sequential AutoResearch experiments back-to-back.
 
-Option 3 Battery: Query-Conditioned Candidate Attention & Span Pooling
-Test 1: Balanced Dual-Span Pooling (span_pooling=True, span_weight=0.5, span_mode="mean")
-Test 2: Query-Conditioned Candidate Cross-Attention Pooling (span_pooling=True, span_weight=0.5, span_mode="attn")
+Battery: LoRA Subspace Dropout Regularization (Anti-Overfitting & Oracle Ceiling Hunt)
+Test 1: LoRA Subspace Dropout (lora_dropout=0.05, tau=1.5)
+Test 2: LoRA Subspace Dropout (lora_dropout=0.10, tau=1.5)
 """
 import json
 import os
@@ -101,7 +101,7 @@ def main():
     results = []
 
     # Active SOTA baseline: 0.6625 (Accuracy 57.03%, Brier 0.2452)
-    # Test 1: Balanced Dual-Span Pooling (span_pooling=True, span_weight=0.5, span_mode="mean")
+    # Test 1: LoRA Subspace Dropout (lora_dropout=0.05, tau=1.5)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -144,23 +144,24 @@ def main():
         "ensemble_temp": 1.5,
         "lambda_head_balance": 0.0,
         "margin_features": False,
-        "span_pooling": True,
-        "span_weight": 0.5,
-        "span_mode": "mean",
+        "span_pooling": False,
+        "lora_dropout": 0.05,
+        "head_dropout": 0.0,
+        "head_label_smoothing": 0.0,
     }
     r1 = run_experiment(
-        name="Test 1: Balanced Dual-Span Pooling (50% Q, 50% A, span_mode=mean)",
+        name="Test 1: LoRA Subspace Dropout (p=0.05, tau=1.5)",
         hyperparams=t1_params,
-        description="Option 3 Test 1: Balanced Dual-Span Pooling (span_pooling=True, span_weight=0.5, span_mode=mean, tau=1.5)",
+        description="Phase 2 Battery: LoRA Subspace Dropout (lora_dropout=0.05, tau=1.5, cal_smoothing=0.32)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        print(f">>> Test 1 committed as new SOTA! Retaining span pooling.")
+        print(f">>> Test 1 committed as new SOTA! Retaining lora_dropout=0.05.")
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Query-Conditioned Candidate Cross-Attention Pooling (span_mode="attn", span_weight=0.5)
+    # Test 2: LoRA Subspace Dropout (lora_dropout=0.10, tau=1.5)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -203,14 +204,15 @@ def main():
         "ensemble_temp": 1.5,
         "lambda_head_balance": 0.0,
         "margin_features": False,
-        "span_pooling": True,
-        "span_weight": 0.5,
-        "span_mode": "attn",
+        "span_pooling": False,
+        "lora_dropout": 0.10,
+        "head_dropout": 0.0,
+        "head_label_smoothing": 0.0,
     }
     r2 = run_experiment(
-        name="Test 2: Query-Conditioned Candidate Cross-Attention Pooling (span_mode=attn)",
+        name="Test 2: LoRA Subspace Dropout (p=0.10, tau=1.5)",
         hyperparams=t2_params,
-        description="Option 3 Test 2: Query-Conditioned Candidate Cross-Attention Pooling (span_mode=attn, span_weight=0.5, tau=1.5)",
+        description="Phase 2 Battery: LoRA Subspace Dropout (lora_dropout=0.10, tau=1.5, cal_smoothing=0.32)",
     )
     results.append(r2)
 
