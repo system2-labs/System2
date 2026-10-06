@@ -9,7 +9,7 @@ class LoRALinear(nn.Module):
     W' = W_base + (alpha / r) * (x @ A.T @ B.T)
     """
 
-    def __init__(self, original_linear, r=16, alpha=16):
+    def __init__(self, original_linear, r=16, alpha=16, dropout=0.0):
         super().__init__()
         self.original = original_linear
         for p in self.original.parameters():
@@ -19,17 +19,18 @@ class LoRALinear(nn.Module):
         self.scaling = alpha / r
         dev = original_linear.weight.device
         dtype = original_linear.weight.dtype
+        self.dropout = nn.Dropout(p=dropout) if dropout > 0.0 else nn.Identity()
         # A initialized with small Gaussian, B initialized to 0
         self.lora_A = nn.Parameter(torch.randn(r, in_dim, device=dev, dtype=dtype) * 0.01)
         self.lora_B = nn.Parameter(torch.zeros(out_dim, r, device=dev, dtype=dtype))
 
     def forward(self, x):
         base = self.original(x)
-        lora = (x @ self.lora_A.T @ self.lora_B.T) * self.scaling
+        lora = (self.dropout(x) @ self.lora_A.T @ self.lora_B.T) * self.scaling
         return base + lora
 
 
-def apply_lora(model, r=16, alpha=16, num_layers=4, train_norms=False):
+def apply_lora(model, r=16, alpha=16, num_layers=4, train_norms=False, dropout=0.0):
     """Inject LoRA into Wqkv and Wo projections of the top num_layers of ModernBERT.
 
     All base weights remain strictly frozen. Only lora_A and lora_B are trainable.
@@ -44,9 +45,13 @@ def apply_lora(model, r=16, alpha=16, num_layers=4, train_norms=False):
     target_layers = model.layers[-num_layers:] if num_layers > 0 else model.layers
     for layer in target_layers:
         if not isinstance(layer.attn.Wqkv, LoRALinear):
-            layer.attn.Wqkv = LoRALinear(layer.attn.Wqkv, r=r, alpha=alpha)
+            layer.attn.Wqkv = LoRALinear(layer.attn.Wqkv, r=r, alpha=alpha, dropout=dropout)
+        else:
+            layer.attn.Wqkv.dropout = nn.Dropout(p=dropout) if dropout > 0.0 else nn.Identity()
         if not isinstance(layer.attn.Wo, LoRALinear):
-            layer.attn.Wo = LoRALinear(layer.attn.Wo, r=r, alpha=alpha)
+            layer.attn.Wo = LoRALinear(layer.attn.Wo, r=r, alpha=alpha, dropout=dropout)
+        else:
+            layer.attn.Wo.dropout = nn.Dropout(p=dropout) if dropout > 0.0 else nn.Identity()
         lora_params.extend([
             layer.attn.Wqkv.lora_A, layer.attn.Wqkv.lora_B,
             layer.attn.Wo.lora_A, layer.attn.Wo.lora_B,

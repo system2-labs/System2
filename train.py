@@ -82,6 +82,9 @@ HYPERPARAMS = {
     "span_pooling": False,
     "span_weight": 0.5,
     "span_mode": "mean",
+    "lora_dropout": 0.0,
+    "head_dropout": 0.0,
+    "head_label_smoothing": 0.0,
 }
 
 
@@ -210,7 +213,7 @@ def main():
         r = HYPERPARAMS.get("lora_r", 16)
         alpha = HYPERPARAMS.get("lora_alpha", 16)
         num_layers = HYPERPARAMS.get("lora_layers", 4)
-        res = apply_lora(model, r=r, alpha=alpha, num_layers=num_layers, train_norms=train_norms)
+        res = apply_lora(model, r=r, alpha=alpha, num_layers=num_layers, train_norms=train_norms, dropout=HYPERPARAMS.get("lora_dropout", 0.0))
         if train_norms:
             encoder_params, norm_params = res
         else:
@@ -256,6 +259,7 @@ def main():
             uniform_ensemble=HYPERPARAMS.get("uniform_ensemble", False),
             ensemble_temp=HYPERPARAMS.get("ensemble_temp", 1.0),
             margin_features=HYPERPARAMS.get("margin_features", False),
+            head_dropout=HYPERPARAMS.get("head_dropout", 0.0),
         )
     sys2.to(device)
     sys2.train()
@@ -380,7 +384,8 @@ def main():
                     vecs, detach_judger=HYPERPARAMS.get("detach_judger", False)
                 )
                 best, conf, pruned, confs, logits, emb, scores = out[:7]
-                ce = torch.stack([torch.nn.functional.cross_entropy(h, lab) for h in logits.unbind(1)])
+                h_ls = HYPERPARAMS.get("head_label_smoothing", 0.0)
+                ce = torch.stack([torch.nn.functional.cross_entropy(h, lab, label_smoothing=h_ls) for h in logits.unbind(1)])
                 ce_loss = ce.mean()
                 if HYPERPARAMS.get("ensemble_heads", False):
                     win_logits = out[7] if len(out) > 7 else torch.einsum('bn,bnc->bc', torch.softmax(scores, dim=-1), logits)
@@ -524,6 +529,9 @@ def main():
         "span_pooling": HYPERPARAMS.get("span_pooling", False),
         "span_weight": HYPERPARAMS.get("span_weight", 0.5),
         "span_mode": HYPERPARAMS.get("span_mode", "mean"),
+        "lora_dropout": HYPERPARAMS.get("lora_dropout", 0.0),
+        "head_dropout": HYPERPARAMS.get("head_dropout", 0.0),
+        "head_label_smoothing": HYPERPARAMS.get("head_label_smoothing", 0.0),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
