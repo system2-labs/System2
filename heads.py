@@ -11,7 +11,7 @@ class ThoughtHead(nn.Module):
     Params: ~40M  (4-bit: ~160MB)
     """
 
-    def __init__(self, hidden_size=1024, head_dim=512, vocab_size=30522, num_classes=None, diff_features=False, num_layers=2, dropout=0.0):
+    def __init__(self, hidden_size=1024, head_dim=512, vocab_size=30522, num_classes=None, diff_features=False, num_layers=2, dropout=0.0, norm_first=False):
         super().__init__()
         self.diff_features = diff_features
 
@@ -26,6 +26,7 @@ class ThoughtHead(nn.Module):
             activation="gelu",
             batch_first=True,
             dropout=dropout,
+            norm_first=norm_first,
         )
         self.layers = nn.TransformerEncoder(layer, num_layers=num_layers)
 

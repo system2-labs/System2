@@ -12,11 +12,14 @@ class Judger(nn.Module):
     The best one is the one the encoder context supports most.
     """
 
-    def __init__(self, head_dim=512, learnable_temp=False, centered_conf=False, margin_features=False, margin_dim=3):
+    def __init__(self, head_dim=512, learnable_temp=False, centered_conf=False, margin_features=False, margin_dim=3, residual=False):
         super().__init__()
         self.learnable_temp = learnable_temp
         self.centered_conf = centered_conf
         self.margin_features = margin_features
+        self.residual = residual
+        if residual:
+            self.prenorm = nn.LayerNorm(head_dim)
         if learnable_temp:
             self.log_temp = nn.Parameter(torch.zeros(1))
         self.attention = nn.MultiheadAttention(
@@ -32,7 +35,12 @@ class Judger(nn.Module):
 
     def forward(self, embeddings, margin_feats=None):
         # embeddings: (B, N, 512) - one row per hypothesis
-        attended, _ = self.attention(embeddings, embeddings, embeddings)
+        if getattr(self, "residual", False):
+            normed = self.prenorm(embeddings)
+            att_out, _ = self.attention(normed, normed, normed)
+            attended = embeddings + att_out
+        else:
+            attended, _ = self.attention(embeddings, embeddings, embeddings)
         if self.margin_features:
             if margin_feats is None:
                 margin_feats = torch.zeros(embeddings.size(0), embeddings.size(1), 3, device=embeddings.device, dtype=embeddings.dtype)
@@ -64,7 +72,7 @@ class System2(nn.Module):
     2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False):
         super().__init__()
         self.pairwise = pairwise
         self.diff_features = diff_features
@@ -75,12 +83,14 @@ class System2(nn.Module):
         self.margin_gamma = margin_gamma
         self.prob_ensemble = prob_ensemble
         self.head_prob_temp = head_prob_temp
+        self.head_norm_first = head_norm_first
+        self.judger_residual = judger_residual
         head_classes = 1 if pairwise else num_classes
         self.heads = nn.ModuleList([
-            ThoughtHead(num_classes=head_classes, diff_features=diff_features, num_layers=head_layers, dropout=head_dropout)
+            ThoughtHead(num_classes=head_classes, diff_features=diff_features, num_layers=head_layers, dropout=head_dropout, norm_first=head_norm_first)
             for _ in range(num_heads)
         ])
-        self.judger = Judger(learnable_temp=learnable_temp, centered_conf=centered_conf, margin_features=margin_features)
+        self.judger = Judger(learnable_temp=learnable_temp, centered_conf=centered_conf, margin_features=margin_features, residual=judger_residual)
 
     def forward(self, encoder_output, detach_judger=False):
         if encoder_output.dim() == 3:
