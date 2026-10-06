@@ -577,10 +577,35 @@ Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), 
 | **Test 2 (TargetCal)**| Base-Rate Calibration Target ($\alpha=0.32, \lambda_{\text{cal}}=0.06$) | **56.94%** | **0.2452** | **0.6621** | **COMMITTED (NEW SOTA 🏆)** |
 | **Test 1 (ConsTemp)**| **Deliberation Consensus Temperature ($\tau_{\text{ens}}=1.5$)** | **57.03%** | **0.2452** | **0.6625** | **ALL-TIME PHASE 2 SOTA 🏆** |
 | **Test 2 (BalDelib)**| Balanced Deliberation ($\lambda_{\text{balance}}=0.05, \tau_{\text{ens}}=1.5$) | 56.97% | 0.2466 | 0.6615 | Reverted ($0.6615 \le 0.6625$) |
+### 5.34 Diagnostic Analysis of LoRA Subspace Dropout Regularization (Tests 1 and 2):
+- **Hypothesis**: Does injecting dropout ($p=0.05, 0.10$) into the low-rank subspace updates ($B(\text{Dropout}(Ax))$) regularize the 18% generalization gap between training accuracy (~75%, `ce = 0.710`) and held-out test accuracy (57.03%), lifting test performance toward the 72.44% oracle ceiling?
+- **Results Across the Battery**:
+  - **Test 1: LoRA Subspace Dropout ($p=0.05, \tau_{\text{ens}}=1.5$)**: Accuracy **56.83%**, Brier **0.2539**, Metric **0.6572** (Reverted: $0.6572 \le 0.6625$).
+  - **Test 2: LoRA Subspace Dropout ($p=0.10, \tau_{\text{ens}}=1.5$)**: Accuracy **56.18%**, Brier **0.2465**, Metric **0.6576** (Reverted: $0.6576 \le 0.6625$).
+- **Deep Scientific Diagnosis**:
+  1. **The Rank Bottleneck Coordinate Fragility**:
+     With a rank bottleneck of $r=32$ on only the top 8 layers (1.57M parameters, ~0.4% of ModernBERT), every coordinate in the 32-dimensional subspace carries essential non-linear transformation coordinates for scientific relational inference.
+     Dropping out 5%–10% of these 32 coordinates stochastically during forward passes disrupted the continuous gradient flow.
+  2. **Cross-Entropy Descent Stalled**:
+     In the 57.03% SOTA baseline (zero dropout), cross-entropy descended smoothly to **`0.710`**.
+     With `lora_dropout=0.05`, cross-entropy stalled at **`1.049`** in epoch 5 (`ce`: $1.332 \to 1.251 \to 1.158 \to 1.090 \to 1.049$).
+     With `lora_dropout=0.10`, cross-entropy stalled at **`0.953`** in epoch 5 (`ce`: $1.349 \to 1.195 \to 1.062 \to 0.995 \to 0.953$).
+     Stochastic coordinate deletion acts as a barrier to deep convergence. The rank-32 bottleneck itself already provides sufficient low-rank regularization; coordinate dropout within the bottleneck is counter-productive.
+  3. **Protocol Action**:
+     Both trials were cleanly reverted by `runner.sh`, safely guarding `.best_metric = 0.6625` (Accuracy **57.03%**, Brier **0.2452**).
+
+---
+
+## 6. Comprehensive Phase 2 Scientific Synthesis
+
+| Test | Architecture / Hypothesis | Accuracy | Brier | Metric | Status |
+| :--- | :--- | :---: | :---: | :---: | :--- |
 | **Opt 2 (T1 Margin)**| Margin-Informed Judger ($\lambda_J=0.10, \tau_{\text{ens}}=1.5$) | 57.03% | 0.2455 | 0.6624 | Reverted (Within 0.0001 of SOTA) |
 | **Opt 2 (T2 Sharp)** | Decisive Margin-Informed Judger ($\lambda_J=0.15, \tau_{\text{ens}}=1.5$) | 57.03% | 0.2561 | 0.6571 | Reverted (Brier overconfidence penalty) |
 | **Opt 3 (T1 Span)**  | Balanced Dual-Span Pooling ($w=0.50, \text{mode}=\text{mean}$) | 54.99% | 0.2509 | 0.6495 | Reverted (CE stalled at 1.212) |
 | **Opt 3 (T2 Attn)**  | Query-Conditioned Cross-Attention ($\text{mode}=\text{attn}$) | 55.92% | 0.2483 | 0.6554 | Reverted (CE stalled at 1.142) |
+| **Opt 1 (T1 LoRADrop05)**| LoRA Subspace Dropout ($p=0.05, \tau_{\text{ens}}=1.5$) | 56.83% | 0.2539 | 0.6572 | Reverted (CE stalled at 1.049) |
+| **Opt 1 (T2 LoRADrop10)**| LoRA Subspace Dropout ($p=0.10, \tau_{\text{ens}}=1.5$) | 56.18% | 0.2465 | 0.6576 | Reverted (CE stalled at 0.953) |
 
 ### The Core Architectural Principles of System2:
 1. **The In-Domain Causal Purity Law (Validated at 56.83%)**:
