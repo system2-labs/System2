@@ -529,6 +529,25 @@ Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), 
 | **Test 1 (BaseCal)**| Base-Rate Calibration Smoothing ($\alpha=0.25, \lambda_{\text{cal}}=0.08$) | **57.22%** | **0.2483** | **0.6620** | **COMMITTED (NEW SOTA 🏆)** |
 | **Test 2 (TargetCal)**| **Base-Rate Calibration Target ($\alpha=0.32, \lambda_{\text{cal}}=0.06$)** | **56.94%** | **0.2452** | **0.6621** | **ALL-TIME PHASE 2 SOTA 🏆** |
 
+### 5.30 Future Architectural Avenues (Robustness & Phrasing Invariance):
+- **Observation from Interactive Deliberation**:
+  In interactive testing, System 2 exhibited remarkable general world knowledge preservation (e.g., *Capital of France $\to$ Paris* in 65 ms across all 5 heads), but revealed sensitivity to two subtle phenomena:
+  1. *Syntactic / Curricular Register Sensitivity*: Formal celestial mechanics phrasing (*"rotational period matches orbital period"*) underperformed standard middle-school ARC phrasing (*"rotates on axis at same rate as it revolves"*), which caused unanimous 5-head alignment on the true answer.
+  2. *Meta-Tag Token Dilution*: Artificial non-causal parenthetical metadata (e.g. `(True causal mechanism)`) diluted the choice embedding.
+- **Root Cause Identified (The Arithmetic Mean-Pooling Bottleneck)**:
+  System 2 currently mean-pools all tokens in `[Question + Answer]` uniformly:
+  $$\mathbf{x} = \frac{1}{L} \sum_{i=1}^L \mathbf{h}_i$$
+  When an answer choice contains 4–5 parenthetical metadata words, those non-scientific tokens dilute up to 30% of the entire choice representation.
+- **Four High-Conviction Research Frontiers for Phrasing Invariance**:
+  1. **Query-Conditioned Cross-Attention Pooling**: Replace naive mean-pooling with cross-attention where the Question acts as Query ($Q$) attending to Answer tokens ($K, V$). Non-causal or metadata tokens receive near-zero attention, isolating the pure physical predicate.
+  2. **In-Domain Paraphrase & Register Jitter**: Keep data strictly in-domain (ARC), but augment scientific mechanisms with multi-register formulations (grade-school $\leftrightarrow$ high-school $\leftrightarrow$ college astrophysics), teaching the latent space to map synonyms to identical coordinates.
+  3. **Adversarial Meta-Tag Perturbation**: Randomly inject benign/deceptive parenthetical tags into 15% of training choices, forcing the network's attention weights to learn noise-filtering invariance.
+  4. **Phrasing-Invariant Contrastive Alignment**: Enforce a cosine penalty $\|\mathbf{z}_{\text{formal}} - \mathbf{z}_{\text{colloquial}}\|_2^2$ to anchor multi-register candidate representations.
+
+---
+
+## 6. Comprehensive Phase 2 Scientific Synthesis
+
 ### The Core Architectural Principles of System2:
 1. **The In-Domain Causal Purity Law (Validated at 56.83%)**:
    Expanding data using pure in-domain ARC splits (4,220 samples combining Train and Validation) produced our highest score yet (**56.83% accuracy, 0.6608 metric**). Data scaling succeeds when the training signal is 100% causal reasoning; multi-domain mixing (SciQ, OBQA) fails because it dilutes the shared LoRA representations.
