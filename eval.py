@@ -59,7 +59,7 @@ def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=Non
     return pooled.view(b, 4, -1)
 
 
-def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir="./data/arc"):
+def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir="./data/arc", ensemble=False):
     device = device or ("mps" if torch.backends.mps.is_available() else "cpu")
     model.to(device)
     ds = load_from_disk(data_dir)
@@ -111,6 +111,8 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
         kwargs = {"num_heads": num_heads, "num_classes": num_classes, "pairwise": is_pairwise, "diff_features": has_diff, "head_layers": head_layers}
         if "judger.log_temp" in sys2_state:
             kwargs["learnable_temp"] = True
+        if isinstance(state, dict) and state.get("centered_conf", False):
+            kwargs["centered_conf"] = True
         import inspect
         if "recurrence" in inspect.signature(System2.__init__).parameters:
             kwargs["recurrence"] = has_recurrence
@@ -121,6 +123,7 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
 
     task_prefixes = isinstance(state, dict) and state.get("task_prefixes", False)
     eval_max_len = state.get("max_len", 128) if isinstance(state, dict) else 128
+    ensemble_heads = (isinstance(state, dict) and state.get("ensemble_heads", False)) or ensemble
     sources = cols.get("source") if hasattr(cols, "get") and "source" in cols else None
 
     correct = 0
@@ -146,8 +149,12 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
                 else:
                     win_logits = logits[torch.arange(b), best]
             else:
-                best, conf, pruned, confs, logits, emb, scores = sys2(vecs)[:7]
-                win_logits = logits[torch.arange(b), best]  # (b, 4)
+                out = sys2(vecs)
+                best, conf, pruned, confs, logits, emb, scores = out[:7]
+                if ensemble_heads:
+                    win_logits = out[7] if len(out) > 7 else torch.einsum('bn,bnc->bc', torch.softmax(scores, dim=-1), logits)
+                else:
+                    win_logits = logits[torch.arange(b), best]  # (b, 4)
 
             preds = win_logits.max(dim=1).indices
             correct += (preds == labels[i : i + b]).sum().item()
@@ -163,9 +170,10 @@ if __name__ == "__main__":
         ap.add_argument("ckpt", nargs="?", default="./models/system2.pt")
         ap.add_argument("--max-samples", type=int, default=None)
         ap.add_argument("--data", default="./data/arc")
+        ap.add_argument("--ensemble", action="store_true", help="Force ensemble evaluation over all heads")
         args = ap.parse_args()
         ckpt = args.ckpt
-        m = evaluate(ckpt, max_samples=args.max_samples, data_dir=args.data)
+        m = evaluate(ckpt, max_samples=args.max_samples, data_dir=args.data, ensemble=args.ensemble)
         metric = 0.5 * m["accuracy"] + 0.5 * (1 - m["brier"])
         print(json.dumps({"metric": round(metric, 4), "accuracy": round(m["accuracy"], 4), "brier": round(m["brier"], 4)}))
     except Exception as e:

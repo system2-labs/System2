@@ -71,6 +71,8 @@ HYPERPARAMS = {
     "scheduler_min_lr": 1e-05,
     "soft_judge_targets": False,
     "soft_target_tau": 0.5,
+    "ensemble_heads": False,
+    "centered_conf": False,
 }
 
 
@@ -210,6 +212,7 @@ def main():
             diff_features=diff_features,
             learnable_temp=HYPERPARAMS.get("learnable_temp", False),
             head_layers=HYPERPARAMS.get("head_layers", 2),
+            centered_conf=HYPERPARAMS.get("centered_conf", False),
         )
     sys2.to(device)
     sys2.train()
@@ -326,12 +329,16 @@ def main():
                     ce_loss = ce.mean()
                     win_logits = logits[torch.arange(b), best]
             else:
-                best, conf, pruned, confs, logits, emb, scores = sys2(
+                out = sys2(
                     vecs, detach_judger=HYPERPARAMS.get("detach_judger", False)
                 )
+                best, conf, pruned, confs, logits, emb, scores = out[:7]
                 ce = torch.stack([torch.nn.functional.cross_entropy(h, lab) for h in logits.unbind(1)])
                 ce_loss = ce.mean()
-                win_logits = logits[torch.arange(b), best]
+                if HYPERPARAMS.get("ensemble_heads", False):
+                    win_logits = out[7] if len(out) > 7 else torch.einsum('bn,bnc->bc', torch.softmax(scores, dim=-1), logits)
+                else:
+                    win_logits = logits[torch.arange(b), best]
                 aux_loss = torch.tensor(0.0, device=device)
 
             # --- losses (all computed, then ONE combined backward) ---
@@ -437,6 +444,8 @@ def main():
         "use_mote": use_mote,
         "mote_mode": mote_mode if use_mote else "baseline",
         "max_len": save_max_len,
+        "ensemble_heads": HYPERPARAMS.get("ensemble_heads", False),
+        "centered_conf": HYPERPARAMS.get("centered_conf", False),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
