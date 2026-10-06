@@ -151,6 +151,12 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             kwargs["ensemble_temp"] = state["ensemble_temp"]
         if (isinstance(state, dict) and state.get("margin_features", False)) or ("judger.margin_norm.weight" in sys2_state):
             kwargs["margin_features"] = True
+        if isinstance(state, dict) and "margin_gamma" in state:
+            kwargs["margin_gamma"] = state["margin_gamma"]
+        if isinstance(state, dict) and "prob_ensemble" in state:
+            kwargs["prob_ensemble"] = state["prob_ensemble"]
+        if isinstance(state, dict) and "head_prob_temp" in state:
+            kwargs["head_prob_temp"] = state["head_prob_temp"]
         import inspect
         if "recurrence" in inspect.signature(System2.__init__).parameters:
             kwargs["recurrence"] = has_recurrence

@@ -64,7 +64,7 @@ class System2(nn.Module):
     2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0):
         super().__init__()
         self.pairwise = pairwise
         self.diff_features = diff_features
@@ -72,6 +72,9 @@ class System2(nn.Module):
         self.uniform_ensemble = uniform_ensemble
         self.ensemble_temp = ensemble_temp
         self.margin_features = margin_features
+        self.margin_gamma = margin_gamma
+        self.prob_ensemble = prob_ensemble
+        self.head_prob_temp = head_prob_temp
         head_classes = 1 if pairwise else num_classes
         self.heads = nn.ModuleList([
             ThoughtHead(num_classes=head_classes, diff_features=diff_features, num_layers=head_layers, dropout=head_dropout)
@@ -102,9 +105,9 @@ class System2(nn.Module):
             confidences = torch.stack(confidences, dim=1)  # (B, N)
             logits = torch.stack(all_logits, dim=1)        # (B, N, num_choices)
 
+            sorted_l, _ = torch.sort(logits, dim=-1, descending=True)
+            m1 = sorted_l[:, :, 0] - sorted_l[:, :, 1]
             if self.margin_features:
-                sorted_l, _ = torch.sort(logits, dim=-1, descending=True)
-                m1 = sorted_l[:, :, 0] - sorted_l[:, :, 1]
                 m_mean = sorted_l[:, :, 0] - logits.mean(dim=-1)
                 p = torch.softmax(logits, dim=-1)
                 ent = -(p * torch.log(p + 1e-8)).sum(dim=-1) / 1.38629
@@ -120,8 +123,19 @@ class System2(nn.Module):
                 ens_logits = logits.mean(dim=1)
             else:
                 tau = getattr(self, "ensemble_temp", 1.0)
-                weights = torch.softmax(scores / tau, dim=-1)
-                ens_logits = torch.einsum('bn,bnc->bc', weights, logits)
+                gamma = getattr(self, "margin_gamma", 0.0)
+                if gamma > 0.0:
+                    weights = torch.softmax(scores / tau + gamma * m1, dim=-1)
+                else:
+                    weights = torch.softmax(scores / tau, dim=-1)
+
+                if getattr(self, "prob_ensemble", False):
+                    head_tau = getattr(self, "head_prob_temp", 1.0)
+                    probs = torch.softmax(logits / head_tau, dim=-1)
+                    ens_probs = torch.einsum('bn,bnc->bc', weights, probs)
+                    ens_logits = torch.log(ens_probs.clamp(min=1e-8))
+                else:
+                    ens_logits = torch.einsum('bn,bnc->bc', weights, logits)
             return best, best_conf, pruned, confidences, logits, embeddings, scores, ens_logits
         else:
             # Single-vector classification: (B, 1024)
@@ -136,9 +150,9 @@ class System2(nn.Module):
             head_logits = [self.heads[n].hypothesis_head(embeddings[:, n, :]) for n in range(embeddings.size(1))]
             logits = torch.stack(head_logits, dim=1)  # (B, N, C)
 
+            sorted_l, _ = torch.sort(logits, dim=-1, descending=True)
+            m1 = sorted_l[:, :, 0] - (sorted_l[:, :, 1] if sorted_l.size(-1) > 1 else sorted_l[:, :, 0])
             if self.margin_features:
-                sorted_l, _ = torch.sort(logits, dim=-1, descending=True)
-                m1 = sorted_l[:, :, 0] - (sorted_l[:, :, 1] if sorted_l.size(-1) > 1 else sorted_l[:, :, 0])
                 m_mean = sorted_l[:, :, 0] - logits.mean(dim=-1)
                 p = torch.softmax(logits, dim=-1)
                 denom = math.log(float(logits.size(-1))) if logits.size(-1) > 1 else 1.0
@@ -155,8 +169,19 @@ class System2(nn.Module):
                 ens_logits = logits.mean(dim=1)
             else:
                 tau = getattr(self, "ensemble_temp", 1.0)
-                weights = torch.softmax(scores / tau, dim=-1)
-                ens_logits = torch.einsum('bn,bnc->bc', weights, logits)
+                gamma = getattr(self, "margin_gamma", 0.0)
+                if gamma > 0.0:
+                    weights = torch.softmax(scores / tau + gamma * m1, dim=-1)
+                else:
+                    weights = torch.softmax(scores / tau, dim=-1)
+
+                if getattr(self, "prob_ensemble", False):
+                    head_tau = getattr(self, "head_prob_temp", 1.0)
+                    probs = torch.softmax(logits / head_tau, dim=-1)
+                    ens_probs = torch.einsum('bn,bnc->bc', weights, probs)
+                    ens_logits = torch.log(ens_probs.clamp(min=1e-8))
+                else:
+                    ens_logits = torch.einsum('bn,bnc->bc', weights, logits)
             return best, best_conf, pruned, confidences, logits, embeddings, scores, ens_logits
 
 

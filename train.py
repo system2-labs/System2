@@ -85,6 +85,9 @@ HYPERPARAMS = {
     "lora_dropout": 0.0,
     "head_dropout": 0.0,
     "head_label_smoothing": 0.08,
+    "margin_gamma": 0.0,
+    "prob_ensemble": False,
+    "head_prob_temp": 1.0,
 }
 
 
@@ -260,6 +263,9 @@ def main():
             ensemble_temp=HYPERPARAMS.get("ensemble_temp", 1.0),
             margin_features=HYPERPARAMS.get("margin_features", False),
             head_dropout=HYPERPARAMS.get("head_dropout", 0.0),
+            margin_gamma=HYPERPARAMS.get("margin_gamma", 0.0),
+            prob_ensemble=HYPERPARAMS.get("prob_ensemble", False),
+            head_prob_temp=HYPERPARAMS.get("head_prob_temp", 1.0),
         )
     sys2.to(device)
     sys2.train()
@@ -532,6 +538,9 @@ def main():
         "lora_dropout": HYPERPARAMS.get("lora_dropout", 0.0),
         "head_dropout": HYPERPARAMS.get("head_dropout", 0.0),
         "head_label_smoothing": HYPERPARAMS.get("head_label_smoothing", 0.0),
+        "margin_gamma": HYPERPARAMS.get("margin_gamma", 0.0),
+        "prob_ensemble": HYPERPARAMS.get("prob_ensemble", False),
+        "head_prob_temp": HYPERPARAMS.get("head_prob_temp", 1.0),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
