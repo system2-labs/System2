@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 1: Head Label Smoothing Regularization (Anti-Overfitting & Oracle Ceiling Hunt)
-- Test 1: Head Label Smoothing (head_label_smoothing=0.05, tau=1.5)
-- Test 2: Head Label Smoothing (head_label_smoothing=0.08, tau=1.5)
-
-Battery 2: External Hugging Face STEM Science Expansion (Out-of-Silo Causal Reasoning)
-- Test 3: External Hugging Face STEM Science Expansion (ARC + MMLU Science 6.2k samples, tau=1.5)
+Battery: The 57.25% Calibration Alignment & Democratic Deliberation Battery
+- Test 1: Aligned Head Label Smoothing (head_label_smoothing=0.08, cal_smoothing=0.30, tau=1.5)
+- Test 2: Sweet-Spot Choice Smoothing (head_label_smoothing=0.06, cal_smoothing=0.31, tau=1.5)
+- Test 3: Democratic Deliberation Temperature (head_label_smoothing=0.08, cal_smoothing=0.30, tau=1.8)
 """
 import json
 import os
@@ -104,7 +102,7 @@ def main():
     results = []
 
     # Active SOTA baseline: 0.6625 (Accuracy 57.03%, Brier 0.2452)
-    # Test 1: Head Label Smoothing (head_label_smoothing=0.05, tau=1.5)
+    # Test 1: Aligned Head Label Smoothing (head_label_smoothing=0.08, cal_smoothing=0.30, tau=1.5)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -141,7 +139,7 @@ def main():
         "soft_judge_targets": False,
         "ensemble_heads": True,
         "centered_conf": False,
-        "judge_cal_smoothing": 0.32,
+        "judge_cal_smoothing": 0.30,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
         "ensemble_temp": 1.5,
@@ -150,21 +148,21 @@ def main():
         "span_pooling": False,
         "lora_dropout": 0.0,
         "head_dropout": 0.0,
-        "head_label_smoothing": 0.05,
+        "head_label_smoothing": 0.08,
     }
     r1 = run_experiment(
-        name="Test 1: Head Label Smoothing (eps=0.05, tau=1.5)",
+        name="Test 1: Aligned Head Label Smoothing (eps=0.08, cal_sm=0.30, tau=1.5)",
         hyperparams=t1_params,
-        description="Phase 2 Battery: Head Label Smoothing (head_label_smoothing=0.05, tau=1.5, cal_smoothing=0.32)",
+        description="Phase 2 Battery: Aligned Head Label Smoothing (eps=0.08, cal_smoothing=0.30, tau=1.5)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        print(f">>> Test 1 committed as new SOTA! Retaining head_label_smoothing=0.05.")
+        print(f">>> Test 1 committed as new SOTA! Retaining eps=0.08 and cal_sm=0.30.")
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Head Label Smoothing (head_label_smoothing=0.08, tau=1.5)
+    # Test 2: Sweet-Spot Choice Smoothing (head_label_smoothing=0.06, cal_smoothing=0.31, tau=1.5)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -201,7 +199,7 @@ def main():
         "soft_judge_targets": False,
         "ensemble_heads": True,
         "centered_conf": False,
-        "judge_cal_smoothing": 0.32,
+        "judge_cal_smoothing": 0.31,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
         "ensemble_temp": 1.5,
@@ -210,25 +208,25 @@ def main():
         "span_pooling": False,
         "lora_dropout": 0.0,
         "head_dropout": 0.0,
-        "head_label_smoothing": 0.08,
+        "head_label_smoothing": 0.06,
     }
     r2 = run_experiment(
-        name="Test 2: Head Label Smoothing (eps=0.08, tau=1.5)",
+        name="Test 2: Sweet-Spot Choice Smoothing (eps=0.06, cal_sm=0.31, tau=1.5)",
         hyperparams=t2_params,
-        description="Phase 2 Battery: Head Label Smoothing (head_label_smoothing=0.08, tau=1.5, cal_smoothing=0.32)",
+        description="Phase 2 Battery: Sweet-Spot Choice Smoothing (eps=0.06, cal_smoothing=0.31, tau=1.5)",
     )
     results.append(r2)
 
     if r2["committed"]:
-        print(f">>> Test 2 committed as new SOTA! Retaining head_label_smoothing=0.08.")
+        print(f">>> Test 2 committed as new SOTA! Retaining eps=0.06 and cal_sm=0.31.")
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: External Hugging Face STEM Science Expansion (ARC + MMLU Science 6.2k samples, tau=1.5)
+    # Test 3: Democratic Deliberation Temperature (head_label_smoothing=0.08, cal_smoothing=0.30, tau=1.8)
     t3_params = {
         "use_mote": False,
-        "data_dir": "./data/arc_mmlu_science",
-        "train_size": 7000,
+        "data_dir": "./data/arc",
+        "train_size": 4300,
         "epochs": 5,
         "batch_size": 16,
         "max_len": 128,
@@ -261,21 +259,21 @@ def main():
         "soft_judge_targets": False,
         "ensemble_heads": True,
         "centered_conf": False,
-        "judge_cal_smoothing": 0.32,
+        "judge_cal_smoothing": 0.30,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
-        "ensemble_temp": 1.5,
+        "ensemble_temp": 1.8,
         "lambda_head_balance": 0.0,
         "margin_features": False,
         "span_pooling": False,
         "lora_dropout": 0.0,
         "head_dropout": 0.0,
-        "head_label_smoothing": 0.0,
+        "head_label_smoothing": 0.08,
     }
     r3 = run_experiment(
-        name="Test 3: HF STEM Science Expansion (ARC+MMLU 6.2k, tau=1.5)",
+        name="Test 3: Democratic Deliberation Temp (eps=0.08, cal_sm=0.30, tau=1.8)",
         hyperparams=t3_params,
-        description="Phase 2 Battery: HF STEM Science Expansion (ARC + MMLU Pure Science 6.2k samples, tau=1.5)",
+        description="Phase 2 Battery: Democratic Deliberation Temp (eps=0.08, cal_smoothing=0.30, tau=1.8)",
     )
     results.append(r3)
 
