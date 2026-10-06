@@ -425,6 +425,19 @@ $$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{task}} + 0.5 \mathcal{L}_{\tex
 
 ---
 
+### 5.27 Diagnostic Analysis of Mixture of Deliberation (MoD) & The Independent Deliberation Law:
+- **Hypothesis**: Can blending ensemble cross-entropy into the training objective ($\mathcal{L}_{\text{task}} = (1-\beta)\mathcal{L}_{\text{heads}} + \beta\mathcal{L}_{\text{ens}}$) directly train the Judger's attention weights and force heads to be mutually complementary?
+- **Results Across the Battery**:
+  - **Test 1: MoD ($\beta=0.30, \text{cal\_smoothing}=0.15, \lambda_{\text{cal}}=0.10$)**: Accuracy **52.86%**, Brier **0.2776**, Metric **0.6255** (Reverted: $0.6255 \le 0.6619$).
+  - **Test 2: Balanced MoD ($\beta=0.50, \text{cal\_smoothing}=0.18, \lambda_{\text{cal}}=0.12$)**: Accuracy **56.83%**, Brier **0.2523**, Metric **0.6580** (Reverted: $0.6580 \le 0.6619$).
+- **Deep Scientific Diagnosis**:
+  1. **The Credit Assignment Dispersion Trap (The Free-Rider Problem)**:
+     In Test 1 ($\beta=0.30$), ThoughtHead cross-entropy stalled at `ce = 1.266` (vs `0.710` previously). Because each head only received a fraction $w_h \approx 1/5$ of the ensemble gradient, heads became free-riders on each other's early predictions, failing to learn sharp individual decision boundaries.
+  2. **The Independent Deliberation Law**:
+     ThoughtHeads must be trained under 100% individual accountability ($\frac{1}{N}\sum \text{CE}_h$). Training on ensemble loss induces credit diffusion. Ensembling must remain strictly an arbitration / decision-time operation!
+
+---
+
 ## 6. Comprehensive Phase 2 Scientific Synthesis
 
 Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), we have systematically tested every architectural dimension:
@@ -471,6 +484,8 @@ Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), 
 | **Avenue 2B**      | Soft Logit Ensembling + Mean-Centered Conf Margin | 57.03% | 0.2769 | 0.6467 | Reverted ($\sigma(0)=0.50$ margin floor) |
 | **Test 1 (CalSm)** | Calibration Smoothing ($\alpha=0.20, \lambda_{\text{cal}}=0.25$) | **57.20%** | 0.2511 | 0.6604 | Reverted (Brier dropped 0.0124; metric leaped +0.0067) |
 | **Test 2 (Gentle)**| Gentle Calibration Coupling ($\alpha=0.15, \lambda_{\text{cal}}=0.10$) | 57.11% | **0.2478** | **0.6617** | **Within 0.0002 of SOTA!** (Brier beats baseline) |
+| **Test 1 (MoD30)** | MoD Joint Ensemble ($\beta=0.30, \text{cal\_sm}=0.15$) | 52.86% | 0.2776 | 0.6255 | Reverted (Credit diffusion; ce stalled 1.266) |
+| **Test 2 (MoD50)** | Balanced MoD ($\beta=0.50, \text{cal\_sm}=0.18$) | 56.83% | 0.2523 | 0.6580 | Reverted (Credit diffusion; ce stalled 1.003) |
 
 ### The Core Architectural Principles of System2:
 1. **The In-Domain Causal Purity Law (Validated at 56.83%)**:
@@ -489,6 +504,8 @@ Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), 
    Across 4 separate scaling attempts (Run 2, Run 9, Path 1, Path 2), introducing external datasets (SciQ, OpenBookQA) consistently degraded ARC accuracy ($53.71\% \to 36\%-40\%$). The shared LoRA backbone requires high-purity in-domain causal problems to maintain sharp physical inference.
 7. **Coupled Decision-Level Reinforcement Gradient**:
    The Judger must receive sharp, unattenuated gradients from whether its selected head was objectively correct ($\mathcal{L}_{\text{judge\_cal}}$). Dividing logits by temperature inside training (Run 14) or detaching calibrators (Run 5) crippled Judger selection.
+8. **The Independent Deliberation Law**:
+   Every ThoughtHead must receive full, unattenuated cross-entropy loss ($\lambda_{\text{ens\_ce}} = 0.0$). Blending ensemble cross-entropy into the training objective diffuses credit across heads, inducing free-riding and preventing cross-entropy from descending to 0.710. Ensembling must remain strictly an arbitration / decision-time operation.
 
 
 
