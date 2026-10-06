@@ -60,6 +60,8 @@ def load_system2(checkpoint_path="./models/system2.pt", device=None):
         kwargs["centered_conf"] = True
     if isinstance(state, dict) and state.get("uniform_ensemble", False):
         kwargs["uniform_ensemble"] = True
+    if isinstance(state, dict) and "ensemble_temp" in state:
+        kwargs["ensemble_temp"] = state["ensemble_temp"]
 
     sys2 = System2(**kwargs)
     sys2.load_state_dict(sys2_state, strict=False)

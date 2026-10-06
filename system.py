@@ -52,12 +52,13 @@ class System2(nn.Module):
     2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0):
         super().__init__()
         self.pairwise = pairwise
         self.diff_features = diff_features
         self.num_classes = num_classes
         self.uniform_ensemble = uniform_ensemble
+        self.ensemble_temp = ensemble_temp
         head_classes = 1 if pairwise else num_classes
         self.heads = nn.ModuleList([
             ThoughtHead(num_classes=head_classes, diff_features=diff_features, num_layers=head_layers)
@@ -92,7 +93,8 @@ class System2(nn.Module):
             if self.uniform_ensemble:
                 ens_logits = logits.mean(dim=1)
             else:
-                weights = torch.softmax(scores, dim=-1)
+                tau = getattr(self, "ensemble_temp", 1.0)
+                weights = torch.softmax(scores / tau, dim=-1)
                 ens_logits = torch.einsum('bn,bnc->bc', weights, logits)
             return best, best_conf, pruned, confidences, logits, embeddings, scores, ens_logits
         else:
@@ -112,7 +114,8 @@ class System2(nn.Module):
             if self.uniform_ensemble:
                 ens_logits = logits.mean(dim=1)
             else:
-                weights = torch.softmax(scores, dim=-1)
+                tau = getattr(self, "ensemble_temp", 1.0)
+                weights = torch.softmax(scores / tau, dim=-1)
                 ens_logits = torch.einsum('bn,bnc->bc', weights, logits)
             return best, best_conf, pruned, confidences, logits, embeddings, scores, ens_logits
 
