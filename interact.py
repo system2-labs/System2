@@ -62,6 +62,8 @@ def load_system2(checkpoint_path="./models/system2.pt", device=None):
         kwargs["uniform_ensemble"] = True
     if isinstance(state, dict) and "ensemble_temp" in state:
         kwargs["ensemble_temp"] = state["ensemble_temp"]
+    if (isinstance(state, dict) and state.get("margin_features", False)) or ("judger.margin_norm.weight" in sys2_state):
+        kwargs["margin_features"] = True
 
     sys2 = System2(**kwargs)
     sys2.load_state_dict(sys2_state, strict=False)
