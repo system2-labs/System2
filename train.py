@@ -76,6 +76,8 @@ HYPERPARAMS = {
     "judge_cal_smoothing": 0.32,
     "lambda_ens_ce": 0.0,
     "uniform_ensemble": False,
+    "ensemble_temp": 1.0,
+    "lambda_head_balance": 0.0,
 }
 
 
@@ -217,6 +219,7 @@ def main():
             head_layers=HYPERPARAMS.get("head_layers", 2),
             centered_conf=HYPERPARAMS.get("centered_conf", False),
             uniform_ensemble=HYPERPARAMS.get("uniform_ensemble", False),
+            ensemble_temp=HYPERPARAMS.get("ensemble_temp", 1.0),
         )
     sys2.to(device)
     sys2.train()
@@ -417,6 +420,15 @@ def main():
             else:
                 div_loss = torch.tensor(0.0, device=device)
 
+            # 6. Judger Head Load-Balancing: penalize collapse into a single dominant head across batch
+            lambda_balance = HYPERPARAMS.get("lambda_head_balance", 0.0)
+            if lambda_balance > 0.0:
+                w_judger = torch.softmax(scores, dim=-1)  # (B, N)
+                w_mean = w_judger.mean(dim=0)             # (N,)
+                balance_loss = (w_mean * torch.log(w_mean * N_heads + 1e-8)).sum()
+            else:
+                balance_loss = torch.tensor(0.0, device=device)
+
             # Weighted single loss -> single backward keeps the shared graph valid.
             aux_weight = HYPERPARAMS.get("lambda_aux", 0.10) if (use_mote and mote_mode in ["supervised", "ensemble"]) else 0.0
             lambda_cal = HYPERPARAMS.get("lambda_cal", 0.5)
@@ -429,6 +441,7 @@ def main():
                 + lambda_judge * judge_loss
                 + lambda_judge_cal * judge_cal_loss
                 + lambda_div * div_loss
+                + lambda_balance * balance_loss
                 + aux_weight * aux_loss
             )
 
@@ -466,6 +479,8 @@ def main():
         "judge_cal_smoothing": HYPERPARAMS.get("judge_cal_smoothing", 0.0),
         "lambda_ens_ce": HYPERPARAMS.get("lambda_ens_ce", 0.0),
         "uniform_ensemble": HYPERPARAMS.get("uniform_ensemble", False),
+        "ensemble_temp": HYPERPARAMS.get("ensemble_temp", 1.0),
+        "lambda_head_balance": HYPERPARAMS.get("lambda_head_balance", 0.0),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}

@@ -101,7 +101,7 @@ def main():
 
     # Active SOTA baseline state (57.37% accuracy, 0.2499 Brier, 0.6619 metric)
     active_oracle = True
-    # Test 1: Base-Rate Calibration Smoothing (cal_smoothing=0.25, lambda_judge_cal=0.08)
+    # Test 1: Deliberation Consensus Temperature (ensemble_temp=1.5, cal_smoothing=0.32, lambda_cal=0.06)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -129,7 +129,7 @@ def main():
         "weight_decay": 0.0,
         "lambda_judge": 0.10,
         "lambda_cal": 0.50,
-        "lambda_judge_cal": 0.08,
+        "lambda_judge_cal": 0.06,
         "oracle_judge_target": False,
         "detach_judger": True,
         "shuffle_per_epoch": False,
@@ -138,23 +138,25 @@ def main():
         "soft_judge_targets": False,
         "ensemble_heads": True,
         "centered_conf": False,
-        "judge_cal_smoothing": 0.25,
+        "judge_cal_smoothing": 0.32,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
+        "ensemble_temp": 1.5,
+        "lambda_head_balance": 0.0,
     }
     r1 = run_experiment(
-        name="Test 1: Base-Rate Calibration Smoothing (cal_smoothing=0.25, lambda_cal=0.08)",
+        name="Test 1: Deliberation Consensus Temperature (tau=1.5)",
         hyperparams=t1_params,
-        description="Phase 2: Base-Rate Calibration Smoothing (cal_smoothing=0.25, lambda_cal=0.08, ensemble_heads=True)",
+        description="Phase 2: Deliberation Consensus Temperature (ensemble_temp=1.5, cal_smoothing=0.32, lambda_cal=0.06)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        print(f">>> Test 1 committed as new SOTA! Retaining optimal calibration coupling.")
+        print(f">>> Test 1 committed as new SOTA! Retaining ensemble temperature.")
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Base-Rate Calibration Target (cal_smoothing=0.32, lambda_judge_cal=0.06)
+    # Test 2: Balanced Deliberation (lambda_head_balance=0.05, ensemble_temp=1.5)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -194,11 +196,13 @@ def main():
         "judge_cal_smoothing": 0.32,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
+        "ensemble_temp": 1.5,
+        "lambda_head_balance": 0.05,
     }
     r2 = run_experiment(
-        name="Test 2: Base-Rate Calibration Target (cal_smoothing=0.32, lambda_cal=0.06)",
+        name="Test 2: Balanced Deliberation (lambda_head_balance=0.05, tau=1.5)",
         hyperparams=t2_params,
-        description="Phase 2: Base-Rate Calibration Target (cal_smoothing=0.32, lambda_cal=0.06, ensemble_heads=True)",
+        description="Phase 2: Balanced Deliberation (lambda_head_balance=0.05, ensemble_temp=1.5, cal_smoothing=0.32)",
     )
     results.append(r2)
 
