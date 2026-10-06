@@ -102,12 +102,12 @@ def main():
     # Active SOTA baseline state (57.37% accuracy, 0.2499 Brier, 0.6619 metric)
     active_oracle = True
 
-    # Test 1: Calibrated Detached Oracle Judger (lambda_judge=0.05, lambda_judge_cal=1.0)
+    # Test 1: Extended Convergence Depth (epochs=6, SOTA architecture)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
         "train_size": 4300,
-        "epochs": 5,
+        "epochs": 6,
         "batch_size": 16,
         "max_len": 128,
         "num_heads": 5,
@@ -128,34 +128,34 @@ def main():
         "scheduler_min_lr": 1e-5,
         "warmup_ratio": 0.0,
         "weight_decay": 0.0,
-        "lambda_judge": 0.05,
+        "lambda_judge": 0.10,
         "lambda_cal": 0.50,
-        "lambda_judge_cal": 1.00,
-        "oracle_judge_target": True,
-        "detach_judger": True,
+        "lambda_judge_cal": 0.50,
+        "oracle_judge_target": False,
+        "detach_judger": False,
         "shuffle_per_epoch": False,
         "seed": 0,
-        "label_smoothing": 0.20,
+        "label_smoothing": 0.15,
         "soft_judge_targets": False,
     }
     r1 = run_experiment(
-        name="Test 1: Calibrated Detached Oracle Judger (lambda_judge=0.05, lambda_judge_cal=1.0)",
+        name="Test 1: Extended Convergence Depth (epochs=6, cosine decay to 1e-5)",
         hyperparams=t1_params,
-        description="Phase 2: Calibrated Detached Oracle Judger (epochs=5, cosine decay to 1e-5, lambda_judge=0.05, lambda_judge_cal=1.0, seed=0, shuffle_per_epoch=False)",
+        description="Phase 2: Extended Convergence Depth (epochs=6, cosine decay to 1e-5 on 4.2k in-domain ARC)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        print(f">>> Test 1 committed as new SOTA! Retaining detach_judger=True.")
+        print(f">>> Test 1 committed as new SOTA! Retaining epochs=6.")
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Calibrated Detached Oracle Judger (lambda_judge=0.08, lambda_judge_cal=0.80)
+    # Test 2: Extended Convergence Depth (epochs=7, SOTA architecture)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
         "train_size": 4300,
-        "epochs": 5,
+        "epochs": 7,
         "batch_size": 16,
         "max_len": 128,
         "num_heads": 5,
@@ -176,20 +176,20 @@ def main():
         "scheduler_min_lr": 1e-5,
         "warmup_ratio": 0.0,
         "weight_decay": 0.0,
-        "lambda_judge": 0.08,
+        "lambda_judge": 0.10,
         "lambda_cal": 0.50,
-        "lambda_judge_cal": 0.80,
-        "oracle_judge_target": True,
-        "detach_judger": True,
+        "lambda_judge_cal": 0.50,
+        "oracle_judge_target": False,
+        "detach_judger": False,
         "shuffle_per_epoch": False,
         "seed": 0,
-        "label_smoothing": 0.20,
+        "label_smoothing": 0.15,
         "soft_judge_targets": False,
     }
     r2 = run_experiment(
-        name="Test 2: Calibrated Detached Oracle Judger (lambda_judge=0.08, lambda_judge_cal=0.80)",
+        name="Test 2: Extended Convergence Depth (epochs=7, cosine decay to 1e-5)",
         hyperparams=t2_params,
-        description="Phase 2: Calibrated Detached Oracle Judger (epochs=5, cosine decay to 1e-5, lambda_judge=0.08, lambda_judge_cal=0.80, seed=0, shuffle_per_epoch=False)",
+        description="Phase 2: Extended Convergence Depth (epochs=7, cosine decay to 1e-5 on 4.2k in-domain ARC)",
     )
     results.append(r2)
 
