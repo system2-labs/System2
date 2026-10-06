@@ -70,6 +70,10 @@ def load_system2(checkpoint_path="./models/system2.pt", device=None):
         kwargs["prob_ensemble"] = state["prob_ensemble"]
     if isinstance(state, dict) and "head_prob_temp" in state:
         kwargs["head_prob_temp"] = state["head_prob_temp"]
+    if (isinstance(state, dict) and state.get("judger_residual", False)) or ("judger.prenorm.weight" in sys2_state):
+        kwargs["judger_residual"] = True
+    if isinstance(state, dict) and state.get("head_norm_first", False):
+        kwargs["head_norm_first"] = True
 
     sys2 = System2(**kwargs)
     sys2.load_state_dict(sys2_state, strict=False)

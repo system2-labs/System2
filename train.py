@@ -88,6 +88,8 @@ HYPERPARAMS = {
     "margin_gamma": 0.0,
     "prob_ensemble": False,
     "head_prob_temp": 1.0,
+    "head_norm_first": False,
+    "judger_residual": False,
 }
 
 
@@ -266,6 +268,8 @@ def main():
             margin_gamma=HYPERPARAMS.get("margin_gamma", 0.0),
             prob_ensemble=HYPERPARAMS.get("prob_ensemble", False),
             head_prob_temp=HYPERPARAMS.get("head_prob_temp", 1.0),
+            head_norm_first=HYPERPARAMS.get("head_norm_first", False),
+            judger_residual=HYPERPARAMS.get("judger_residual", False),
         )
     sys2.to(device)
     sys2.train()
@@ -541,6 +545,8 @@ def main():
         "margin_gamma": HYPERPARAMS.get("margin_gamma", 0.0),
         "prob_ensemble": HYPERPARAMS.get("prob_ensemble", False),
         "head_prob_temp": HYPERPARAMS.get("head_prob_temp", 1.0),
+        "head_norm_first": HYPERPARAMS.get("head_norm_first", False),
+        "judger_residual": HYPERPARAMS.get("judger_residual", False),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}

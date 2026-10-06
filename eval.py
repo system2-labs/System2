@@ -157,6 +157,10 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             kwargs["prob_ensemble"] = state["prob_ensemble"]
         if isinstance(state, dict) and "head_prob_temp" in state:
             kwargs["head_prob_temp"] = state["head_prob_temp"]
+        if (isinstance(state, dict) and state.get("judger_residual", False)) or ("judger.prenorm.weight" in sys2_state):
+            kwargs["judger_residual"] = True
+        if isinstance(state, dict) and state.get("head_norm_first", False):
+            kwargs["head_norm_first"] = True
         import inspect
         if "recurrence" in inspect.signature(System2.__init__).parameters:
             kwargs["recurrence"] = has_recurrence
