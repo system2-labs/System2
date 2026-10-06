@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery: The 57.25% Calibration Alignment & Democratic Deliberation Battery
-- Test 1: Aligned Head Label Smoothing (head_label_smoothing=0.08, cal_smoothing=0.30, tau=1.5)
-- Test 2: Sweet-Spot Choice Smoothing (head_label_smoothing=0.06, cal_smoothing=0.31, tau=1.5)
-- Test 3: Democratic Deliberation Temperature (head_label_smoothing=0.08, cal_smoothing=0.30, tau=1.8)
+Battery: Higher Deliberation Temperature & Margin-Gated / Probability Arbitration Battery
+- Test 1: Higher Democratic Deliberation Temp (eps=0.08, cal_sm=0.30, tau=2.2)
+- Test 2: Margin-Gated Deliberation (eps=0.08, cal_sm=0.30, tau=1.8, margin_gamma=0.05)
+- Test 3: Probability-Simplex Ensembling (eps=0.08, cal_sm=0.30, tau=1.8, prob_ensemble=True)
 """
 import json
 import os
@@ -101,8 +101,8 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active SOTA baseline: 0.6625 (Accuracy 57.03%, Brier 0.2452)
-    # Test 1: Aligned Head Label Smoothing (head_label_smoothing=0.08, cal_smoothing=0.30, tau=1.5)
+    # Active SOTA baseline: 0.6645 (Accuracy 57.37%, Brier 0.2447)
+    # Test 1: Higher Democratic Deliberation Temp (tau=2.2)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -142,27 +142,30 @@ def main():
         "judge_cal_smoothing": 0.30,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
-        "ensemble_temp": 1.5,
+        "ensemble_temp": 2.2,
         "lambda_head_balance": 0.0,
         "margin_features": False,
         "span_pooling": False,
         "lora_dropout": 0.0,
         "head_dropout": 0.0,
         "head_label_smoothing": 0.08,
+        "margin_gamma": 0.0,
+        "prob_ensemble": False,
+        "head_prob_temp": 1.0,
     }
     r1 = run_experiment(
-        name="Test 1: Aligned Head Label Smoothing (eps=0.08, cal_sm=0.30, tau=1.5)",
+        name="Test 1: Higher Deliberation Temp (eps=0.08, cal_sm=0.30, tau=2.2)",
         hyperparams=t1_params,
-        description="Phase 2 Battery: Aligned Head Label Smoothing (eps=0.08, cal_smoothing=0.30, tau=1.5)",
+        description="Phase 2 Battery: Higher Deliberation Temp (eps=0.08, cal_smoothing=0.30, tau=2.2)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        print(f">>> Test 1 committed as new SOTA! Retaining eps=0.08 and cal_sm=0.30.")
+        print(f">>> Test 1 committed as new SOTA! Retaining tau=2.2.")
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Sweet-Spot Choice Smoothing (head_label_smoothing=0.06, cal_smoothing=0.31, tau=1.5)
+    # Test 2: Margin-Gated Deliberation (margin_gamma=0.05, tau=1.8)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -199,30 +202,33 @@ def main():
         "soft_judge_targets": False,
         "ensemble_heads": True,
         "centered_conf": False,
-        "judge_cal_smoothing": 0.31,
+        "judge_cal_smoothing": 0.30,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
-        "ensemble_temp": 1.5,
+        "ensemble_temp": 1.8,
         "lambda_head_balance": 0.0,
         "margin_features": False,
         "span_pooling": False,
         "lora_dropout": 0.0,
         "head_dropout": 0.0,
-        "head_label_smoothing": 0.06,
+        "head_label_smoothing": 0.08,
+        "margin_gamma": 0.05,
+        "prob_ensemble": False,
+        "head_prob_temp": 1.0,
     }
     r2 = run_experiment(
-        name="Test 2: Sweet-Spot Choice Smoothing (eps=0.06, cal_sm=0.31, tau=1.5)",
+        name="Test 2: Margin-Gated Deliberation (gamma=0.05, tau=1.8)",
         hyperparams=t2_params,
-        description="Phase 2 Battery: Sweet-Spot Choice Smoothing (eps=0.06, cal_smoothing=0.31, tau=1.5)",
+        description="Phase 2 Battery: Margin-Gated Deliberation (eps=0.08, cal_smoothing=0.30, gamma=0.05, tau=1.8)",
     )
     results.append(r2)
 
     if r2["committed"]:
-        print(f">>> Test 2 committed as new SOTA! Retaining eps=0.06 and cal_sm=0.31.")
+        print(f">>> Test 2 committed as new SOTA! Retaining margin_gamma=0.05.")
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Democratic Deliberation Temperature (head_label_smoothing=0.08, cal_smoothing=0.30, tau=1.8)
+    # Test 3: Probability-Simplex Ensembling (prob_ensemble=True, tau=1.8)
     t3_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -269,11 +275,14 @@ def main():
         "lora_dropout": 0.0,
         "head_dropout": 0.0,
         "head_label_smoothing": 0.08,
+        "margin_gamma": 0.0,
+        "prob_ensemble": True,
+        "head_prob_temp": 1.0,
     }
     r3 = run_experiment(
-        name="Test 3: Democratic Deliberation Temp (eps=0.08, cal_sm=0.30, tau=1.8)",
+        name="Test 3: Probability-Simplex Ensembling (prob_ens=True, tau=1.8)",
         hyperparams=t3_params,
-        description="Phase 2 Battery: Democratic Deliberation Temp (eps=0.08, cal_smoothing=0.30, tau=1.8)",
+        description="Phase 2 Battery: Probability-Simplex Ensembling (eps=0.08, cal_smoothing=0.30, prob_ens=True, tau=1.8)",
     )
     results.append(r3)
 
