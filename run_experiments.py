@@ -101,8 +101,10 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active SOTA baseline: 0.6645 (Accuracy 57.37%, Brier 0.2447)
-    # Test 1: Pure Democratic Multi-Focal Deliberation (asym_spans=True, veto=0.0, margin=0.05, tau=1.80)
+    # Active SOTA baseline: 0.6654 (Accuracy 57.51%, Brier 0.2443)
+    # Battery 4: Semantic Span Optimization & Head-Weighted Arbitration Battery
+
+    # Test 1: Balanced Multi-Focal Deliberation with Causal Salience Head (asym_span_mode=causal_attn, veto=0.0, tau=1.80)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -162,11 +164,12 @@ def main():
         "permute_choices": False,
         "asym_roles": False,
         "asym_spans": True,
+        "asym_span_mode": "causal_attn",
     }
     r1 = run_experiment(
-        name="Test 1: Pure Democratic Multi-Focal Deliberation (asym_spans=True, veto=0.0, margin=0.05, tau=1.80)",
+        name="Test 1: Balanced Multi-Focal Deliberation with Causal Salience Head (asym_span_mode=causal_attn, veto=0.0, tau=1.80)",
         hyperparams=t1_params,
-        description="Phase 2 Battery: Pure Democratic Multi-Focal Deliberation (asym_spans=True, veto=0.0, margin=0.05, tau=1.80)",
+        description="Battery 4: Balanced Multi-Focal Deliberation with Causal Salience Head (asym_span_mode=causal_attn, veto=0.0, tau=1.80)",
     )
     results.append(r1)
 
@@ -175,7 +178,7 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Multi-Focal Span Deliberation without Margin Strain (asym_spans=True, margin=0.0, veto=0.0, tau=1.80)
+    # Test 2: Monotonic Choice-Forward Multi-Focal Deliberation (asym_span_mode=choice_forward, veto=0.0, tau=1.80)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -229,17 +232,18 @@ def main():
         "judger_residual": False,
         "head_mlp_dim": 256,
         "head_norm_diff": False,
-        "lambda_cand_margin": 0.0,
+        "lambda_cand_margin": 0.05,
         "cand_margin": 1.0,
         "veto_blend": 0.0,
         "permute_choices": False,
         "asym_roles": False,
         "asym_spans": True,
+        "asym_span_mode": "choice_forward",
     }
     r2 = run_experiment(
-        name="Test 2: Multi-Focal Span Deliberation without Margin Strain (asym_spans=True, margin=0.0, veto=0.0, tau=1.80)",
+        name="Test 2: Monotonic Choice-Forward Multi-Focal Deliberation (asym_span_mode=choice_forward, veto=0.0, tau=1.80)",
         hyperparams=t2_params,
-        description="Phase 2 Battery: Multi-Focal Span Deliberation without Margin Strain (asym_spans=True, margin=0.0, veto=0.0, tau=1.80)",
+        description="Battery 4: Monotonic Choice-Forward Multi-Focal Deliberation (asym_span_mode=choice_forward, veto=0.0, tau=1.80)",
     )
     results.append(r2)
 
@@ -248,7 +252,7 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Gentle Margin Multi-Focal Arbitration (asym_spans=True, margin=0.03, veto=0.05, tau=1.80)
+    # Test 3: Causal Salience Deliberation with Gentle Peak Arbitration (asym_span_mode=causal_attn, veto=0.05, tau=2.0)
     t3_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -288,7 +292,7 @@ def main():
         "judge_cal_smoothing": 0.30,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
-        "ensemble_temp": 1.80,
+        "ensemble_temp": 2.0,
         "lambda_head_balance": 0.0,
         "margin_features": False,
         "span_pooling": False,
@@ -302,17 +306,18 @@ def main():
         "judger_residual": False,
         "head_mlp_dim": 256,
         "head_norm_diff": False,
-        "lambda_cand_margin": 0.03,
+        "lambda_cand_margin": 0.05,
         "cand_margin": 1.0,
         "veto_blend": 0.05,
         "permute_choices": False,
         "asym_roles": False,
         "asym_spans": True,
+        "asym_span_mode": "causal_attn",
     }
     r3 = run_experiment(
-        name="Test 3: Gentle Margin Multi-Focal Arbitration (asym_spans=True, margin=0.03, veto=0.05, tau=1.80)",
+        name="Test 3: Causal Salience Deliberation with Gentle Peak Arbitration (asym_span_mode=causal_attn, veto=0.05, tau=2.0)",
         hyperparams=t3_params,
-        description="Phase 2 Battery: Gentle Margin Multi-Focal Arbitration (asym_spans=True, margin=0.03, veto=0.05, tau=1.80)",
+        description="Battery 4: Causal Salience Deliberation with Gentle Peak Arbitration (asym_span_mode=causal_attn, veto=0.05, tau=2.0)",
     )
     results.append(r3)
 
