@@ -98,7 +98,7 @@ HYPERPARAMS = {
     "permute_choices": False,
     "asym_roles": False,
     "asym_spans": True,
-    "asym_span_mode": "default",
+    "asym_span_mode": "choice_forward",
 }
 
 
