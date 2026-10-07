@@ -153,7 +153,7 @@ def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=Non
     return pooled.view(b, 4, -1)
 
 
-def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir="./data/arc", ensemble=False, head_weights=None):
+def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir="./data/arc", ensemble=False, head_weights=None, ensemble_temp=None):
     device = device or ("mps" if torch.backends.mps.is_available() else "cpu")
     model.to(device)
     ds = load_from_disk(data_dir)
@@ -209,7 +209,9 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             kwargs["centered_conf"] = True
         if isinstance(state, dict) and state.get("uniform_ensemble", False):
             kwargs["uniform_ensemble"] = True
-        if isinstance(state, dict) and "ensemble_temp" in state:
+        if ensemble_temp is not None:
+            kwargs["ensemble_temp"] = ensemble_temp
+        elif isinstance(state, dict) and "ensemble_temp" in state:
             kwargs["ensemble_temp"] = state["ensemble_temp"]
         if (isinstance(state, dict) and state.get("margin_features", False)) or ("judger.margin_norm.weight" in sys2_state):
             kwargs["margin_features"] = True
@@ -314,10 +316,11 @@ if __name__ == "__main__":
         ap.add_argument("--data", default="./data/arc")
         ap.add_argument("--ensemble", action="store_true", help="Force ensemble evaluation over all heads")
         ap.add_argument("--head-weights", default=None, help="Comma-separated head weights e.g. 1.0,1.0,1.2,1.0,0.4")
+        ap.add_argument("--ensemble-temp", type=float, default=None, help="Deliberation arbitration temperature tau")
         args = ap.parse_args()
         ckpt = args.ckpt
         hw = [float(x) for x in args.head_weights.split(",")] if args.head_weights else None
-        m = evaluate(ckpt, max_samples=args.max_samples, data_dir=args.data, ensemble=args.ensemble, head_weights=hw)
+        m = evaluate(ckpt, max_samples=args.max_samples, data_dir=args.data, ensemble=args.ensemble, head_weights=hw, ensemble_temp=args.ensemble_temp)
         metric = 0.5 * m["accuracy"] + 0.5 * (1 - m["brier"])
         print(json.dumps({"metric": round(metric, 4), "accuracy": round(m["accuracy"], 4), "brier": round(m["brier"], 4)}))
     except Exception as e:
