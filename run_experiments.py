@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery: ThoughtHead Scoring Capacity & Contrastive Normalization Battery
-- Test 1: Centroid Contrast LayerNorm (head_norm_diff=True, tau=1.8)
-- Test 2: Expanded ThoughtHead MLP Capacity (head_mlp_dim=512, tau=1.8)
-- Test 3: Contrastive Candidate Margin Regularization (lambda_cand_margin=0.05, cand_margin=1.0, tau=1.8)
+Battery: Calibrated Candidate Margin & Peak Veto Arbitration Battery
+- Test 1: Calibrated Candidate Margin (lambda_cand_margin=0.05, cal_smoothing=0.32, tau=1.8)
+- Test 2: Decisive Peak Veto Mixture (lambda_cand_margin=0.05, veto_blend=0.15, tau=1.8)
+- Test 3: Gentler Margin + Decisive Peak Veto (lambda_cand_margin=0.03, veto_blend=0.20, tau=1.8)
 """
 import json
 import os
@@ -102,7 +102,7 @@ def main():
     results = []
 
     # Active SOTA baseline: 0.6645 (Accuracy 57.37%, Brier 0.2447)
-    # Test 1: Centroid Contrast LayerNorm (head_norm_diff=True, tau=1.8)
+    # Test 1: Calibrated Candidate Margin (lambda_cand_margin=0.05, cal_smoothing=0.32, tau=1.8)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -139,7 +139,7 @@ def main():
         "soft_judge_targets": False,
         "ensemble_heads": True,
         "centered_conf": False,
-        "judge_cal_smoothing": 0.30,
+        "judge_cal_smoothing": 0.32,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
         "ensemble_temp": 1.8,
@@ -155,22 +155,24 @@ def main():
         "head_norm_first": False,
         "judger_residual": False,
         "head_mlp_dim": 256,
-        "head_norm_diff": True,
-        "lambda_cand_margin": 0.0,
+        "head_norm_diff": False,
+        "lambda_cand_margin": 0.05,
+        "cand_margin": 1.0,
+        "veto_blend": 0.0,
     }
     r1 = run_experiment(
-        name="Test 1: Centroid Contrast LayerNorm (head_norm_diff=True, tau=1.8)",
+        name="Test 1: Calibrated Candidate Margin (cand_margin=0.05, cal=0.32, tau=1.8)",
         hyperparams=t1_params,
-        description="Phase 2 Battery: Centroid Contrast LayerNorm (head_norm_diff=True, tau=1.8)",
+        description="Phase 2 Battery: Calibrated Candidate Margin (cand_margin=0.05, cal=0.32, tau=1.8)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        print(f">>> Test 1 committed as new SOTA! Retaining head_norm_diff=True.")
+        print(f">>> Test 1 committed as new SOTA! Retaining lambda_cand_margin=0.05.")
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Expanded ThoughtHead MLP Capacity (head_mlp_dim=512, tau=1.8)
+    # Test 2: Decisive Peak Veto Mixture (lambda_cand_margin=0.05, veto_blend=0.15, tau=1.8)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -207,7 +209,7 @@ def main():
         "soft_judge_targets": False,
         "ensemble_heads": True,
         "centered_conf": False,
-        "judge_cal_smoothing": 0.30,
+        "judge_cal_smoothing": 0.31,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
         "ensemble_temp": 1.8,
@@ -222,23 +224,25 @@ def main():
         "head_prob_temp": 1.0,
         "head_norm_first": False,
         "judger_residual": False,
-        "head_mlp_dim": 512,
+        "head_mlp_dim": 256,
         "head_norm_diff": False,
-        "lambda_cand_margin": 0.0,
+        "lambda_cand_margin": 0.05,
+        "cand_margin": 1.0,
+        "veto_blend": 0.15,
     }
     r2 = run_experiment(
-        name="Test 2: Expanded ThoughtHead MLP Capacity (head_mlp_dim=512, tau=1.8)",
+        name="Test 2: Decisive Peak Veto Mixture (cand_margin=0.05, veto=0.15, tau=1.8)",
         hyperparams=t2_params,
-        description="Phase 2 Battery: Expanded ThoughtHead MLP Capacity (head_mlp_dim=512, tau=1.8)",
+        description="Phase 2 Battery: Decisive Peak Veto Mixture (cand_margin=0.05, veto=0.15, tau=1.8)",
     )
     results.append(r2)
 
     if r2["committed"]:
-        print(f">>> Test 2 committed as new SOTA! Retaining head_mlp_dim=512.")
+        print(f">>> Test 2 committed as new SOTA! Retaining veto_blend=0.15.")
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Contrastive Candidate Margin Regularization (lambda_cand_margin=0.05, cand_margin=1.0, tau=1.8)
+    # Test 3: Gentler Margin + Decisive Peak Veto (lambda_cand_margin=0.03, veto_blend=0.20, tau=1.8)
     t3_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -292,13 +296,14 @@ def main():
         "judger_residual": False,
         "head_mlp_dim": 256,
         "head_norm_diff": False,
-        "lambda_cand_margin": 0.05,
+        "lambda_cand_margin": 0.03,
         "cand_margin": 1.0,
+        "veto_blend": 0.20,
     }
     r3 = run_experiment(
-        name="Test 3: Contrastive Candidate Margin (lambda_cand_margin=0.05, tau=1.8)",
+        name="Test 3: Gentler Margin + Decisive Peak Veto (margin=0.03, veto=0.20, tau=1.8)",
         hyperparams=t3_params,
-        description="Phase 2 Battery: Contrastive Candidate Margin (lambda_cand_margin=0.05, tau=1.8)",
+        description="Phase 2 Battery: Gentler Margin + Decisive Peak Veto (margin=0.03, veto=0.20, tau=1.8)",
     )
     results.append(r3)
 
