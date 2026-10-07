@@ -98,6 +98,7 @@ HYPERPARAMS = {
     "permute_choices": False,
     "asym_roles": False,
     "asym_spans": True,
+    "asym_span_mode": "default",
 }
 
 
@@ -114,7 +115,7 @@ def mean_pool_texts(texts, max_len, device, with_grad=False):
             return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
 
 
-def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False, sources=None, task_prefixes=False, span_pooling=False, span_weight=0.5, span_mode="mean", asym_spans=False):
+def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False, sources=None, task_prefixes=False, span_pooling=False, span_weight=0.5, span_mode="mean", asym_spans=False, asym_span_mode="default"):
     b = len(questions)
     if task_prefixes:
         flat_texts = [
@@ -161,12 +162,32 @@ def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False
         mask = inputs["attention_mask"].unsqueeze(-1)
         holistic = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
 
-        # 5 asymmetric ThoughtHead perspectives:
-        v0 = holistic
-        v1 = 0.75 * q_vec + 0.25 * a_vec
-        v2 = 0.25 * q_vec + 0.75 * a_vec
-        v3 = 0.50 * q_vec + 0.50 * a_vec
-        v4 = holistic
+        if asym_span_mode == "causal_attn":
+            H_norm = F.normalize(last_hidden, p=2, dim=-1)
+            q_norm = F.normalize(q_vec, p=2, dim=-1)
+            cos_sim = (H_norm * q_norm.unsqueeze(1)).sum(dim=-1)
+            scores = (cos_sim / 0.1).masked_fill(~a_mask, -1e9)
+            attn_weights = torch.softmax(scores, dim=-1).unsqueeze(-1)
+            a_attn = (last_hidden * attn_weights).sum(dim=1)
+
+            v0 = holistic
+            v1 = 0.35 * q_vec + 0.65 * a_vec
+            v2 = 0.15 * q_vec + 0.85 * a_vec
+            v3 = 0.50 * q_vec + 0.50 * a_vec
+            v4 = 0.35 * q_vec + 0.65 * a_attn
+        elif asym_span_mode == "choice_forward":
+            v0 = holistic
+            v1 = 0.40 * q_vec + 0.60 * a_vec
+            v2 = 0.20 * q_vec + 0.80 * a_vec
+            v3 = 0.50 * q_vec + 0.50 * a_vec
+            v4 = 0.05 * q_vec + 0.95 * a_vec
+        else:
+            # 5 asymmetric ThoughtHead perspectives (default):
+            v0 = holistic
+            v1 = 0.75 * q_vec + 0.25 * a_vec
+            v2 = 0.25 * q_vec + 0.75 * a_vec
+            v3 = 0.50 * q_vec + 0.50 * a_vec
+            v4 = holistic
 
         multi_head_vecs = torch.stack([v0, v1, v2, v3, v4], dim=1)  # (b*4, 5, 1024)
         multi_head_vecs = multi_head_vecs.view(b, 4, 5, -1).permute(0, 2, 1, 3)  # (b, 5, 4, 1024)
@@ -420,6 +441,7 @@ def main():
                     span_weight=HYPERPARAMS.get("span_weight", 0.5),
                     span_mode=HYPERPARAMS.get("span_mode", "mean"),
                     asym_spans=HYPERPARAMS.get("asym_spans", False),
+                    asym_span_mode=HYPERPARAMS.get("asym_span_mode", "default"),
                 )
                 lab = torch.tensor(lab_list, device=device)  # (b,)
             else:
@@ -642,6 +664,7 @@ def main():
         "head_norm_diff": HYPERPARAMS.get("head_norm_diff", False),
         "veto_blend": HYPERPARAMS.get("veto_blend", 0.0),
         "asym_spans": HYPERPARAMS.get("asym_spans", False),
+        "asym_span_mode": HYPERPARAMS.get("asym_span_mode", "default"),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}

@@ -36,7 +36,7 @@ def mean_pool_texts(texts, device, max_len=192):
         return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
 
 
-def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=None, task_prefixes=False, span_pooling=False, span_weight=0.5, span_mode="mean", asym_spans=False):
+def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=None, task_prefixes=False, span_pooling=False, span_weight=0.5, span_mode="mean", asym_spans=False, asym_span_mode="default"):
     """Pairwise encoding: (b questions, 4 choices) -> (b, 4, 1024) or (b, 5, 4, 1024)."""
     b = len(questions)
     if task_prefixes:
@@ -80,12 +80,32 @@ def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=Non
             mask = inputs["attention_mask"].unsqueeze(-1)
             holistic = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
 
-            # 5 asymmetric ThoughtHead perspectives:
-            v0 = holistic
-            v1 = 0.75 * q_vec + 0.25 * a_vec
-            v2 = 0.25 * q_vec + 0.75 * a_vec
-            v3 = 0.50 * q_vec + 0.50 * a_vec
-            v4 = holistic
+            if asym_span_mode == "causal_attn":
+                H_norm = F.normalize(last_hidden, p=2, dim=-1)
+                q_norm = F.normalize(q_vec, p=2, dim=-1)
+                cos_sim = (H_norm * q_norm.unsqueeze(1)).sum(dim=-1)
+                scores = (cos_sim / 0.1).masked_fill(~a_mask, -1e9)
+                attn_weights = torch.softmax(scores, dim=-1).unsqueeze(-1)
+                a_attn = (last_hidden * attn_weights).sum(dim=1)
+
+                v0 = holistic
+                v1 = 0.35 * q_vec + 0.65 * a_vec
+                v2 = 0.15 * q_vec + 0.85 * a_vec
+                v3 = 0.50 * q_vec + 0.50 * a_vec
+                v4 = 0.35 * q_vec + 0.65 * a_attn
+            elif asym_span_mode == "choice_forward":
+                v0 = holistic
+                v1 = 0.40 * q_vec + 0.60 * a_vec
+                v2 = 0.20 * q_vec + 0.80 * a_vec
+                v3 = 0.50 * q_vec + 0.50 * a_vec
+                v4 = 0.05 * q_vec + 0.95 * a_vec
+            else:
+                # 5 asymmetric ThoughtHead perspectives (default):
+                v0 = holistic
+                v1 = 0.75 * q_vec + 0.25 * a_vec
+                v2 = 0.25 * q_vec + 0.75 * a_vec
+                v3 = 0.50 * q_vec + 0.50 * a_vec
+                v4 = holistic
 
             multi_head_vecs = torch.stack([v0, v1, v2, v3, v4], dim=1)  # (b*4, 5, 1024)
             multi_head_vecs = multi_head_vecs.view(b, 4, 5, -1).permute(0, 2, 1, 3)  # (b, 5, 4, 1024)
@@ -225,6 +245,7 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
     span_weight = state.get("span_weight", 0.5) if isinstance(state, dict) else 0.5
     span_mode = state.get("span_mode", "mean") if isinstance(state, dict) else "mean"
     asym_spans = state.get("asym_spans", False) if isinstance(state, dict) else False
+    asym_span_mode = state.get("asym_span_mode", "default") if isinstance(state, dict) else "default"
     sources = cols.get("source") if hasattr(cols, "get") and "source" in cols else None
 
     correct = 0
@@ -239,7 +260,7 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
                     device, max_len=eval_max_len, sources=src_slice,
                     task_prefixes=task_prefixes, span_pooling=span_pooling,
                     span_weight=span_weight, span_mode=span_mode,
-                    asym_spans=asym_spans,
+                    asym_spans=asym_spans, asym_span_mode=asym_span_mode,
                 )
             else:
                 vecs = mean_pool_texts(cols["text"][i : i + b], device)
