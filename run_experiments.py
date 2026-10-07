@@ -168,6 +168,7 @@ def main():
         "asym_span_mode": "choice_forward",
         "head_weights": [1.0, 1.0, 1.2, 1.0, 0.4],
         "train_head_weights": None,
+        "train_ensemble_temp": 1.80,
         "head_margin_weights": None,
         "head_center_logits": False,
     }
