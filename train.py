@@ -86,6 +86,7 @@ HYPERPARAMS = {
     "head_dropout": 0.0,
     "head_label_smoothing": 0.08,
     "margin_gamma": 0.0,
+    "prob_margin_gamma": 0.0,
     "prob_ensemble": False,
     "head_prob_temp": 1.0,
     "head_norm_first": False,
@@ -183,6 +184,12 @@ def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False
             v2 = 0.20 * q_vec + 0.80 * a_vec
             v3 = 0.50 * q_vec + 0.50 * a_vec
             v4 = 0.05 * q_vec + 0.95 * a_vec
+        elif asym_span_mode == "constraint_spectrum":
+            v0 = holistic
+            v1 = 0.70 * q_vec + 0.30 * a_vec
+            v2 = 0.20 * q_vec + 0.80 * a_vec
+            v3 = 0.50 * q_vec + 0.50 * a_vec
+            v4 = 0.35 * q_vec + 0.65 * a_vec
         else:
             # 5 asymmetric ThoughtHead perspectives (default):
             v0 = holistic
@@ -341,6 +348,7 @@ def main():
             head_norm_diff=HYPERPARAMS.get("head_norm_diff", False),
             veto_blend=HYPERPARAMS.get("veto_blend", 0.0),
             head_weights=HYPERPARAMS.get("train_head_weights", None),
+            prob_margin_gamma=HYPERPARAMS.get("prob_margin_gamma", 0.0),
         )
     sys2.to(device)
     sys2.train()
@@ -666,9 +674,10 @@ def main():
         "head_mlp_dim": 256,
         "head_norm_diff": False,
         "veto_blend": 0.0,
-        "asym_spans": True,
-        "asym_span_mode": "choice_forward",
-        "head_weights": [1.0, 1.0, 1.2, 1.0, 0.4],
+        "asym_spans": HYPERPARAMS.get("asym_spans", True),
+        "asym_span_mode": HYPERPARAMS.get("asym_span_mode", "choice_forward"),
+        "head_weights": HYPERPARAMS.get("head_weights", [1.0, 1.0, 1.2, 1.0, 0.4]),
+        "prob_margin_gamma": HYPERPARAMS.get("prob_margin_gamma", 0.0),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
