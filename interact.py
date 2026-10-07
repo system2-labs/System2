@@ -74,6 +74,17 @@ def load_system2(checkpoint_path="./models/system2.pt", device=None):
         kwargs["judger_residual"] = True
     if isinstance(state, dict) and state.get("head_norm_first", False):
         kwargs["head_norm_first"] = True
+    if isinstance(state, dict) and "head_mlp_dim" in state:
+        kwargs["head_mlp_dim"] = state["head_mlp_dim"]
+    elif "heads.0.hypothesis_head.0.weight" in sys2_state and sys2_state["heads.0.hypothesis_head.0.weight"].dim() == 2:
+        kwargs["head_mlp_dim"] = sys2_state["heads.0.hypothesis_head.0.weight"].shape[0]
+
+    if isinstance(state, dict) and state.get("head_norm_diff", False):
+        kwargs["head_norm_diff"] = True
+    elif "heads.0.hypothesis_head.0.weight" in sys2_state and sys2_state["heads.0.hypothesis_head.0.weight"].dim() == 1:
+        kwargs["head_norm_diff"] = True
+        if "heads.0.hypothesis_head.1.weight" in sys2_state:
+            kwargs["head_mlp_dim"] = sys2_state["heads.0.hypothesis_head.1.weight"].shape[0]
 
     sys2 = System2(**kwargs)
     sys2.load_state_dict(sys2_state, strict=False)

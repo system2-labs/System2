@@ -11,9 +11,11 @@ class ThoughtHead(nn.Module):
     Params: ~40M  (4-bit: ~160MB)
     """
 
-    def __init__(self, hidden_size=1024, head_dim=512, vocab_size=30522, num_classes=None, diff_features=False, num_layers=2, dropout=0.0, norm_first=False):
+    def __init__(self, hidden_size=1024, head_dim=512, vocab_size=30522, num_classes=None, diff_features=False, num_layers=2, dropout=0.0, norm_first=False, mlp_dim=256, norm_diff=False):
         super().__init__()
         self.diff_features = diff_features
+        self.mlp_dim = mlp_dim
+        self.norm_diff = norm_diff
 
         # 1024 -> 512 projection
         self.input_proj = nn.Linear(hidden_size, head_dim)
@@ -40,11 +42,15 @@ class ThoughtHead(nn.Module):
         # Hypothesis machine:
         if diff_features:
             # Contrastive scoring head: takes [x, x - mean(x)] (512 + 512 = 1024)
-            self.hypothesis_head = nn.Sequential(
-                nn.Linear(head_dim * 2, 256),
+            layers = []
+            if norm_diff:
+                layers.append(nn.LayerNorm(head_dim * 2))
+            layers.extend([
+                nn.Linear(head_dim * 2, mlp_dim),
                 nn.GELU(),
-                nn.Linear(256, 1),
-            )
+                nn.Linear(mlp_dim, 1),
+            ])
+            self.hypothesis_head = nn.Sequential(*layers)
         else:
             self.hypothesis_head = nn.Linear(head_dim, num_classes or vocab_size)
 

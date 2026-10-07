@@ -161,6 +161,17 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             kwargs["judger_residual"] = True
         if isinstance(state, dict) and state.get("head_norm_first", False):
             kwargs["head_norm_first"] = True
+        if isinstance(state, dict) and "head_mlp_dim" in state:
+            kwargs["head_mlp_dim"] = state["head_mlp_dim"]
+        elif "heads.0.hypothesis_head.0.weight" in sys2_state and sys2_state["heads.0.hypothesis_head.0.weight"].dim() == 2:
+            kwargs["head_mlp_dim"] = sys2_state["heads.0.hypothesis_head.0.weight"].shape[0]
+
+        if isinstance(state, dict) and state.get("head_norm_diff", False):
+            kwargs["head_norm_diff"] = True
+        elif "heads.0.hypothesis_head.0.weight" in sys2_state and sys2_state["heads.0.hypothesis_head.0.weight"].dim() == 1:
+            kwargs["head_norm_diff"] = True
+            if "heads.0.hypothesis_head.1.weight" in sys2_state:
+                kwargs["head_mlp_dim"] = sys2_state["heads.0.hypothesis_head.1.weight"].shape[0]
         import inspect
         if "recurrence" in inspect.signature(System2.__init__).parameters:
             kwargs["recurrence"] = has_recurrence
