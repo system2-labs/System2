@@ -813,10 +813,31 @@ Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), 
 | **Opt 1 (T3 Veto10M4)**| Balanced Margin + Peak Veto ($\lambda=0.04, \text{veto}=0.10, \tau=1.85$) | 56.49% | 0.2460 | 0.6594 | Reverted ($\lambda=0.04$ sub-critical) |
 | **Opt 2 (T1 AsymRoles)**| Asymmetric Functional Roles (`asym_roles=True`) | 55.55% | 0.2501 | 0.6527 | Reverted (Logit scale drift) |
 | **Opt 2 (T2 AsymSpans)**| Multi-Focal Span Asymmetry (`asym_spans=True`) | **`57.51%`** | 0.2498 | 0.6626 | Reverted (Tied Record Accuracy) |
-| **Opt 2 (T3 JointAsym)**| Joint Input & Functional Asymmetry (`asym_roles` + `spans`) | 56.32% | 0.2460 | 0.6586 | Reverted ($0.6586 \le 0.6645$) |
 | **Opt 3 (T1 DemocSpans)**| **Pure Democratic Multi-Focal Deliberation (`asym_spans=True`, veto=0.0)** | **`57.51%`** | **`0.2443`** | **`0.6654`** | **ALL-TIME NEW SOTA 🏆 (Commit `4ec647f`)** |
 | **Opt 3 (T2 NoMarg)**  | Multi-Focal Spans without Margin (`margin=0.0`, `asym_spans=True`) | 57.11% | 0.2457 | 0.6627 | Reverted ($0.6627 \le 0.6654$) |
 | **Opt 3 (T3 MildMarg)** | Gentle Margin Multi-Focal (`margin=0.03`, `veto=0.05`, `asym_spans=True`) | 57.08% | 0.2493 | 0.6607 | Reverted ($0.6607 \le 0.6654$) |
+| **Bat 4 (T1 CausalAttn)**| Balanced Multi-Focal with Causal Salience Head (`causal_attn`, $\tau=1.80$) | 55.35% | 0.2498 | 0.6518 | Reverted (Homogenized choices) |
+| **Bat 4 (T2 ChoiceFwd)** | **Monotonic Choice-Forward Multi-Focal Deliberation (`choice_forward`, $\tau=1.80$)** | **`58.30%`** | **`0.2435`** | **`0.6697`** | **ALL-TIME NEW SOTA 🏆 (Commit `4f13095`)** |
+| **Bat 4 (T3 CausalVeto)**| Causal Salience Deliberation + Gentle Peak Veto (`causal_attn`, `veto=0.05`, $\tau=2.0$) | 55.38% | 0.2474 | 0.6532 | Reverted ($0.6532 \le 0.6697$) |
+
+### 5.46 Diagnostic Analysis of Battery 4: Semantic Span Optimization & Monotonic Choice-Forward Deliberation (Tests 1, 2, and 3):
+- **Hypothesis**: Can re-engineering the 5 asymmetric ThoughtHead viewpoints to eliminate candidate choice starvation across parallel heads while maintaining diverse physical resolution angles break the ~57.5% plateau and approach the Oracle Head Ceiling?
+- **Results Across the Battery**:
+  - **Test 1: Balanced Multi-Focal Deliberation with Causal Salience Head (`causal_attn`, $\tau=1.80$)**: Accuracy **55.35%**, Brier **0.2498**, Metric **0.6518** (Reverted: $0.6518 \le 0.6654$).
+  - **Test 2: Monotonic Choice-Forward Multi-Focal Deliberation (`choice_forward`, $\tau=1.80$)**: Accuracy **58.30%** (**NEW ALL-TIME PHASE 2 RECORD** 🏆), Brier **0.2435** (All-time best calibration!), Metric **0.6697** (**COMMITTED & PUSHED**, commit [`4f13095`](https://github.com/tj-doomer-it/System2/commit/4f13095)).
+  - **Test 3: Causal Salience Deliberation with Gentle Peak Arbitration (`causal_attn`, $\text{veto}=0.05, \tau=2.0$)**: Accuracy **55.38%**, Brier **0.2474**, Metric **0.6532** (Reverted: $0.6532 \le 0.6697$).
+- **Deep Scientific Diagnosis**:
+  1. **The Monotonic Choice-Forward Breakthrough (Test 2: 57.51% -> 58.30% SOTA)**:
+     In previous architectures (`asym_spans=default`), Head 1 was allocated 75% question tokens, compressing choice contrast down to only 25% and degrading its individual accuracy to 52.46%. Furthermore, Head 4 was merely an exact duplicate of Head 0.
+     In Test 2, we structured the 5 parallel ThoughtHeads across monotonic mechanism depths:
+     - Head 0: `holistic` — Global ModernBERT bidirectional sequence anchor ($57.31\%$ individual accuracy)
+     - Head 1: `0.40 q + 0.60 a` — Moderate mechanism focus with strong premise grounding ($57.54\%$ individual accuracy)
+     - Head 2: `0.20 q + 0.80 a` — Deep candidate mechanism scrutiny ($57.11\%$ individual accuracy)
+     - Head 3: `0.50 q + 0.50 a` — Balanced premise-choice bridge ($57.39\%$ individual accuracy)
+     - Head 4: `0.05 q + 0.95 a` — Ultra-deep candidate mechanism scrutiny ($57.17\%$ individual accuracy)
+     **Result**: For the first time, EVERY SINGLE HEAD performs above 57% individual accuracy! When combined into democratic arbitration ($\tau=1.80$), the collective ensemble surges to **58.30% accuracy** (solving 2,058 / 3,530 complex ARC questions), beating every single individual head by up to **+1.19%**! Calibration concurrently improves to an all-time best Brier score of **0.2435**.
+  2. **The Failure of Dynamic Cross-Attention (`causal_attn`)**:
+     Dynamic cosine cross-attention between question tokens and choice tokens (`causal_attn`) introduced optimization non-linearities that prevented cross-entropy from descending below 1.21. In contrast, static span weighting allowed ModernBERT's LoRA adapter to descend cleanly to `ce = 0.925`.
 
 ### The Core Architectural Principles of System2:
 1. **The In-Domain Causal Purity Law (Validated at 56.83%)**:
