@@ -7,6 +7,7 @@ data/science_mix/
 data/arc_obqa/
 data/arc_mmlu_science/
 data/arc_augmented/
+data/arc_scienceqa/
 __pycache__/
 *.pyc
 .DS_Store
