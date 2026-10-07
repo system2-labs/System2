@@ -99,6 +99,12 @@ def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=Non
                 v2 = 0.20 * q_vec + 0.80 * a_vec
                 v3 = 0.50 * q_vec + 0.50 * a_vec
                 v4 = 0.05 * q_vec + 0.95 * a_vec
+            elif asym_span_mode == "constraint_spectrum":
+                v0 = holistic
+                v1 = 0.70 * q_vec + 0.30 * a_vec
+                v2 = 0.20 * q_vec + 0.80 * a_vec
+                v3 = 0.50 * q_vec + 0.50 * a_vec
+                v4 = 0.35 * q_vec + 0.65 * a_vec
             else:
                 # 5 asymmetric ThoughtHead perspectives (default):
                 v0 = holistic
@@ -209,6 +215,8 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             kwargs["margin_features"] = True
         if isinstance(state, dict) and "margin_gamma" in state:
             kwargs["margin_gamma"] = state["margin_gamma"]
+        if isinstance(state, dict) and "prob_margin_gamma" in state:
+            kwargs["prob_margin_gamma"] = state["prob_margin_gamma"]
         if isinstance(state, dict) and "prob_ensemble" in state:
             kwargs["prob_ensemble"] = state["prob_ensemble"]
         if isinstance(state, dict) and "head_prob_temp" in state:
