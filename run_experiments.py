@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery: Dynamic Candidate Permutation & Decisive Margin Battery
-- Test 1: Dynamic Candidate Permutation (permute_choices=True, cand_margin=0.05, tau=1.8)
-- Test 2: Dynamic Permutation + Peak Veto Mixture (permute_choices=True, veto_blend=0.15, tau=1.8)
-- Test 3: Dynamic Permutation + Calibrated Smoothing (permute_choices=True, cal_smoothing=0.32, tau=1.8)
+Battery: Calibrated Candidate Margin & Peak Veto Optimization
+- Test 1: Calibrated Margin Balancing (margin=0.04, tau=1.85, cal=0.315, veto=0.0)
+- Test 2: Decisive Peak Veto + Calibrated Temperature (margin=0.05, veto=0.10, tau=1.90, cal=0.315)
+- Test 3: Balanced Margin + Decisive Peak Veto (margin=0.04, veto=0.10, tau=1.85, cal=0.315)
 """
 import json
 import os
@@ -102,7 +102,7 @@ def main():
     results = []
 
     # Active SOTA baseline: 0.6645 (Accuracy 57.37%, Brier 0.2447)
-    # Test 1: Dynamic Candidate Permutation (permute_choices=True, cand_margin=0.05, tau=1.8)
+    # Test 1: Calibrated Margin Balancing (margin=0.04, tau=1.85, cal=0.315, veto=0.0)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -139,10 +139,10 @@ def main():
         "soft_judge_targets": False,
         "ensemble_heads": True,
         "centered_conf": False,
-        "judge_cal_smoothing": 0.31,
+        "judge_cal_smoothing": 0.315,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
-        "ensemble_temp": 1.8,
+        "ensemble_temp": 1.85,
         "lambda_head_balance": 0.0,
         "margin_features": False,
         "span_pooling": False,
@@ -156,24 +156,24 @@ def main():
         "judger_residual": False,
         "head_mlp_dim": 256,
         "head_norm_diff": False,
-        "lambda_cand_margin": 0.05,
+        "lambda_cand_margin": 0.04,
         "cand_margin": 1.0,
         "veto_blend": 0.0,
-        "permute_choices": True,
+        "permute_choices": False,
     }
     r1 = run_experiment(
-        name="Test 1: Dynamic Candidate Permutation (permute=True, margin=0.05, tau=1.8)",
+        name="Test 1: Calibrated Margin Balancing (margin=0.04, tau=1.85, cal=0.315, veto=0.0)",
         hyperparams=t1_params,
-        description="Phase 2 Battery: Dynamic Candidate Permutation (permute=True, margin=0.05, tau=1.8)",
+        description="Phase 2 Battery: Calibrated Margin Balancing (margin=0.04, tau=1.85, cal=0.315, veto=0.0)",
     )
     results.append(r1)
 
     if r1["committed"]:
-        print(f">>> Test 1 committed as new SOTA! Retaining permute_choices=True.")
+        print(f">>> Test 1 committed as new SOTA! Retaining improvements.")
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Dynamic Permutation + Peak Veto Mixture (permute_choices=True, veto_blend=0.15, tau=1.8)
+    # Test 2: Decisive Peak Veto + Calibrated Temperature (margin=0.05, veto=0.10, tau=1.90, cal=0.315)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -210,10 +210,10 @@ def main():
         "soft_judge_targets": False,
         "ensemble_heads": True,
         "centered_conf": False,
-        "judge_cal_smoothing": 0.31,
+        "judge_cal_smoothing": 0.315,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
-        "ensemble_temp": 1.8,
+        "ensemble_temp": 1.90,
         "lambda_head_balance": 0.0,
         "margin_features": False,
         "span_pooling": False,
@@ -229,22 +229,22 @@ def main():
         "head_norm_diff": False,
         "lambda_cand_margin": 0.05,
         "cand_margin": 1.0,
-        "veto_blend": 0.15,
-        "permute_choices": True,
+        "veto_blend": 0.10,
+        "permute_choices": False,
     }
     r2 = run_experiment(
-        name="Test 2: Dynamic Permutation + Peak Veto Mixture (permute=True, veto=0.15, tau=1.8)",
+        name="Test 2: Decisive Peak Veto + Calibrated Temperature (margin=0.05, veto=0.10, tau=1.90, cal=0.315)",
         hyperparams=t2_params,
-        description="Phase 2 Battery: Dynamic Permutation + Peak Veto Mixture (permute=True, veto=0.15, tau=1.8)",
+        description="Phase 2 Battery: Decisive Peak Veto + Calibrated Temperature (margin=0.05, veto=0.10, tau=1.90, cal=0.315)",
     )
     results.append(r2)
 
     if r2["committed"]:
-        print(f">>> Test 2 committed as new SOTA! Retaining veto_blend=0.15.")
+        print(f">>> Test 2 committed as new SOTA! Retaining improvements.")
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Dynamic Permutation + Calibrated Target Smoothing (permute_choices=True, cal_smoothing=0.32, tau=1.8)
+    # Test 3: Balanced Margin + Decisive Peak Veto (margin=0.04, veto=0.10, tau=1.85, cal=0.315)
     t3_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -281,10 +281,10 @@ def main():
         "soft_judge_targets": False,
         "ensemble_heads": True,
         "centered_conf": False,
-        "judge_cal_smoothing": 0.32,
+        "judge_cal_smoothing": 0.315,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
-        "ensemble_temp": 1.8,
+        "ensemble_temp": 1.85,
         "lambda_head_balance": 0.0,
         "margin_features": False,
         "span_pooling": False,
@@ -298,15 +298,15 @@ def main():
         "judger_residual": False,
         "head_mlp_dim": 256,
         "head_norm_diff": False,
-        "lambda_cand_margin": 0.05,
+        "lambda_cand_margin": 0.04,
         "cand_margin": 1.0,
-        "veto_blend": 0.0,
-        "permute_choices": True,
+        "veto_blend": 0.10,
+        "permute_choices": False,
     }
     r3 = run_experiment(
-        name="Test 3: Dynamic Permutation + Calibrated Smoothing (permute=True, cal=0.32, tau=1.8)",
+        name="Test 3: Balanced Margin + Decisive Peak Veto (margin=0.04, veto=0.10, tau=1.85, cal=0.315)",
         hyperparams=t3_params,
-        description="Phase 2 Battery: Dynamic Permutation + Calibrated Smoothing (permute=True, cal=0.32, tau=1.8)",
+        description="Phase 2 Battery: Balanced Margin + Decisive Peak Veto (margin=0.04, veto=0.10, tau=1.85, cal=0.315)",
     )
     results.append(r3)
 
