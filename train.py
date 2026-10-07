@@ -95,6 +95,7 @@ HYPERPARAMS = {
     "lambda_cand_margin": 0.0,
     "cand_margin": 1.0,
     "veto_blend": 0.0,
+    "permute_choices": False,
 }
 
 
@@ -359,6 +360,20 @@ def main():
                 src_slice = [sources[idx] for idx in batch_idx] if sources else None
                 q_slice = [cols["question"][idx] for idx in batch_idx]
                 c_slice = [cols["choices"][idx] for idx in batch_idx]
+                lab_list = [labels[idx] for idx in batch_idx]
+                if HYPERPARAMS.get("permute_choices", False):
+                    new_c_slice = []
+                    new_lab_list = []
+                    for idx_in_b in range(b):
+                        orig_choices = c_slice[idx_in_b]
+                        orig_lab = lab_list[idx_in_b]
+                        p_order = torch.randperm(len(orig_choices)).tolist()
+                        permuted_choices = [orig_choices[p] for p in p_order]
+                        new_lab = p_order.index(orig_lab)
+                        new_c_slice.append(permuted_choices)
+                        new_lab_list.append(new_lab)
+                    c_slice = new_c_slice
+                    lab_list = new_lab_list
                 vecs = mean_pool_pairwise(
                     q_slice, c_slice,
                     HYPERPARAMS["max_len"], device, with_grad=with_grad,
@@ -367,10 +382,11 @@ def main():
                     span_weight=HYPERPARAMS.get("span_weight", 0.5),
                     span_mode=HYPERPARAMS.get("span_mode", "mean"),
                 )
+                lab = torch.tensor(lab_list, device=device)  # (b,)
             else:
                 t_slice = [cols["text"][idx] for idx in batch_idx]
                 vecs = mean_pool_texts(t_slice, HYPERPARAMS["max_len"], device, with_grad=with_grad)
-            lab = torch.tensor([labels[idx] for idx in batch_idx], device=device)  # (b,)
+                lab = torch.tensor([labels[idx] for idx in batch_idx], device=device)  # (b,)
 
             if use_mote:
                 domain_ids = torch.zeros(b, dtype=torch.long, device=device)
