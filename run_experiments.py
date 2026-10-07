@@ -101,10 +101,10 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active SOTA baseline: 0.6654 (Accuracy 57.51%, Brier 0.2443)
-    # Battery 4: Semantic Span Optimization & Head-Weighted Arbitration Battery
+    # Active SOTA baseline: 0.6697 (Accuracy 58.30%, Brier 0.2435)
+    # Battery 5: Choice-Forward Precision & Margin Scaling Battery
 
-    # Test 1: Balanced Multi-Focal Deliberation with Causal Salience Head (asym_span_mode=causal_attn, veto=0.0, tau=1.80)
+    # Test 1: Sharper Arbitration Temperature (tau=1.70, choice_forward)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -144,7 +144,7 @@ def main():
         "judge_cal_smoothing": 0.30,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
-        "ensemble_temp": 1.80,
+        "ensemble_temp": 1.70,
         "lambda_head_balance": 0.0,
         "margin_features": False,
         "span_pooling": False,
@@ -164,12 +164,12 @@ def main():
         "permute_choices": False,
         "asym_roles": False,
         "asym_spans": True,
-        "asym_span_mode": "causal_attn",
+        "asym_span_mode": "choice_forward",
     }
     r1 = run_experiment(
-        name="Test 1: Balanced Multi-Focal Deliberation with Causal Salience Head (asym_span_mode=causal_attn, veto=0.0, tau=1.80)",
+        name="Test 1: Sharper Arbitration Temperature (tau=1.70, choice_forward)",
         hyperparams=t1_params,
-        description="Battery 4: Balanced Multi-Focal Deliberation with Causal Salience Head (asym_span_mode=causal_attn, veto=0.0, tau=1.80)",
+        description="Battery 5: Sharper Arbitration Temperature (tau=1.70, choice_forward)",
     )
     results.append(r1)
 
@@ -178,7 +178,7 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Monotonic Choice-Forward Multi-Focal Deliberation (asym_span_mode=choice_forward, veto=0.0, tau=1.80)
+    # Test 2: Candidate Contrast Margin Scaling (lambda_cand_margin=0.07, tau=1.80)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -232,7 +232,7 @@ def main():
         "judger_residual": False,
         "head_mlp_dim": 256,
         "head_norm_diff": False,
-        "lambda_cand_margin": 0.05,
+        "lambda_cand_margin": 0.07,
         "cand_margin": 1.0,
         "veto_blend": 0.0,
         "permute_choices": False,
@@ -241,9 +241,9 @@ def main():
         "asym_span_mode": "choice_forward",
     }
     r2 = run_experiment(
-        name="Test 2: Monotonic Choice-Forward Multi-Focal Deliberation (asym_span_mode=choice_forward, veto=0.0, tau=1.80)",
+        name="Test 2: Candidate Contrast Margin Scaling (lambda_cand_margin=0.07, tau=1.80)",
         hyperparams=t2_params,
-        description="Battery 4: Monotonic Choice-Forward Multi-Focal Deliberation (asym_span_mode=choice_forward, veto=0.0, tau=1.80)",
+        description="Battery 5: Candidate Contrast Margin Scaling (lambda_cand_margin=0.07, tau=1.80)",
     )
     results.append(r2)
 
@@ -252,7 +252,7 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Causal Salience Deliberation with Gentle Peak Arbitration (asym_span_mode=causal_attn, veto=0.05, tau=2.0)
+    # Test 3: Sharp Calibration Target (judge_cal_smoothing=0.28, tau=1.80)
     t3_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -289,10 +289,10 @@ def main():
         "soft_judge_targets": False,
         "ensemble_heads": True,
         "centered_conf": False,
-        "judge_cal_smoothing": 0.30,
+        "judge_cal_smoothing": 0.28,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
-        "ensemble_temp": 2.0,
+        "ensemble_temp": 1.80,
         "lambda_head_balance": 0.0,
         "margin_features": False,
         "span_pooling": False,
@@ -308,16 +308,16 @@ def main():
         "head_norm_diff": False,
         "lambda_cand_margin": 0.05,
         "cand_margin": 1.0,
-        "veto_blend": 0.05,
+        "veto_blend": 0.0,
         "permute_choices": False,
         "asym_roles": False,
         "asym_spans": True,
-        "asym_span_mode": "causal_attn",
+        "asym_span_mode": "choice_forward",
     }
     r3 = run_experiment(
-        name="Test 3: Causal Salience Deliberation with Gentle Peak Arbitration (asym_span_mode=causal_attn, veto=0.05, tau=2.0)",
+        name="Test 3: Sharp Calibration Target (judge_cal_smoothing=0.28, tau=1.80)",
         hyperparams=t3_params,
-        description="Battery 4: Causal Salience Deliberation with Gentle Peak Arbitration (asym_span_mode=causal_attn, veto=0.05, tau=2.0)",
+        description="Battery 5: Sharp Calibration Target (judge_cal_smoothing=0.28, tau=1.80)",
     )
     results.append(r3)
 
