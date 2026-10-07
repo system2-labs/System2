@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 6: Prioritized Head-Weight Deliberation & Precision Arbitration Battery
-- Test 1: Prioritized Head-Weight Arbitration (head_weights=[1.0, 1.0, 1.2, 1.0, 0.4], tau=1.80)
-- Test 2: Premise-Anchored Deliberation Weighting (head_weights=[1.0, 1.1, 1.2, 1.1, 0.4], tau=1.80)
-- Test 3: Deep Mechanism Scaling (head_weights=[1.0, 1.0, 1.3, 1.0, 0.4], tau=1.80)
+Battery 7: Pure In-Domain Causal Data Augmentation & Calibrated Arbitration Battery
+- Test 1: Prioritized Head-Weight Arbitration (head_weights=[1.0, 1.0, 1.2, 1.0, 0.4], train_head_weights=None, tau=1.80)
+- Test 2: Fine-Tuned Head Prioritization (head_weights=[1.0, 1.0, 1.25, 1.0, 0.45], tau=1.80)
+- Test 3: Pure In-Domain Causal Augmentation (data_dir=./data/arc_augmented, 8.4k samples, 4 epochs)
 """
 import json
 import os
@@ -102,9 +102,9 @@ def main():
     results = []
 
     # Active SOTA baseline: 0.6697 (Accuracy 58.30%, Brier 0.2435)
-    # Battery 6: Prioritized Head-Weight Deliberation & Precision Arbitration Battery
+    # Battery 7: Pure In-Domain Causal Data Augmentation & Calibrated Arbitration Battery
 
-    # Test 1: Prioritized Head-Weight Arbitration (head_weights=[1.0, 1.0, 1.2, 1.0, 0.4], tau=1.80)
+    # Test 1: Prioritized Head-Weight Arbitration (head_weights=[1.0, 1.0, 1.2, 1.0, 0.4], train_head_weights=None, tau=1.80)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -166,11 +166,12 @@ def main():
         "asym_spans": True,
         "asym_span_mode": "choice_forward",
         "head_weights": [1.0, 1.0, 1.2, 1.0, 0.4],
+        "train_head_weights": None,
     }
     r1 = run_experiment(
         name="Test 1: Prioritized Head-Weight Arbitration (head_weights=[1.0, 1.0, 1.2, 1.0, 0.4], tau=1.80)",
         hyperparams=t1_params,
-        description="Battery 6: Prioritized Head-Weight Arbitration (head_weights=[1.0, 1.0, 1.2, 1.0, 0.4], tau=1.80)",
+        description="Battery 7: Prioritized Head-Weight Arbitration (head_weights=[1.0, 1.0, 1.2, 1.0, 0.4], tau=1.80)",
     )
     results.append(r1)
 
@@ -179,13 +180,13 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Premise-Anchored Deliberation Weighting (head_weights=[1.0, 1.1, 1.2, 1.1, 0.4], tau=1.80)
+    # Test 2: Fine-Tuned Head Prioritization (head_weights=[1.0, 1.0, 1.25, 1.0, 0.45], tau=1.80)
     t2_params = dict(t1_params)
-    t2_params["head_weights"] = [1.0, 1.1, 1.2, 1.1, 0.4]
+    t2_params["head_weights"] = [1.0, 1.0, 1.25, 1.0, 0.45]
     r2 = run_experiment(
-        name="Test 2: Premise-Anchored Deliberation Weighting (head_weights=[1.0, 1.1, 1.2, 1.1, 0.4], tau=1.80)",
+        name="Test 2: Fine-Tuned Head Prioritization (head_weights=[1.0, 1.0, 1.25, 1.0, 0.45], tau=1.80)",
         hyperparams=t2_params,
-        description="Battery 6: Premise-Anchored Deliberation Weighting (head_weights=[1.0, 1.1, 1.2, 1.1, 0.4], tau=1.80)",
+        description="Battery 7: Fine-Tuned Head Prioritization (head_weights=[1.0, 1.0, 1.25, 1.0, 0.45], tau=1.80)",
     )
     results.append(r2)
 
@@ -194,13 +195,15 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Deep Mechanism Scaling (head_weights=[1.0, 1.0, 1.3, 1.0, 0.4], tau=1.80)
+    # Test 3: Pure In-Domain Causal Augmentation (data_dir=./data/arc_augmented, 8.4k samples, 4 epochs)
     t3_params = dict(t1_params)
-    t3_params["head_weights"] = [1.0, 1.0, 1.3, 1.0, 0.4]
+    t3_params["data_dir"] = "./data/arc_augmented"
+    t3_params["train_size"] = 8500
+    t3_params["epochs"] = 4
     r3 = run_experiment(
-        name="Test 3: Deep Mechanism Scaling (head_weights=[1.0, 1.0, 1.3, 1.0, 0.4], tau=1.80)",
+        name="Test 3: In-Domain Causal Augmentation (8.4k samples, 4 epochs)",
         hyperparams=t3_params,
-        description="Battery 6: Deep Mechanism Scaling (head_weights=[1.0, 1.0, 1.3, 1.0, 0.4], tau=1.80)",
+        description="Battery 7: In-Domain Causal Augmentation (8.4k samples, 4 epochs)",
     )
     results.append(r3)
 
