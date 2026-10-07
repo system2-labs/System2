@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 7: Pure In-Domain Causal Data Augmentation & Calibrated Arbitration Battery
-- Test 1: Prioritized Head-Weight Arbitration (head_weights=[1.0, 1.0, 1.2, 1.0, 0.4], train_head_weights=None, tau=1.80)
-- Test 2: Fine-Tuned Head Prioritization (head_weights=[1.0, 1.0, 1.25, 1.0, 0.45], tau=1.80)
-- Test 3: Pure In-Domain Causal Augmentation (data_dir=./data/arc_augmented, 8.4k samples, 4 epochs)
+Battery 8: Cognitive Spectrum Deliberation & Dynamic Arbitration Battery
+- Test 1: Constraint-Spectrum Deliberation (asym_span_mode="constraint_spectrum", head_weights=[1.0, 1.0, 1.2, 1.0, 1.0], tau=1.80)
+- Test 2: Probability Margin Decisive Arbitration (prob_margin_gamma=0.08, tau=1.80)
+- Test 3: Authentic Candidate-Permuted Regularization (permute_choices=True, tau=1.80)
 """
 import json
 import os
@@ -152,6 +152,7 @@ def main():
         "head_dropout": 0.0,
         "head_label_smoothing": 0.08,
         "margin_gamma": 0.0,
+        "prob_margin_gamma": 0.0,
         "prob_ensemble": False,
         "head_prob_temp": 1.0,
         "head_norm_first": False,
@@ -168,42 +169,46 @@ def main():
         "head_weights": [1.0, 1.0, 1.2, 1.0, 0.4],
         "train_head_weights": None,
     }
+    # Test 1: Constraint-Spectrum Multi-Focal Deliberation
+    t1_params = dict(base_params)
+    t1_params["asym_span_mode"] = "constraint_spectrum"
+    t1_params["head_weights"] = [1.0, 1.0, 1.2, 1.0, 1.0]
     r1 = run_experiment(
-        name="Test 1: Prioritized Head-Weight Arbitration (head_weights=[1.0, 1.0, 1.2, 1.0, 0.4], tau=1.80)",
+        name="Test 1: Constraint-Spectrum Deliberation (constraint_spectrum, tau=1.80)",
         hyperparams=t1_params,
-        description="Battery 7: Prioritized Head-Weight Arbitration (head_weights=[1.0, 1.0, 1.2, 1.0, 0.4], tau=1.80)",
+        description="Battery 8: Constraint-Spectrum Deliberation (constraint_spectrum, tau=1.80)",
     )
     results.append(r1)
 
     if r1["committed"]:
         print(f">>> Test 1 committed as new SOTA! Retaining improvements.")
+        base_params = dict(t1_params)
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Fine-Tuned Head Prioritization (head_weights=[1.0, 1.0, 1.25, 1.0, 0.45], tau=1.80)
-    t2_params = dict(t1_params)
-    t2_params["head_weights"] = [1.0, 1.0, 1.25, 1.0, 0.45]
+    # Test 2: Probability Margin Decisive Arbitration (prob_margin_gamma=0.08, tau=1.80)
+    t2_params = dict(base_params)
+    t2_params["prob_margin_gamma"] = 0.08
     r2 = run_experiment(
-        name="Test 2: Fine-Tuned Head Prioritization (head_weights=[1.0, 1.0, 1.25, 1.0, 0.45], tau=1.80)",
+        name="Test 2: Probability Margin Decisive Arbitration (prob_margin_gamma=0.08, tau=1.80)",
         hyperparams=t2_params,
-        description="Battery 7: Fine-Tuned Head Prioritization (head_weights=[1.0, 1.0, 1.25, 1.0, 0.45], tau=1.80)",
+        description="Battery 8: Probability Margin Decisive Arbitration (prob_margin_gamma=0.08, tau=1.80)",
     )
     results.append(r2)
 
     if r2["committed"]:
         print(f">>> Test 2 committed as new SOTA! Retaining improvements.")
+        base_params = dict(t2_params)
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Pure In-Domain Causal Augmentation (data_dir=./data/arc_augmented, 8.4k samples, 4 epochs)
-    t3_params = dict(t1_params)
-    t3_params["data_dir"] = "./data/arc_augmented"
-    t3_params["train_size"] = 8500
-    t3_params["epochs"] = 4
+    # Test 3: Authentic Candidate-Permuted Regularization (permute_choices=True, tau=1.80)
+    t3_params = dict(base_params)
+    t3_params["permute_choices"] = True
     r3 = run_experiment(
-        name="Test 3: In-Domain Causal Augmentation (8.4k samples, 4 epochs)",
+        name="Test 3: Authentic Candidate-Permuted Regularization (permute_choices=True, tau=1.80)",
         hyperparams=t3_params,
-        description="Battery 7: In-Domain Causal Augmentation (8.4k samples, 4 epochs)",
+        description="Battery 8: Authentic Candidate-Permuted Regularization (permute_choices=True, tau=1.80)",
     )
     results.append(r3)
 
