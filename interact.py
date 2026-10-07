@@ -183,10 +183,11 @@ def deliberate(sys2, meta, question, choices):
                 a_vec = (last_hidden * a_mask_f).sum(dim=1) / a_mask_f.sum(dim=1).clamp(min=1.0)
             span_weight = meta.get("span_weight", 0.5)
             pooled = (1.0 - span_weight) * q_vec + span_weight * a_vec
+            vecs = pooled.view(1, len(choices), -1)  # (1, 4, 1024)
         else:
             mask = inputs["attention_mask"].unsqueeze(-1)
             pooled = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
-        vecs = pooled.view(1, len(choices), -1)  # (1, 4, 1024)
+            vecs = pooled.view(1, len(choices), -1)  # (1, 4, 1024)
 
         out = sys2(vecs)
         best, conf, pruned, confs, logits, emb, scores = out[:7]
