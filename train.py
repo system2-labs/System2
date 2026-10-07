@@ -102,6 +102,7 @@ HYPERPARAMS = {
     "asym_span_mode": "choice_forward",
     "head_weights": [1.0, 1.0, 1.2, 1.0, 0.4],
     "train_head_weights": None,
+    "head_margin_weights": None,
 }
 
 
@@ -518,7 +519,12 @@ def main():
             if lambda_cand_margin > 0.0 and logits.dim() == 3:
                 c_margin = HYPERPARAMS.get("cand_margin", 1.0)
                 m_losses = []
-                margin_weights = HYPERPARAMS.get("asym_margin_weights", [0.0, 0.0, 1.5, 1.5, 1.0]) if HYPERPARAMS.get("asym_roles", False) else [1.0] * logits.size(1)
+                if HYPERPARAMS.get("head_margin_weights") is not None:
+                    margin_weights = HYPERPARAMS["head_margin_weights"]
+                elif HYPERPARAMS.get("asym_roles", False):
+                    margin_weights = HYPERPARAMS.get("asym_margin_weights", [0.0, 0.0, 1.5, 1.5, 1.0])
+                else:
+                    margin_weights = [1.0] * logits.size(1)
                 for idx, h in enumerate(logits.unbind(1)):
                     w_m = margin_weights[idx]
                     if w_m <= 0.0:
@@ -678,6 +684,7 @@ def main():
         "asym_span_mode": HYPERPARAMS.get("asym_span_mode", "choice_forward"),
         "head_weights": HYPERPARAMS.get("head_weights", [1.0, 1.0, 1.2, 1.0, 0.4]),
         "prob_margin_gamma": HYPERPARAMS.get("prob_margin_gamma", 0.0),
+        "head_margin_weights": HYPERPARAMS.get("head_margin_weights", None),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
