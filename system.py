@@ -72,7 +72,7 @@ class System2(nn.Module):
     2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0, head_weights=None):
         super().__init__()
         self.pairwise = pairwise
         self.diff_features = diff_features
@@ -88,6 +88,7 @@ class System2(nn.Module):
         self.head_mlp_dim = head_mlp_dim
         self.head_norm_diff = head_norm_diff
         self.veto_blend = veto_blend
+        self.head_weights = head_weights
         head_classes = 1 if pairwise else num_classes
         self.heads = nn.ModuleList([
             ThoughtHead(num_classes=head_classes, diff_features=diff_features, num_layers=head_layers, dropout=head_dropout, norm_first=head_norm_first, mlp_dim=head_mlp_dim, norm_diff=head_norm_diff)
@@ -138,10 +139,14 @@ class System2(nn.Module):
             else:
                 tau = getattr(self, "ensemble_temp", 1.0)
                 gamma = getattr(self, "margin_gamma", 0.0)
+                arb_scores = scores / tau
+                if getattr(self, "head_weights", None) is not None:
+                    hw = torch.as_tensor(self.head_weights, device=scores.device, dtype=scores.dtype)
+                    arb_scores = arb_scores + torch.log(hw.clamp(min=1e-5))
                 if gamma > 0.0:
-                    weights = torch.softmax(scores / tau + gamma * m1, dim=-1)
+                    weights = torch.softmax(arb_scores + gamma * m1, dim=-1)
                 else:
-                    weights = torch.softmax(scores / tau, dim=-1)
+                    weights = torch.softmax(arb_scores, dim=-1)
 
                 if getattr(self, "prob_ensemble", False):
                     head_tau = getattr(self, "head_prob_temp", 1.0)
@@ -188,10 +193,14 @@ class System2(nn.Module):
             else:
                 tau = getattr(self, "ensemble_temp", 1.0)
                 gamma = getattr(self, "margin_gamma", 0.0)
+                arb_scores = scores / tau
+                if getattr(self, "head_weights", None) is not None:
+                    hw = torch.as_tensor(self.head_weights, device=scores.device, dtype=scores.dtype)
+                    arb_scores = arb_scores + torch.log(hw.clamp(min=1e-5))
                 if gamma > 0.0:
-                    weights = torch.softmax(scores / tau + gamma * m1, dim=-1)
+                    weights = torch.softmax(arb_scores + gamma * m1, dim=-1)
                 else:
-                    weights = torch.softmax(scores / tau, dim=-1)
+                    weights = torch.softmax(arb_scores, dim=-1)
 
                 if getattr(self, "prob_ensemble", False):
                     head_tau = getattr(self, "head_prob_temp", 1.0)

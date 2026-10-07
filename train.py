@@ -99,6 +99,7 @@ HYPERPARAMS = {
     "asym_roles": False,
     "asym_spans": True,
     "asym_span_mode": "choice_forward",
+    "head_weights": None,
 }
 
 
@@ -338,6 +339,7 @@ def main():
             head_mlp_dim=HYPERPARAMS.get("head_mlp_dim", 256),
             head_norm_diff=HYPERPARAMS.get("head_norm_diff", False),
             veto_blend=HYPERPARAMS.get("veto_blend", 0.0),
+            head_weights=HYPERPARAMS.get("head_weights", None),
         )
     sys2.to(device)
     sys2.train()
@@ -665,6 +667,7 @@ def main():
         "veto_blend": HYPERPARAMS.get("veto_blend", 0.0),
         "asym_spans": HYPERPARAMS.get("asym_spans", False),
         "asym_span_mode": HYPERPARAMS.get("asym_span_mode", "default"),
+        "head_weights": HYPERPARAMS.get("head_weights", None),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
