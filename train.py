@@ -92,12 +92,12 @@ HYPERPARAMS = {
     "judger_residual": False,
     "head_mlp_dim": 256,
     "head_norm_diff": False,
-    "lambda_cand_margin": 0.0,
+    "lambda_cand_margin": 0.05,
     "cand_margin": 1.0,
     "veto_blend": 0.0,
     "permute_choices": False,
     "asym_roles": False,
-    "asym_spans": False,
+    "asym_spans": True,
 }
 
 
