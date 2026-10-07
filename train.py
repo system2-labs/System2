@@ -94,6 +94,7 @@ HYPERPARAMS = {
     "head_norm_diff": False,
     "lambda_cand_margin": 0.0,
     "cand_margin": 1.0,
+    "veto_blend": 0.0,
 }
 
 
@@ -276,6 +277,7 @@ def main():
             judger_residual=HYPERPARAMS.get("judger_residual", False),
             head_mlp_dim=HYPERPARAMS.get("head_mlp_dim", 256),
             head_norm_diff=HYPERPARAMS.get("head_norm_diff", False),
+            veto_blend=HYPERPARAMS.get("veto_blend", 0.0),
         )
     sys2.to(device)
     sys2.train()
@@ -571,6 +573,7 @@ def main():
         "judger_residual": HYPERPARAMS.get("judger_residual", False),
         "head_mlp_dim": HYPERPARAMS.get("head_mlp_dim", 256),
         "head_norm_diff": HYPERPARAMS.get("head_norm_diff", False),
+        "veto_blend": HYPERPARAMS.get("veto_blend", 0.0),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
