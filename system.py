@@ -72,7 +72,7 @@ class System2(nn.Module):
     2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0, head_weights=None, prob_margin_gamma=0.0):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0, head_weights=None, prob_margin_gamma=0.0, head_center_logits=False):
         super().__init__()
         self.pairwise = pairwise
         self.diff_features = diff_features
@@ -90,6 +90,7 @@ class System2(nn.Module):
         self.head_norm_diff = head_norm_diff
         self.veto_blend = veto_blend
         self.head_weights = head_weights
+        self.head_center_logits = head_center_logits
         head_classes = 1 if pairwise else num_classes
         self.heads = nn.ModuleList([
             ThoughtHead(num_classes=head_classes, diff_features=diff_features, num_layers=head_layers, dropout=head_dropout, norm_first=head_norm_first, mlp_dim=head_mlp_dim, norm_diff=head_norm_diff)
@@ -120,6 +121,8 @@ class System2(nn.Module):
             embeddings = torch.stack(embeddings, dim=1)    # (B, N, 512)
             confidences = torch.stack(confidences, dim=1)  # (B, N)
             logits = torch.stack(all_logits, dim=1)        # (B, N, num_choices)
+            if getattr(self, "head_center_logits", False):
+                logits = logits - logits.mean(dim=-1, keepdim=True)
 
             sorted_l, _ = torch.sort(logits, dim=-1, descending=True)
             m1 = sorted_l[:, :, 0] - sorted_l[:, :, 1]
