@@ -103,6 +103,7 @@ HYPERPARAMS = {
     "head_weights": [1.0, 1.0, 1.2, 1.0, 0.4],
     "train_head_weights": None,
     "head_margin_weights": None,
+    "head_center_logits": False,
 }
 
 
@@ -350,6 +351,7 @@ def main():
             veto_blend=HYPERPARAMS.get("veto_blend", 0.0),
             head_weights=HYPERPARAMS.get("train_head_weights", None),
             prob_margin_gamma=HYPERPARAMS.get("prob_margin_gamma", 0.0),
+            head_center_logits=HYPERPARAMS.get("head_center_logits", False),
         )
     sys2.to(device)
     sys2.train()
@@ -685,6 +687,7 @@ def main():
         "head_weights": HYPERPARAMS.get("head_weights", [1.0, 1.0, 1.2, 1.0, 0.4]),
         "prob_margin_gamma": HYPERPARAMS.get("prob_margin_gamma", 0.0),
         "head_margin_weights": HYPERPARAMS.get("head_margin_weights", None),
+        "head_center_logits": HYPERPARAMS.get("head_center_logits", False),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
