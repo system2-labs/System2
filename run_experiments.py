@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 12: Surgical Arbitration Fine-Grid & Calibration Target Softening Battery
-- Test 1: Centered Head Prioritization (head_weights=[1.0, 1.0, 1.22, 1.0, 0.38], tau=1.82)
-- Test 2: Gentle Calibration Target Softening (judge_cal_smoothing=0.32, tau=1.80)
-- Test 3: High-Confidence Mechanism Prioritization (head_weights=[1.0, 1.0, 1.25, 1.0, 0.35], tau=1.85)
+Battery 13: Logit Harmonization & Probability Simplex Deliberation Battery
+- Test 1: Zero-Mean Logit Harmonization (head_center_logits=True, head_weights=[1.0, 1.0, 1.25, 1.0, 0.35], tau=1.80)
+- Test 2: Probability Simplex Mixture Ensembling (prob_ensemble=True, head_prob_temp=1.5, head_weights=[1.0, 1.0, 1.25, 1.0, 0.35], tau=1.80)
+- Test 3: Prioritized Dynamic Certainty Margin (prob_margin_gamma=0.06, head_weights=[1.0, 1.0, 1.25, 1.0, 0.35], tau=1.80)
 """
 import json
 import os
@@ -169,15 +169,17 @@ def main():
         "head_weights": [1.0, 1.0, 1.2, 1.0, 0.4],
         "train_head_weights": None,
         "head_margin_weights": None,
+        "head_center_logits": False,
     }
-    # Test 1: Centered Head Prioritization (head_weights=[1.0, 1.0, 1.22, 1.0, 0.38], tau=1.82)
+    # Test 1: Zero-Mean Logit Harmonization (head_center_logits=True, head_weights=[1.0, 1.0, 1.25, 1.0, 0.35], tau=1.80)
     t1_params = dict(base_params)
-    t1_params["head_weights"] = [1.0, 1.0, 1.22, 1.0, 0.38]
-    t1_params["ensemble_temp"] = 1.82
+    t1_params["head_weights"] = [1.0, 1.0, 1.25, 1.0, 0.35]
+    t1_params["head_center_logits"] = True
+    t1_params["ensemble_temp"] = 1.80
     r1 = run_experiment(
-        name="Test 1: Centered Head Prioritization ([1.0, 1.0, 1.22, 1.0, 0.38], tau=1.82)",
+        name="Test 1: Zero-Mean Logit Harmonization (head_center_logits=True, tau=1.80)",
         hyperparams=t1_params,
-        description="Battery 12: Centered Head Prioritization ([1.0, 1.0, 1.22, 1.0, 0.38], tau=1.82)",
+        description="Battery 13: Zero-Mean Logit Harmonization (head_center_logits=True, tau=1.80)",
     )
     results.append(r1)
 
@@ -187,13 +189,16 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Gentle Calibration Target Softening (judge_cal_smoothing=0.32, tau=1.80)
+    # Test 2: Probability Simplex Mixture Ensembling (prob_ensemble=True, head_prob_temp=1.5, tau=1.80)
     t2_params = dict(base_params)
-    t2_params["judge_cal_smoothing"] = 0.32
+    t2_params["head_weights"] = [1.0, 1.0, 1.25, 1.0, 0.35]
+    t2_params["prob_ensemble"] = True
+    t2_params["head_prob_temp"] = 1.5
+    t2_params["ensemble_temp"] = 1.80
     r2 = run_experiment(
-        name="Test 2: Gentle Calibration Target Softening (smoothing=0.32, tau=1.80)",
+        name="Test 2: Probability Simplex Mixture Ensembling (prob_ensemble=True, temp=1.5, tau=1.80)",
         hyperparams=t2_params,
-        description="Battery 12: Gentle Calibration Target Softening (smoothing=0.32, tau=1.80)",
+        description="Battery 13: Probability Simplex Mixture Ensembling (prob_ensemble=True, temp=1.5, tau=1.80)",
     )
     results.append(r2)
 
@@ -203,14 +208,15 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: High-Confidence Mechanism Prioritization ([1.0, 1.0, 1.25, 1.0, 0.35], tau=1.85)
+    # Test 3: Prioritized Dynamic Certainty Margin (prob_margin_gamma=0.06, tau=1.80)
     t3_params = dict(base_params)
     t3_params["head_weights"] = [1.0, 1.0, 1.25, 1.0, 0.35]
-    t3_params["ensemble_temp"] = 1.85
+    t3_params["prob_margin_gamma"] = 0.06
+    t3_params["ensemble_temp"] = 1.80
     r3 = run_experiment(
-        name="Test 3: High-Confidence Mechanism Prioritization ([1.0, 1.0, 1.25, 1.0, 0.35], tau=1.85)",
+        name="Test 3: Prioritized Dynamic Certainty Margin (prob_margin_gamma=0.06, tau=1.80)",
         hyperparams=t3_params,
-        description="Battery 12: High-Confidence Mechanism Prioritization ([1.0, 1.0, 1.25, 1.0, 0.35], tau=1.85)",
+        description="Battery 13: Prioritized Dynamic Certainty Margin (prob_margin_gamma=0.06, tau=1.80)",
     )
     results.append(r3)
 
