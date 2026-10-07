@@ -100,6 +100,7 @@ HYPERPARAMS = {
     "asym_spans": True,
     "asym_span_mode": "choice_forward",
     "head_weights": None,
+    "train_head_weights": None,
 }
 
 
@@ -339,7 +340,7 @@ def main():
             head_mlp_dim=HYPERPARAMS.get("head_mlp_dim", 256),
             head_norm_diff=HYPERPARAMS.get("head_norm_diff", False),
             veto_blend=HYPERPARAMS.get("veto_blend", 0.0),
-            head_weights=HYPERPARAMS.get("head_weights", None),
+            head_weights=HYPERPARAMS.get("train_head_weights", None),
         )
     sys2.to(device)
     sys2.train()
