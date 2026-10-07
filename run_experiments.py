@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery: Inductive Asymmetry in ThoughtHeads Battery
-- Test 1: Asymmetric Functional Roles (asym_roles=True, veto=0.15, tau=1.80)
-- Test 2: Multi-Focal Span Asymmetry (asym_spans=True, veto=0.15, tau=1.80)
-- Test 3: Joint Input & Functional Asymmetry (asym_roles=True, asym_spans=True, veto=0.15, tau=1.80)
+Battery: Multi-Focal Span Calibration & Precision Lock-In Battery
+- Test 1: Pure Democratic Multi-Focal Deliberation (asym_spans=True, veto=0.0, margin=0.05, tau=1.80)
+- Test 2: Multi-Focal Span Deliberation without Margin Strain (asym_spans=True, margin=0.0, veto=0.0, tau=1.80)
+- Test 3: Gentle Margin Multi-Focal Arbitration (asym_spans=True, margin=0.03, veto=0.05, tau=1.80)
 """
 import json
 import os
@@ -102,7 +102,7 @@ def main():
     results = []
 
     # Active SOTA baseline: 0.6645 (Accuracy 57.37%, Brier 0.2447)
-    # Test 1: Asymmetric Functional Roles (asym_roles=True, veto=0.15, tau=1.80)
+    # Test 1: Pure Democratic Multi-Focal Deliberation (asym_spans=True, veto=0.0, margin=0.05, tau=1.80)
     t1_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -158,15 +158,15 @@ def main():
         "head_norm_diff": False,
         "lambda_cand_margin": 0.05,
         "cand_margin": 1.0,
-        "veto_blend": 0.15,
+        "veto_blend": 0.0,
         "permute_choices": False,
-        "asym_roles": True,
-        "asym_spans": False,
+        "asym_roles": False,
+        "asym_spans": True,
     }
     r1 = run_experiment(
-        name="Test 1: Asymmetric Functional Roles (asym_roles=True, veto=0.15, tau=1.80)",
+        name="Test 1: Pure Democratic Multi-Focal Deliberation (asym_spans=True, veto=0.0, margin=0.05, tau=1.80)",
         hyperparams=t1_params,
-        description="Phase 2 Battery: Asymmetric Functional Roles (asym_roles=True, veto=0.15, tau=1.80)",
+        description="Phase 2 Battery: Pure Democratic Multi-Focal Deliberation (asym_spans=True, veto=0.0, margin=0.05, tau=1.80)",
     )
     results.append(r1)
 
@@ -175,7 +175,7 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Multi-Focal Span Asymmetry (asym_spans=True, veto=0.15, tau=1.80)
+    # Test 2: Multi-Focal Span Deliberation without Margin Strain (asym_spans=True, margin=0.0, veto=0.0, tau=1.80)
     t2_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -229,17 +229,17 @@ def main():
         "judger_residual": False,
         "head_mlp_dim": 256,
         "head_norm_diff": False,
-        "lambda_cand_margin": 0.05,
+        "lambda_cand_margin": 0.0,
         "cand_margin": 1.0,
-        "veto_blend": 0.15,
+        "veto_blend": 0.0,
         "permute_choices": False,
         "asym_roles": False,
         "asym_spans": True,
     }
     r2 = run_experiment(
-        name="Test 2: Multi-Focal Span Asymmetry (asym_spans=True, veto=0.15, tau=1.80)",
+        name="Test 2: Multi-Focal Span Deliberation without Margin Strain (asym_spans=True, margin=0.0, veto=0.0, tau=1.80)",
         hyperparams=t2_params,
-        description="Phase 2 Battery: Multi-Focal Span Asymmetry (asym_spans=True, veto=0.15, tau=1.80)",
+        description="Phase 2 Battery: Multi-Focal Span Deliberation without Margin Strain (asym_spans=True, margin=0.0, veto=0.0, tau=1.80)",
     )
     results.append(r2)
 
@@ -248,7 +248,7 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Joint Input & Functional Asymmetry (asym_roles=True, asym_spans=True, veto=0.15, tau=1.80)
+    # Test 3: Gentle Margin Multi-Focal Arbitration (asym_spans=True, margin=0.03, veto=0.05, tau=1.80)
     t3_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -302,17 +302,17 @@ def main():
         "judger_residual": False,
         "head_mlp_dim": 256,
         "head_norm_diff": False,
-        "lambda_cand_margin": 0.05,
+        "lambda_cand_margin": 0.03,
         "cand_margin": 1.0,
-        "veto_blend": 0.15,
+        "veto_blend": 0.05,
         "permute_choices": False,
-        "asym_roles": True,
+        "asym_roles": False,
         "asym_spans": True,
     }
     r3 = run_experiment(
-        name="Test 3: Joint Input & Functional Asymmetry (asym_roles=True, asym_spans=True, veto=0.15, tau=1.80)",
+        name="Test 3: Gentle Margin Multi-Focal Arbitration (asym_spans=True, margin=0.03, veto=0.05, tau=1.80)",
         hyperparams=t3_params,
-        description="Phase 2 Battery: Joint Input & Functional Asymmetry (asym_roles=True, asym_spans=True, veto=0.15, tau=1.80)",
+        description="Phase 2 Battery: Gentle Margin Multi-Focal Arbitration (asym_spans=True, margin=0.03, veto=0.05, tau=1.80)",
     )
     results.append(r3)
 
