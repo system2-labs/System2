@@ -102,6 +102,7 @@ HYPERPARAMS = {
     "asym_span_mode": "choice_forward",
     "head_weights": [1.0, 1.0, 1.2, 1.0, 0.4],
     "train_head_weights": None,
+    "train_ensemble_temp": 1.80,
     "head_margin_weights": None,
     "head_center_logits": False,
 }
@@ -338,7 +339,7 @@ def main():
             head_layers=HYPERPARAMS.get("head_layers", 2),
             centered_conf=HYPERPARAMS.get("centered_conf", False),
             uniform_ensemble=HYPERPARAMS.get("uniform_ensemble", False),
-            ensemble_temp=HYPERPARAMS.get("ensemble_temp", 1.0),
+            ensemble_temp=HYPERPARAMS.get("train_ensemble_temp", HYPERPARAMS.get("ensemble_temp", 1.80)),
             margin_features=HYPERPARAMS.get("margin_features", False),
             head_dropout=HYPERPARAMS.get("head_dropout", 0.0),
             margin_gamma=HYPERPARAMS.get("margin_gamma", 0.0),
