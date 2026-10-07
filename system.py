@@ -96,12 +96,13 @@ class System2(nn.Module):
         self.judger = Judger(learnable_temp=learnable_temp, centered_conf=centered_conf, margin_features=margin_features, residual=judger_residual)
 
     def forward(self, encoder_output, detach_judger=False):
-        if encoder_output.dim() == 3:
-            # Pairwise candidate reasoning: (B, num_choices, 1024)
+        if encoder_output.dim() >= 3:
+            # Pairwise candidate reasoning: (B, num_choices, 1024) or (B, N, num_choices, 1024)
             all_logits, confidences, embeddings = [], [], []
-            for head in self.heads:
-                x = head.input_proj(encoder_output)  # (B, num_choices, 512)
-                x = head.layers(x)                   # (B, num_choices, 512) - cross-candidate self-attention
+            for n, head in enumerate(self.heads):
+                head_in = encoder_output[:, n, :, :] if encoder_output.dim() == 4 else encoder_output
+                x = head.input_proj(head_in)  # (B, num_choices, 512)
+                x = head.layers(x)            # (B, num_choices, 512) - cross-candidate self-attention
                 if self.diff_features:
                     # Centroid difference: contrast candidate against the group mean
                     diff = x - x.mean(dim=1, keepdim=True)

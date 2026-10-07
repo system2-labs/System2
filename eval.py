@@ -36,8 +36,8 @@ def mean_pool_texts(texts, device, max_len=192):
         return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
 
 
-def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=None, task_prefixes=False, span_pooling=False, span_weight=0.5, span_mode="mean"):
-    """Pairwise encoding: (b questions, 4 choices) -> (b, 4, 1024)."""
+def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=None, task_prefixes=False, span_pooling=False, span_weight=0.5, span_mode="mean", asym_spans=False):
+    """Pairwise encoding: (b questions, 4 choices) -> (b, 4, 1024) or (b, 5, 4, 1024)."""
     b = len(questions)
     if task_prefixes:
         flat_texts = [
@@ -54,7 +54,43 @@ def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=Non
     inputs = tokenizer(flat_texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(device)
     with torch.no_grad():
         last_hidden = model(**inputs).last_hidden_state
-        if span_pooling:
+        if asym_spans:
+            import torch.nn.functional as F
+            input_ids = inputs["input_ids"]
+            attn_mask = inputs["attention_mask"]
+            B, T = input_ids.shape
+            match = (input_ids[:, :-1] == 37741) & (input_ids[:, 1:] == 27)
+            has_match = match.any(dim=1)
+            ans_pos = match.int().argmax(dim=1)
+            cols = torch.arange(T, device=device).unsqueeze(0).expand(B, T)
+            valid_lens = attn_mask.sum(dim=1) - 1
+
+            q_mask = (cols < ans_pos.unsqueeze(1)) & (attn_mask.bool())
+            a_mask = (cols >= (ans_pos + 2).unsqueeze(1)) & (cols < valid_lens.unsqueeze(1)) & (attn_mask.bool())
+
+            no_match = ~has_match.unsqueeze(1)
+            q_mask = torch.where(no_match, attn_mask.bool(), q_mask)
+            a_mask = torch.where(no_match, attn_mask.bool(), a_mask)
+
+            q_mask_f = q_mask.unsqueeze(-1).float()
+            a_mask_f = a_mask.unsqueeze(-1).float()
+            q_vec = (last_hidden * q_mask_f).sum(dim=1) / q_mask_f.sum(dim=1).clamp(min=1.0)
+            a_vec = (last_hidden * a_mask_f).sum(dim=1) / a_mask_f.sum(dim=1).clamp(min=1.0)
+
+            mask = inputs["attention_mask"].unsqueeze(-1)
+            holistic = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
+
+            # 5 asymmetric ThoughtHead perspectives:
+            v0 = holistic
+            v1 = 0.75 * q_vec + 0.25 * a_vec
+            v2 = 0.25 * q_vec + 0.75 * a_vec
+            v3 = 0.50 * q_vec + 0.50 * a_vec
+            v4 = holistic
+
+            multi_head_vecs = torch.stack([v0, v1, v2, v3, v4], dim=1)  # (b*4, 5, 1024)
+            multi_head_vecs = multi_head_vecs.view(b, 4, 5, -1).permute(0, 2, 1, 3)  # (b, 5, 4, 1024)
+            return multi_head_vecs
+        elif span_pooling:
             import torch.nn.functional as F
             input_ids = inputs["input_ids"]
             attn_mask = inputs["attention_mask"]
@@ -188,6 +224,7 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
     span_pooling = state.get("span_pooling", False) if isinstance(state, dict) else False
     span_weight = state.get("span_weight", 0.5) if isinstance(state, dict) else 0.5
     span_mode = state.get("span_mode", "mean") if isinstance(state, dict) else "mean"
+    asym_spans = state.get("asym_spans", False) if isinstance(state, dict) else False
     sources = cols.get("source") if hasattr(cols, "get") and "source" in cols else None
 
     correct = 0
@@ -201,7 +238,8 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
                     cols["question"][i : i + b], cols["choices"][i : i + b],
                     device, max_len=eval_max_len, sources=src_slice,
                     task_prefixes=task_prefixes, span_pooling=span_pooling,
-                    span_weight=span_weight, span_mode=span_mode
+                    span_weight=span_weight, span_mode=span_mode,
+                    asym_spans=asym_spans,
                 )
             else:
                 vecs = mean_pool_texts(cols["text"][i : i + b], device)
