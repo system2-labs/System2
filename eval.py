@@ -147,7 +147,7 @@ def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=Non
     return pooled.view(b, 4, -1)
 
 
-def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir="./data/arc", ensemble=False):
+def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir="./data/arc", ensemble=False, head_weights=None):
     device = device or ("mps" if torch.backends.mps.is_available() else "cpu")
     model.to(device)
     ds = load_from_disk(data_dir)
@@ -230,6 +230,10 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
                 kwargs["head_mlp_dim"] = sys2_state["heads.0.hypothesis_head.1.weight"].shape[0]
         if isinstance(state, dict) and "veto_blend" in state:
             kwargs["veto_blend"] = state["veto_blend"]
+        if head_weights is not None:
+            kwargs["head_weights"] = head_weights
+        elif isinstance(state, dict) and "head_weights" in state:
+            kwargs["head_weights"] = state["head_weights"]
         import inspect
         if "recurrence" in inspect.signature(System2.__init__).parameters:
             kwargs["recurrence"] = has_recurrence
@@ -299,9 +303,11 @@ if __name__ == "__main__":
         ap.add_argument("--max-samples", type=int, default=None)
         ap.add_argument("--data", default="./data/arc")
         ap.add_argument("--ensemble", action="store_true", help="Force ensemble evaluation over all heads")
+        ap.add_argument("--head-weights", default=None, help="Comma-separated head weights e.g. 1.0,1.0,1.2,1.0,0.4")
         args = ap.parse_args()
         ckpt = args.ckpt
-        m = evaluate(ckpt, max_samples=args.max_samples, data_dir=args.data, ensemble=args.ensemble)
+        hw = [float(x) for x in args.head_weights.split(",")] if args.head_weights else None
+        m = evaluate(ckpt, max_samples=args.max_samples, data_dir=args.data, ensemble=args.ensemble, head_weights=hw)
         metric = 0.5 * m["accuracy"] + 0.5 * (1 - m["brier"])
         print(json.dumps({"metric": round(metric, 4), "accuracy": round(m["accuracy"], 4), "brier": round(m["brier"], 4)}))
     except Exception as e:
