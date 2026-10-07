@@ -104,8 +104,8 @@ def main():
     # Active SOTA baseline: 0.6697 (Accuracy 58.30%, Brier 0.2435)
     # Battery 7: Pure In-Domain Causal Data Augmentation & Calibrated Arbitration Battery
 
-    # Test 1: Prioritized Head-Weight Arbitration (head_weights=[1.0, 1.0, 1.2, 1.0, 0.4], train_head_weights=None, tau=1.80)
-    t1_params = {
+    # Base SOTA parameters
+    base_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
         "train_size": 4300,
