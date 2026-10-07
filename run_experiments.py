@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 8: Cognitive Spectrum Deliberation & Dynamic Arbitration Battery
-- Test 1: Constraint-Spectrum Deliberation (asym_span_mode="constraint_spectrum", head_weights=[1.0, 1.0, 1.2, 1.0, 1.0], tau=1.80)
-- Test 2: Probability Margin Decisive Arbitration (prob_margin_gamma=0.08, tau=1.80)
-- Test 3: Authentic Candidate-Permuted Regularization (permute_choices=True, tau=1.80)
+Battery 9: Candidate Margin Precision & ThoughtHead Orthogonalization Battery
+- Test 1: Gentle Candidate Margin Regularization (cand_margin=0.60, lambda_cand_margin=0.04, tau=1.80)
+- Test 2: Enhanced ThoughtHead Diversity Push (lambda_div=0.02, tau=1.80)
+- Test 3: Harmonized Decision-Level Calibration Coupling (lambda_judge_cal=0.08, tau=1.80)
 """
 import json
 import os
@@ -169,14 +169,14 @@ def main():
         "head_weights": [1.0, 1.0, 1.2, 1.0, 0.4],
         "train_head_weights": None,
     }
-    # Test 1: Constraint-Spectrum Multi-Focal Deliberation
+    # Test 1: Gentle Candidate Margin Regularization (cand_margin=0.60, lambda_cand_margin=0.04, tau=1.80)
     t1_params = dict(base_params)
-    t1_params["asym_span_mode"] = "constraint_spectrum"
-    t1_params["head_weights"] = [1.0, 1.0, 1.2, 1.0, 1.0]
+    t1_params["cand_margin"] = 0.60
+    t1_params["lambda_cand_margin"] = 0.04
     r1 = run_experiment(
-        name="Test 1: Constraint-Spectrum Deliberation (constraint_spectrum, tau=1.80)",
+        name="Test 1: Gentle Candidate Margin (cand_margin=0.60, lambda=0.04, tau=1.80)",
         hyperparams=t1_params,
-        description="Battery 8: Constraint-Spectrum Deliberation (constraint_spectrum, tau=1.80)",
+        description="Battery 9: Gentle Candidate Margin (cand_margin=0.60, lambda=0.04, tau=1.80)",
     )
     results.append(r1)
 
@@ -186,13 +186,13 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Probability Margin Decisive Arbitration (prob_margin_gamma=0.08, tau=1.80)
+    # Test 2: Enhanced ThoughtHead Diversity Push (lambda_div=0.02, tau=1.80)
     t2_params = dict(base_params)
-    t2_params["prob_margin_gamma"] = 0.08
+    t2_params["lambda_div"] = 0.02
     r2 = run_experiment(
-        name="Test 2: Probability Margin Decisive Arbitration (prob_margin_gamma=0.08, tau=1.80)",
+        name="Test 2: Enhanced ThoughtHead Diversity (lambda_div=0.02, tau=1.80)",
         hyperparams=t2_params,
-        description="Battery 8: Probability Margin Decisive Arbitration (prob_margin_gamma=0.08, tau=1.80)",
+        description="Battery 9: Enhanced ThoughtHead Diversity (lambda_div=0.02, tau=1.80)",
     )
     results.append(r2)
 
@@ -202,13 +202,13 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Authentic Candidate-Permuted Regularization (permute_choices=True, tau=1.80)
+    # Test 3: Harmonized Decision-Level Calibration Coupling (lambda_judge_cal=0.08, tau=1.80)
     t3_params = dict(base_params)
-    t3_params["permute_choices"] = True
+    t3_params["lambda_judge_cal"] = 0.08
     r3 = run_experiment(
-        name="Test 3: Authentic Candidate-Permuted Regularization (permute_choices=True, tau=1.80)",
+        name="Test 3: Harmonized Calibration Coupling (lambda_judge_cal=0.08, tau=1.80)",
         hyperparams=t3_params,
-        description="Battery 8: Authentic Candidate-Permuted Regularization (permute_choices=True, tau=1.80)",
+        description="Battery 9: Harmonized Calibration Coupling (lambda_judge_cal=0.08, tau=1.80)",
     )
     results.append(r3)
 
