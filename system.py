@@ -72,7 +72,7 @@ class System2(nn.Module):
     2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0):
         super().__init__()
         self.pairwise = pairwise
         self.diff_features = diff_features
@@ -87,6 +87,7 @@ class System2(nn.Module):
         self.judger_residual = judger_residual
         self.head_mlp_dim = head_mlp_dim
         self.head_norm_diff = head_norm_diff
+        self.veto_blend = veto_blend
         head_classes = 1 if pairwise else num_classes
         self.heads = nn.ModuleList([
             ThoughtHead(num_classes=head_classes, diff_features=diff_features, num_layers=head_layers, dropout=head_dropout, norm_first=head_norm_first, mlp_dim=head_mlp_dim, norm_diff=head_norm_diff)
@@ -148,6 +149,10 @@ class System2(nn.Module):
                     ens_logits = torch.log(ens_probs.clamp(min=1e-8))
                 else:
                     ens_logits = torch.einsum('bn,bnc->bc', weights, logits)
+            if getattr(self, "veto_blend", 0.0) > 0.0:
+                vb = getattr(self, "veto_blend", 0.0)
+                peak_logits = logits[torch.arange(logits.size(0), device=logits.device), best]
+                ens_logits = (1.0 - vb) * ens_logits + vb * peak_logits
             return best, best_conf, pruned, confidences, logits, embeddings, scores, ens_logits
         else:
             # Single-vector classification: (B, 1024)

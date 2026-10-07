@@ -86,6 +86,9 @@ def load_system2(checkpoint_path="./models/system2.pt", device=None):
         if "heads.0.hypothesis_head.1.weight" in sys2_state:
             kwargs["head_mlp_dim"] = sys2_state["heads.0.hypothesis_head.1.weight"].shape[0]
 
+    if isinstance(state, dict) and "veto_blend" in state:
+        kwargs["veto_blend"] = state["veto_blend"]
+
     sys2 = System2(**kwargs)
     sys2.load_state_dict(sys2_state, strict=False)
     sys2.to(device)

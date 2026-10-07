@@ -172,6 +172,8 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             kwargs["head_norm_diff"] = True
             if "heads.0.hypothesis_head.1.weight" in sys2_state:
                 kwargs["head_mlp_dim"] = sys2_state["heads.0.hypothesis_head.1.weight"].shape[0]
+        if isinstance(state, dict) and "veto_blend" in state:
+            kwargs["veto_blend"] = state["veto_blend"]
         import inspect
         if "recurrence" in inspect.signature(System2.__init__).parameters:
             kwargs["recurrence"] = has_recurrence
