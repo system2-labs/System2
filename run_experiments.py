@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 13: Logit Harmonization & Probability Simplex Deliberation Battery
-- Test 1: Zero-Mean Logit Harmonization (head_center_logits=True, head_weights=[1.0, 1.0, 1.25, 1.0, 0.35], tau=1.80)
-- Test 2: Probability Simplex Mixture Ensembling (prob_ensemble=True, head_prob_temp=1.5, head_weights=[1.0, 1.0, 1.25, 1.0, 0.35], tau=1.80)
-- Test 3: Prioritized Dynamic Certainty Margin (prob_margin_gamma=0.06, head_weights=[1.0, 1.0, 1.25, 1.0, 0.35], tau=1.80)
+Battery 14: Harmonic Arbitration & Certainty Margin Battery
+- Test 1: Surgical Harmonic Arbitration (head_weights=[1.0, 1.0, 1.20, 1.0, 0.38], tau=1.78)
+- Test 2: Fine Premise-Balancing Arbitration (head_weights=[1.0, 0.95, 1.18, 1.00, 0.38], tau=1.74)
+- Test 3: Harmonic Probability-Margin Modulation (head_weights=[1.0, 1.0, 1.20, 1.0, 0.38], prob_margin_gamma=0.015, tau=1.76)
 """
 import json
 import os
@@ -171,15 +171,14 @@ def main():
         "head_margin_weights": None,
         "head_center_logits": False,
     }
-    # Test 1: Zero-Mean Logit Harmonization (head_center_logits=True, head_weights=[1.0, 1.0, 1.25, 1.0, 0.35], tau=1.80)
+    # Test 1: Surgical Harmonic Arbitration (head_weights=[1.0, 1.0, 1.20, 1.0, 0.38], tau=1.78)
     t1_params = dict(base_params)
-    t1_params["head_weights"] = [1.0, 1.0, 1.25, 1.0, 0.35]
-    t1_params["head_center_logits"] = True
-    t1_params["ensemble_temp"] = 1.80
+    t1_params["head_weights"] = [1.0, 1.0, 1.20, 1.0, 0.38]
+    t1_params["ensemble_temp"] = 1.78
     r1 = run_experiment(
-        name="Test 1: Zero-Mean Logit Harmonization (head_center_logits=True, tau=1.80)",
+        name="Test 1: Surgical Harmonic Arbitration ([1.0, 1.0, 1.20, 1.0, 0.38], tau=1.78)",
         hyperparams=t1_params,
-        description="Battery 13: Zero-Mean Logit Harmonization (head_center_logits=True, tau=1.80)",
+        description="Battery 14: Surgical Harmonic Arbitration ([1.0, 1.0, 1.20, 1.0, 0.38], tau=1.78)",
     )
     results.append(r1)
 
@@ -189,16 +188,14 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Probability Simplex Mixture Ensembling (prob_ensemble=True, head_prob_temp=1.5, tau=1.80)
+    # Test 2: Fine Premise-Balancing Arbitration (head_weights=[1.0, 0.95, 1.18, 1.00, 0.38], tau=1.74)
     t2_params = dict(base_params)
-    t2_params["head_weights"] = [1.0, 1.0, 1.25, 1.0, 0.35]
-    t2_params["prob_ensemble"] = True
-    t2_params["head_prob_temp"] = 1.5
-    t2_params["ensemble_temp"] = 1.80
+    t2_params["head_weights"] = [1.0, 0.95, 1.18, 1.00, 0.38]
+    t2_params["ensemble_temp"] = 1.74
     r2 = run_experiment(
-        name="Test 2: Probability Simplex Mixture Ensembling (prob_ensemble=True, temp=1.5, tau=1.80)",
+        name="Test 2: Fine Premise-Balancing Arbitration ([1.0, 0.95, 1.18, 1.00, 0.38], tau=1.74)",
         hyperparams=t2_params,
-        description="Battery 13: Probability Simplex Mixture Ensembling (prob_ensemble=True, temp=1.5, tau=1.80)",
+        description="Battery 14: Fine Premise-Balancing Arbitration ([1.0, 0.95, 1.18, 1.00, 0.38], tau=1.74)",
     )
     results.append(r2)
 
@@ -208,15 +205,15 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Prioritized Dynamic Certainty Margin (prob_margin_gamma=0.06, tau=1.80)
+    # Test 3: Harmonic Probability-Margin Modulation (prob_margin_gamma=0.015, tau=1.76)
     t3_params = dict(base_params)
-    t3_params["head_weights"] = [1.0, 1.0, 1.25, 1.0, 0.35]
-    t3_params["prob_margin_gamma"] = 0.06
-    t3_params["ensemble_temp"] = 1.80
+    t3_params["head_weights"] = [1.0, 1.0, 1.20, 1.0, 0.38]
+    t3_params["prob_margin_gamma"] = 0.015
+    t3_params["ensemble_temp"] = 1.76
     r3 = run_experiment(
-        name="Test 3: Prioritized Dynamic Certainty Margin (prob_margin_gamma=0.06, tau=1.80)",
+        name="Test 3: Harmonic Probability-Margin Modulation (gamma=0.015, tau=1.76)",
         hyperparams=t3_params,
-        description="Battery 13: Prioritized Dynamic Certainty Margin (prob_margin_gamma=0.06, tau=1.80)",
+        description="Battery 14: Harmonic Probability-Margin Modulation (gamma=0.015, tau=1.76)",
     )
     results.append(r3)
 
