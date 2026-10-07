@@ -90,6 +90,10 @@ HYPERPARAMS = {
     "head_prob_temp": 1.0,
     "head_norm_first": False,
     "judger_residual": False,
+    "head_mlp_dim": 256,
+    "head_norm_diff": False,
+    "lambda_cand_margin": 0.0,
+    "cand_margin": 1.0,
 }
 
 
@@ -270,6 +274,8 @@ def main():
             head_prob_temp=HYPERPARAMS.get("head_prob_temp", 1.0),
             head_norm_first=HYPERPARAMS.get("head_norm_first", False),
             judger_residual=HYPERPARAMS.get("judger_residual", False),
+            head_mlp_dim=HYPERPARAMS.get("head_mlp_dim", 256),
+            head_norm_diff=HYPERPARAMS.get("head_norm_diff", False),
         )
     sys2.to(device)
     sys2.train()
@@ -410,6 +416,21 @@ def main():
                     task_loss = ce_loss
                 aux_loss = torch.tensor(0.0, device=device)
 
+            # 1b. Contrastive Candidate Margin Loss
+            lambda_cand_margin = HYPERPARAMS.get("lambda_cand_margin", 0.0)
+            if lambda_cand_margin > 0.0 and logits.dim() == 3:
+                c_margin = HYPERPARAMS.get("cand_margin", 1.0)
+                m_losses = []
+                for h in logits.unbind(1):
+                    correct_scores = h.gather(1, lab.unsqueeze(1))
+                    diffs = correct_scores - h
+                    loss_m = torch.clamp(c_margin - diffs, min=0.0)
+                    mask = torch.ones_like(loss_m).scatter_(1, lab.unsqueeze(1), 0.0)
+                    m_losses.append((loss_m * mask).sum(dim=1) / (loss_m.size(1) - 1))
+                cand_margin_loss = torch.stack(m_losses).mean()
+            else:
+                cand_margin_loss = torch.tensor(0.0, device=device)
+
             # --- losses (all computed, then ONE combined backward) ---
 
             # 2. Head Calibration: head's confidence -> 1[that head is correct]
@@ -496,6 +517,7 @@ def main():
                 + lambda_judge_cal * judge_cal_loss
                 + lambda_div * div_loss
                 + lambda_balance * balance_loss
+                + lambda_cand_margin * cand_margin_loss
                 + aux_weight * aux_loss
             )
 
@@ -547,6 +569,8 @@ def main():
         "head_prob_temp": HYPERPARAMS.get("head_prob_temp", 1.0),
         "head_norm_first": HYPERPARAMS.get("head_norm_first", False),
         "judger_residual": HYPERPARAMS.get("judger_residual", False),
+        "head_mlp_dim": HYPERPARAMS.get("head_mlp_dim", 256),
+        "head_norm_diff": HYPERPARAMS.get("head_norm_diff", False),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
