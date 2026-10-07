@@ -101,6 +101,7 @@ def load_system2(checkpoint_path="./models/system2.pt", device=None):
         "span_pooling": state.get("span_pooling", False) if isinstance(state, dict) else False,
         "span_weight": state.get("span_weight", 0.5) if isinstance(state, dict) else 0.5,
         "span_mode": state.get("span_mode", "mean") if isinstance(state, dict) else "mean",
+        "asym_spans": state.get("asym_spans", False) if isinstance(state, dict) else False,
         "device": device,
     }
     return sys2, meta
@@ -115,7 +116,41 @@ def deliberate(sys2, meta, question, choices):
     inputs = tokenizer(flat_texts, return_tensors="pt", padding=True, truncation=True, max_length=meta["max_len"]).to(device)
     with torch.no_grad():
         last_hidden = model(**inputs).last_hidden_state
-        if meta.get("span_pooling", False):
+        if meta.get("asym_spans", False):
+            import torch.nn.functional as F
+            input_ids = inputs["input_ids"]
+            attn_mask = inputs["attention_mask"]
+            B, T = input_ids.shape
+            match = (input_ids[:, :-1] == 37741) & (input_ids[:, 1:] == 27)
+            has_match = match.any(dim=1)
+            ans_pos = match.int().argmax(dim=1)
+            cols = torch.arange(T, device=device).unsqueeze(0).expand(B, T)
+            valid_lens = attn_mask.sum(dim=1) - 1
+
+            q_mask = (cols < ans_pos.unsqueeze(1)) & (attn_mask.bool())
+            a_mask = (cols >= (ans_pos + 2).unsqueeze(1)) & (cols < valid_lens.unsqueeze(1)) & (attn_mask.bool())
+
+            no_match = ~has_match.unsqueeze(1)
+            q_mask = torch.where(no_match, attn_mask.bool(), q_mask)
+            a_mask = torch.where(no_match, attn_mask.bool(), a_mask)
+
+            q_mask_f = q_mask.unsqueeze(-1).float()
+            a_mask_f = a_mask.unsqueeze(-1).float()
+            q_vec = (last_hidden * q_mask_f).sum(dim=1) / q_mask_f.sum(dim=1).clamp(min=1.0)
+            a_vec = (last_hidden * a_mask_f).sum(dim=1) / a_mask_f.sum(dim=1).clamp(min=1.0)
+
+            mask = inputs["attention_mask"].unsqueeze(-1)
+            holistic = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
+
+            v0 = holistic
+            v1 = 0.75 * q_vec + 0.25 * a_vec
+            v2 = 0.25 * q_vec + 0.75 * a_vec
+            v3 = 0.50 * q_vec + 0.50 * a_vec
+            v4 = holistic
+
+            multi_head_vecs = torch.stack([v0, v1, v2, v3, v4], dim=1)  # (4, 5, 1024)
+            vecs = multi_head_vecs.view(1, len(choices), 5, -1).permute(0, 2, 1, 3)  # (1, 5, 4, 1024)
+        elif meta.get("span_pooling", False):
             import torch.nn.functional as F
             input_ids = inputs["input_ids"]
             attn_mask = inputs["attention_mask"]

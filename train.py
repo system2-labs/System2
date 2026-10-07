@@ -96,6 +96,8 @@ HYPERPARAMS = {
     "cand_margin": 1.0,
     "veto_blend": 0.0,
     "permute_choices": False,
+    "asym_roles": False,
+    "asym_spans": False,
 }
 
 
@@ -112,7 +114,7 @@ def mean_pool_texts(texts, max_len, device, with_grad=False):
             return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
 
 
-def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False, sources=None, task_prefixes=False, span_pooling=False, span_weight=0.5, span_mode="mean"):
+def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False, sources=None, task_prefixes=False, span_pooling=False, span_weight=0.5, span_mode="mean", asym_spans=False):
     b = len(questions)
     if task_prefixes:
         flat_texts = [
@@ -133,7 +135,43 @@ def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False
         with torch.no_grad():
             last_hidden = model(**inputs).last_hidden_state
 
-    if span_pooling:
+    if asym_spans:
+        import torch.nn.functional as F
+        input_ids = inputs["input_ids"]
+        attn_mask = inputs["attention_mask"]
+        B, T = input_ids.shape
+        match = (input_ids[:, :-1] == 37741) & (input_ids[:, 1:] == 27)
+        has_match = match.any(dim=1)
+        ans_pos = match.int().argmax(dim=1)
+        cols = torch.arange(T, device=device).unsqueeze(0).expand(B, T)
+        valid_lens = attn_mask.sum(dim=1) - 1
+
+        q_mask = (cols < ans_pos.unsqueeze(1)) & (attn_mask.bool())
+        a_mask = (cols >= (ans_pos + 2).unsqueeze(1)) & (cols < valid_lens.unsqueeze(1)) & (attn_mask.bool())
+
+        no_match = ~has_match.unsqueeze(1)
+        q_mask = torch.where(no_match, attn_mask.bool(), q_mask)
+        a_mask = torch.where(no_match, attn_mask.bool(), a_mask)
+
+        q_mask_f = q_mask.unsqueeze(-1).float()
+        a_mask_f = a_mask.unsqueeze(-1).float()
+        q_vec = (last_hidden * q_mask_f).sum(dim=1) / q_mask_f.sum(dim=1).clamp(min=1.0)
+        a_vec = (last_hidden * a_mask_f).sum(dim=1) / a_mask_f.sum(dim=1).clamp(min=1.0)
+
+        mask = inputs["attention_mask"].unsqueeze(-1)
+        holistic = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
+
+        # 5 asymmetric ThoughtHead perspectives:
+        v0 = holistic
+        v1 = 0.75 * q_vec + 0.25 * a_vec
+        v2 = 0.25 * q_vec + 0.75 * a_vec
+        v3 = 0.50 * q_vec + 0.50 * a_vec
+        v4 = holistic
+
+        multi_head_vecs = torch.stack([v0, v1, v2, v3, v4], dim=1)  # (b*4, 5, 1024)
+        multi_head_vecs = multi_head_vecs.view(b, 4, 5, -1).permute(0, 2, 1, 3)  # (b, 5, 4, 1024)
+        return multi_head_vecs
+    elif span_pooling:
         import torch.nn.functional as F
         input_ids = inputs["input_ids"]
         attn_mask = inputs["attention_mask"]
@@ -381,6 +419,7 @@ def main():
                     span_pooling=HYPERPARAMS.get("span_pooling", False),
                     span_weight=HYPERPARAMS.get("span_weight", 0.5),
                     span_mode=HYPERPARAMS.get("span_mode", "mean"),
+                    asym_spans=HYPERPARAMS.get("asym_spans", False),
                 )
                 lab = torch.tensor(lab_list, device=device)  # (b,)
             else:
@@ -418,8 +457,15 @@ def main():
                     vecs, detach_judger=HYPERPARAMS.get("detach_judger", False)
                 )
                 best, conf, pruned, confs, logits, emb, scores = out[:7]
-                h_ls = HYPERPARAMS.get("head_label_smoothing", 0.0)
-                ce = torch.stack([torch.nn.functional.cross_entropy(h, lab, label_smoothing=h_ls) for h in logits.unbind(1)])
+                if HYPERPARAMS.get("asym_roles", False):
+                    ls_list = HYPERPARAMS.get("asym_ls", [0.10, 0.10, 0.04, 0.04, 0.08])
+                    ce = torch.stack([
+                        torch.nn.functional.cross_entropy(h, lab, label_smoothing=ls_list[idx])
+                        for idx, h in enumerate(logits.unbind(1))
+                    ])
+                else:
+                    h_ls = HYPERPARAMS.get("head_label_smoothing", 0.0)
+                    ce = torch.stack([torch.nn.functional.cross_entropy(h, lab, label_smoothing=h_ls) for h in logits.unbind(1)])
                 ce_loss = ce.mean()
                 if HYPERPARAMS.get("ensemble_heads", False):
                     win_logits = out[7] if len(out) > 7 else torch.einsum('bn,bnc->bc', torch.softmax(scores, dim=-1), logits)
@@ -439,13 +485,18 @@ def main():
             if lambda_cand_margin > 0.0 and logits.dim() == 3:
                 c_margin = HYPERPARAMS.get("cand_margin", 1.0)
                 m_losses = []
-                for h in logits.unbind(1):
+                margin_weights = HYPERPARAMS.get("asym_margin_weights", [0.0, 0.0, 1.5, 1.5, 1.0]) if HYPERPARAMS.get("asym_roles", False) else [1.0] * logits.size(1)
+                for idx, h in enumerate(logits.unbind(1)):
+                    w_m = margin_weights[idx]
+                    if w_m <= 0.0:
+                        continue
                     correct_scores = h.gather(1, lab.unsqueeze(1))
                     diffs = correct_scores - h
                     loss_m = torch.clamp(c_margin - diffs, min=0.0)
                     mask = torch.ones_like(loss_m).scatter_(1, lab.unsqueeze(1), 0.0)
-                    m_losses.append((loss_m * mask).sum(dim=1) / (loss_m.size(1) - 1))
-                cand_margin_loss = torch.stack(m_losses).mean()
+                    m_head = (loss_m * mask).sum(dim=1) / (loss_m.size(1) - 1)
+                    m_losses.append(w_m * m_head)
+                cand_margin_loss = torch.stack(m_losses).mean() if m_losses else torch.tensor(0.0, device=device)
             else:
                 cand_margin_loss = torch.tensor(0.0, device=device)
 
@@ -590,6 +641,7 @@ def main():
         "head_mlp_dim": HYPERPARAMS.get("head_mlp_dim", 256),
         "head_norm_diff": HYPERPARAMS.get("head_norm_diff", False),
         "veto_blend": HYPERPARAMS.get("veto_blend", 0.0),
+        "asym_spans": HYPERPARAMS.get("asym_spans", False),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
