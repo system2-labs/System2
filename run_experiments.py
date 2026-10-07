@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 10: Convergence Depth & High-Scrutiny Prioritized Arbitration Battery
-- Test 1: Extended Convergence Depth (epochs=6, 1,582 steps, scheduler_min_lr=5e-6, tau=1.80)
-- Test 2: High-Scrutiny Prioritized Arbitration (head_weights=[1.0, 1.0, 1.25, 1.0, 0.35], tau=1.80)
-- Test 3: Targeted Head 2 Scrutiny Contrast (head_margin_weights=[1.0, 1.0, 1.4, 1.0, 0.8], tau=1.80)
+Battery 11: Curated ScienceQA Scaling & Discrimination Sharpness Battery
+- Test 1: Curated Middle-School Science Scaling (data_dir='./data/arc_scienceqa', train_size=5000, tau=1.80)
+- Test 2: Sharpened Head Target Discrimination (head_label_smoothing=0.05, tau=1.80)
+- Test 3: Prioritized Mechanism Dominance Arbitration (head_weights=[1.0, 0.95, 1.25, 1.0, 0.35], tau=1.80)
 """
 import json
 import os
@@ -170,14 +170,14 @@ def main():
         "train_head_weights": None,
         "head_margin_weights": None,
     }
-    # Test 1: Extended Convergence Depth (epochs=6, 1,582 steps, scheduler_min_lr=5e-6, tau=1.80)
+    # Test 1: Curated Middle-School Science Scaling (data_dir='./data/arc_scienceqa', train_size=5000, tau=1.80)
     t1_params = dict(base_params)
-    t1_params["epochs"] = 6
-    t1_params["scheduler_min_lr"] = 5e-6
+    t1_params["data_dir"] = "./data/arc_scienceqa"
+    t1_params["train_size"] = 5000
     r1 = run_experiment(
-        name="Test 1: Extended Convergence Depth (epochs=6, min_lr=5e-6, tau=1.80)",
+        name="Test 1: Curated ScienceQA Scaling (4.9k samples, tau=1.80)",
         hyperparams=t1_params,
-        description="Battery 10: Extended Convergence Depth (epochs=6, min_lr=5e-6, tau=1.80)",
+        description="Battery 11: Curated ScienceQA Scaling (4.9k samples, tau=1.80)",
     )
     results.append(r1)
 
@@ -187,13 +187,13 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: High-Scrutiny Prioritized Arbitration ([1.0, 1.0, 1.25, 1.0, 0.35], tau=1.80)
+    # Test 2: Sharpened Head Target Discrimination (head_label_smoothing=0.05, tau=1.80)
     t2_params = dict(base_params)
-    t2_params["head_weights"] = [1.0, 1.0, 1.25, 1.0, 0.35]
+    t2_params["head_label_smoothing"] = 0.05
     r2 = run_experiment(
-        name="Test 2: High-Scrutiny Prioritized Arbitration ([1.0, 1.0, 1.25, 1.0, 0.35], tau=1.80)",
+        name="Test 2: Sharpened Head Target Discrimination (smoothing=0.05, tau=1.80)",
         hyperparams=t2_params,
-        description="Battery 10: High-Scrutiny Prioritized Arbitration ([1.0, 1.0, 1.25, 1.0, 0.35], tau=1.80)",
+        description="Battery 11: Sharpened Head Target Discrimination (smoothing=0.05, tau=1.80)",
     )
     results.append(r2)
 
@@ -203,13 +203,13 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Targeted Head 2 Scrutiny Contrast (margin_weights=[1.0, 1.0, 1.4, 1.0, 0.8], tau=1.80)
+    # Test 3: Prioritized Mechanism Dominance Arbitration ([1.0, 0.95, 1.25, 1.0, 0.35], tau=1.80)
     t3_params = dict(base_params)
-    t3_params["head_margin_weights"] = [1.0, 1.0, 1.4, 1.0, 0.8]
+    t3_params["head_weights"] = [1.0, 0.95, 1.25, 1.0, 0.35]
     r3 = run_experiment(
-        name="Test 3: Targeted Head 2 Scrutiny Contrast (margin_weights=[1.0, 1.0, 1.4, 1.0, 0.8], tau=1.80)",
+        name="Test 3: Prioritized Mechanism Dominance ([1.0, 0.95, 1.25, 1.0, 0.35], tau=1.80)",
         hyperparams=t3_params,
-        description="Battery 10: Targeted Head 2 Scrutiny Contrast (margin_weights=[1.0, 1.0, 1.4, 1.0, 0.8], tau=1.80)",
+        description="Battery 11: Prioritized Mechanism Dominance ([1.0, 0.95, 1.25, 1.0, 0.35], tau=1.80)",
     )
     results.append(r3)
 
