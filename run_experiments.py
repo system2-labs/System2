@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 14: Harmonic Arbitration & Certainty Margin Battery
-- Test 1: Surgical Harmonic Arbitration (head_weights=[1.0, 1.0, 1.20, 1.0, 0.38], tau=1.78)
-- Test 2: Fine Premise-Balancing Arbitration (head_weights=[1.0, 0.95, 1.18, 1.00, 0.38], tau=1.74)
-- Test 3: Harmonic Probability-Margin Modulation (head_weights=[1.0, 1.0, 1.20, 1.0, 0.38], prob_margin_gamma=0.015, tau=1.76)
+Battery 15: Pure Scientific Knowledge Scaling & Balanced Anchor Battery
+- Test 1: Curated Natural Science Scaling (5.2k samples from ARC + MMLU Pure Science)
+- Test 2: High Scrutiny Deliberation on Scaled Science (head_weights=[1.0, 1.0, 1.25, 1.0, 0.35], tau=1.78)
+- Test 3: Balanced Premise Anchor on Scaled Science (head_weights=[1.05, 1.0, 1.20, 1.05, 0.35], tau=1.78)
 """
 import json
 import os
@@ -166,20 +166,20 @@ def main():
         "asym_roles": False,
         "asym_spans": True,
         "asym_span_mode": "choice_forward",
-        "head_weights": [1.0, 1.0, 1.2, 1.0, 0.4],
+        "head_weights": [1.0, 1.0, 1.20, 1.0, 0.38],
         "train_head_weights": None,
         "train_ensemble_temp": 1.80,
         "head_margin_weights": None,
         "head_center_logits": False,
     }
-    # Test 1: Surgical Harmonic Arbitration (head_weights=[1.0, 1.0, 1.20, 1.0, 0.38], tau=1.78)
+    # Test 1: Curated Natural Science Scaling (5.2k samples from ARC + MMLU Pure Science)
     t1_params = dict(base_params)
-    t1_params["head_weights"] = [1.0, 1.0, 1.20, 1.0, 0.38]
-    t1_params["ensemble_temp"] = 1.78
+    t1_params["data_dir"] = "./data/arc_mmlu_science"
+    t1_params["train_size"] = 5300
     r1 = run_experiment(
-        name="Test 1: Surgical Harmonic Arbitration ([1.0, 1.0, 1.20, 1.0, 0.38], tau=1.78)",
+        name="Test 1: Curated Natural Science Scaling (5.2k samples)",
         hyperparams=t1_params,
-        description="Battery 14: Surgical Harmonic Arbitration ([1.0, 1.0, 1.20, 1.0, 0.38], tau=1.78)",
+        description="Battery 15: Curated Natural Science Scaling (5.2k samples)",
     )
     results.append(r1)
 
@@ -189,14 +189,15 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Fine Premise-Balancing Arbitration (head_weights=[1.0, 0.95, 1.18, 1.00, 0.38], tau=1.74)
+    # Test 2: High Scrutiny Deliberation on Scaled Science (head_weights=[1.0, 1.0, 1.25, 1.0, 0.35], tau=1.78)
     t2_params = dict(base_params)
-    t2_params["head_weights"] = [1.0, 0.95, 1.18, 1.00, 0.38]
-    t2_params["ensemble_temp"] = 1.74
+    t2_params["data_dir"] = "./data/arc_mmlu_science"
+    t2_params["train_size"] = 5300
+    t2_params["head_weights"] = [1.0, 1.0, 1.25, 1.0, 0.35]
     r2 = run_experiment(
-        name="Test 2: Fine Premise-Balancing Arbitration ([1.0, 0.95, 1.18, 1.00, 0.38], tau=1.74)",
+        name="Test 2: High Scrutiny Deliberation on Scaled Science ([1.0, 1.0, 1.25, 1.0, 0.35])",
         hyperparams=t2_params,
-        description="Battery 14: Fine Premise-Balancing Arbitration ([1.0, 0.95, 1.18, 1.00, 0.38], tau=1.74)",
+        description="Battery 15: High Scrutiny Deliberation on Scaled Science ([1.0, 1.0, 1.25, 1.0, 0.35])",
     )
     results.append(r2)
 
@@ -206,15 +207,15 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Harmonic Probability-Margin Modulation (prob_margin_gamma=0.015, tau=1.76)
+    # Test 3: Balanced Premise Anchor on Scaled Science (head_weights=[1.05, 1.0, 1.20, 1.05, 0.35], tau=1.78)
     t3_params = dict(base_params)
-    t3_params["head_weights"] = [1.0, 1.0, 1.20, 1.0, 0.38]
-    t3_params["prob_margin_gamma"] = 0.015
-    t3_params["ensemble_temp"] = 1.76
+    t3_params["data_dir"] = "./data/arc_mmlu_science"
+    t3_params["train_size"] = 5300
+    t3_params["head_weights"] = [1.05, 1.0, 1.20, 1.05, 0.35]
     r3 = run_experiment(
-        name="Test 3: Harmonic Probability-Margin Modulation (gamma=0.015, tau=1.76)",
+        name="Test 3: Balanced Premise Anchor on Scaled Science ([1.05, 1.0, 1.20, 1.05, 0.35])",
         hyperparams=t3_params,
-        description="Battery 14: Harmonic Probability-Margin Modulation (gamma=0.015, tau=1.76)",
+        description="Battery 15: Balanced Premise Anchor on Scaled Science ([1.05, 1.0, 1.20, 1.05, 0.35])",
     )
     results.append(r3)
 
