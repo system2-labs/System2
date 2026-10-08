@@ -27,6 +27,7 @@ from system import System2
 
 # --- TUNABLES (autoresearch subject: the loop edits this block) ---
 HYPERPARAMS = {
+    "bert_model": "answerdotai/ModernBERT-large",
     "use_mote": False,
     "mote_mode": "arc_soft",  # "supervised" (Path 1), "ensemble" (Path 2), "arc_soft" (Path 3)
     "num_experts": 4,
@@ -295,6 +296,11 @@ def main():
 
     set_seed(HYPERPARAMS.get("seed", 42))
     device = HYPERPARAMS["device"]
+
+    bert_name = HYPERPARAMS.get("bert_model", "answerdotai/ModernBERT-large")
+    from bert import get_bert
+    global tokenizer, model
+    tokenizer, model = get_bert(bert_name)
 
     use_lora = HYPERPARAMS.get("use_lora", False)
     train_norms = HYPERPARAMS.get("lora_train_norms", False)
@@ -691,7 +697,7 @@ def main():
         "judge_cal_smoothing": 0.3,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
-        "ensemble_temp": 1.78,
+        "ensemble_temp": HYPERPARAMS.get("ensemble_temp", 1.78),
         "lambda_head_balance": 0.0,
         "margin_features": True,
         "span_pooling": False,
@@ -699,21 +705,21 @@ def main():
         "span_mode": HYPERPARAMS.get("span_mode", "mean"),
         "lora_dropout": 0.0,
         "head_dropout": 0.0,
-        "head_label_smoothing": 0.08,
-        "margin_gamma": 0.2,
+        "head_label_smoothing": HYPERPARAMS.get("head_label_smoothing", 0.08),
+        "margin_gamma": HYPERPARAMS.get("margin_gamma", 0.2),
         "prob_ensemble": False,
         "head_prob_temp": 1.0,
         "head_norm_first": False,
         "judger_residual": False,
         "head_mlp_dim": 256,
         "head_norm_diff": False,
-        "veto_blend": 0.4,
-        "dual_stream_contest": False,
-        "dual_stream_blend": 0.0,
-        "dual_stream_alpha": 0.5,
+        "veto_blend": HYPERPARAMS.get("veto_blend", 0.4),
+        "dual_stream_contest": HYPERPARAMS.get("dual_stream_contest", False),
+        "dual_stream_blend": HYPERPARAMS.get("dual_stream_blend", 0.0),
+        "dual_stream_alpha": HYPERPARAMS.get("dual_stream_alpha", 0.5),
         "asym_spans": True,
         "asym_span_mode": "choice_forward",
-        "head_weights": [1.0, 1.0, 1.15, 1.0, 0.38],
+        "head_weights": HYPERPARAMS.get("head_weights", [1.0, 1.0, 1.15, 1.0, 0.38]),
         "prob_margin_gamma": 0.0,
         "head_margin_weights": None,
         "head_center_logits": False,
@@ -722,6 +728,9 @@ def main():
         "judger_soft_emb": True,
         "judger_soft_tau": 1.0,
         "cand_margin_mode": "hard",
+        "cand_margin": HYPERPARAMS.get("cand_margin", 1.0),
+        "lambda_cand_margin": HYPERPARAMS.get("lambda_cand_margin", 0.03),
+        "bert_model": bert_name,
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
