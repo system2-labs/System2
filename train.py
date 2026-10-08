@@ -27,7 +27,7 @@ from system import System2
 
 # --- TUNABLES (autoresearch subject: the loop edits this block) ---
 HYPERPARAMS = {
-    "bert_model": "answerdotai/ModernBERT-large",
+    "bert_model": "answerdotai/ModernBERT-Large-Instruct",
     "use_mote": False,
     "mote_mode": "arc_soft",  # "supervised" (Path 1), "ensemble" (Path 2), "arc_soft" (Path 3)
     "num_experts": 4,
