@@ -72,7 +72,7 @@ class System2(nn.Module):
     2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0, head_weights=None, prob_margin_gamma=0.0, head_center_logits=False):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0, head_weights=None, prob_margin_gamma=0.0, head_center_logits=False, consensus_features=False, judger_win_emb=False, margin_dim=3):
         super().__init__()
         self.pairwise = pairwise
         self.diff_features = diff_features
@@ -80,6 +80,8 @@ class System2(nn.Module):
         self.uniform_ensemble = uniform_ensemble
         self.ensemble_temp = ensemble_temp
         self.margin_features = margin_features
+        self.consensus_features = consensus_features
+        self.judger_win_emb = judger_win_emb
         self.margin_gamma = margin_gamma
         self.prob_margin_gamma = prob_margin_gamma
         self.prob_ensemble = prob_ensemble
@@ -91,12 +93,14 @@ class System2(nn.Module):
         self.veto_blend = veto_blend
         self.head_weights = head_weights
         self.head_center_logits = head_center_logits
+        effective_margin_dim = 5 if consensus_features else (margin_dim if (margin_features or consensus_features) else 0)
+        self.margin_dim = effective_margin_dim
         head_classes = 1 if pairwise else num_classes
         self.heads = nn.ModuleList([
             ThoughtHead(num_classes=head_classes, diff_features=diff_features, num_layers=head_layers, dropout=head_dropout, norm_first=head_norm_first, mlp_dim=head_mlp_dim, norm_diff=head_norm_diff)
             for _ in range(num_heads)
         ])
-        self.judger = Judger(learnable_temp=learnable_temp, centered_conf=centered_conf, margin_features=margin_features, residual=judger_residual)
+        self.judger = Judger(learnable_temp=learnable_temp, centered_conf=centered_conf, margin_features=(margin_features or consensus_features), margin_dim=effective_margin_dim, residual=judger_residual)
 
     def forward(self, encoder_output, detach_judger=False):
         if encoder_output.dim() >= 3:
@@ -113,7 +117,12 @@ class System2(nn.Module):
                     cand_scores = head.hypothesis_head(feat).squeeze(-1)
                 else:
                     cand_scores = head.hypothesis_head(x).squeeze(-1)  # (B, num_choices)
-                head_emb = x.mean(dim=1)             # (B, 512)
+                if getattr(self, "judger_win_emb", False):
+                    win_c = cand_scores.argmax(dim=-1)
+                    win_x = x[torch.arange(x.size(0), device=x.device), win_c]
+                    head_emb = 0.5 * x.mean(dim=1) + 0.5 * win_x
+                else:
+                    head_emb = x.mean(dim=1)             # (B, 512)
                 conf = torch.sigmoid(head.confidence_head(head_emb)).squeeze(-1)  # (B,)
                 all_logits.append(cand_scores)
                 confidences.append(conf)
@@ -126,7 +135,19 @@ class System2(nn.Module):
 
             sorted_l, _ = torch.sort(logits, dim=-1, descending=True)
             m1 = sorted_l[:, :, 0] - sorted_l[:, :, 1]
-            if self.margin_features:
+            if getattr(self, "consensus_features", False):
+                preds = logits.argmax(dim=-1)  # (B, N)
+                agreement = (preds.unsqueeze(-1) == preds.unsqueeze(-2)).float()  # (B, N, N)
+                agree_ratio = agreement.mean(dim=-1)  # (B, N)
+                p = torch.softmax(logits, dim=-1)  # (B, N, C)
+                mean_probs = p.mean(dim=1)  # (B, C)
+                chosen_consensus_prob = mean_probs.gather(1, preds)  # (B, N)
+                m_mean = sorted_l[:, :, 0] - logits.mean(dim=-1)
+                ent = -(p * torch.log(p + 1e-8)).sum(dim=-1) / 1.38629
+                margin_feats = torch.stack([m1, m_mean, ent, agree_ratio, chosen_consensus_prob], dim=-1)
+                if detach_judger:
+                    margin_feats = margin_feats.detach()
+            elif self.margin_features:
                 m_mean = sorted_l[:, :, 0] - logits.mean(dim=-1)
                 p = torch.softmax(logits, dim=-1)
                 ent = -(p * torch.log(p + 1e-8)).sum(dim=-1) / 1.38629
@@ -185,7 +206,20 @@ class System2(nn.Module):
 
             sorted_l, _ = torch.sort(logits, dim=-1, descending=True)
             m1 = sorted_l[:, :, 0] - (sorted_l[:, :, 1] if sorted_l.size(-1) > 1 else sorted_l[:, :, 0])
-            if self.margin_features:
+            if getattr(self, "consensus_features", False):
+                preds = logits.argmax(dim=-1)  # (B, N)
+                agreement = (preds.unsqueeze(-1) == preds.unsqueeze(-2)).float()  # (B, N, N)
+                agree_ratio = agreement.mean(dim=-1)  # (B, N)
+                p = torch.softmax(logits, dim=-1)  # (B, N, C)
+                mean_probs = p.mean(dim=1)  # (B, C)
+                chosen_consensus_prob = mean_probs.gather(1, preds)  # (B, N)
+                m_mean = sorted_l[:, :, 0] - logits.mean(dim=-1)
+                denom = math.log(float(logits.size(-1))) if logits.size(-1) > 1 else 1.0
+                ent = -(p * torch.log(p + 1e-8)).sum(dim=-1) / denom
+                margin_feats = torch.stack([m1, m_mean, ent, agree_ratio, chosen_consensus_prob], dim=-1)
+                if detach_judger:
+                    margin_feats = margin_feats.detach()
+            elif self.margin_features:
                 m_mean = sorted_l[:, :, 0] - logits.mean(dim=-1)
                 p = torch.softmax(logits, dim=-1)
                 denom = math.log(float(logits.size(-1))) if logits.size(-1) > 1 else 1.0

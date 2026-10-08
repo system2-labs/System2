@@ -105,6 +105,8 @@ HYPERPARAMS = {
     "train_ensemble_temp": 1.8,
     "head_margin_weights": None,
     "head_center_logits": False,
+    "consensus_features": False,
+    "judger_win_emb": False,
 }
 
 
@@ -359,6 +361,8 @@ def main():
             head_weights=HYPERPARAMS.get("train_head_weights", None),
             prob_margin_gamma=HYPERPARAMS.get("prob_margin_gamma", 0.0),
             head_center_logits=HYPERPARAMS.get("head_center_logits", False),
+            consensus_features=HYPERPARAMS.get("consensus_features", False),
+            judger_win_emb=HYPERPARAMS.get("judger_win_emb", False),
         )
     sys2.to(device)
     sys2.train()
@@ -695,6 +699,8 @@ def main():
         "prob_margin_gamma": HYPERPARAMS.get("prob_margin_gamma", 0.0),
         "head_margin_weights": HYPERPARAMS.get("head_margin_weights", None),
         "head_center_logits": HYPERPARAMS.get("head_center_logits", False),
+        "consensus_features": HYPERPARAMS.get("consensus_features", False),
+        "judger_win_emb": HYPERPARAMS.get("judger_win_emb", False),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}

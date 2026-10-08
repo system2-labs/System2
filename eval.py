@@ -219,8 +219,21 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             kwargs["ensemble_temp"] = ensemble_temp
         elif isinstance(state, dict) and "ensemble_temp" in state:
             kwargs["ensemble_temp"] = state["ensemble_temp"]
-        if (isinstance(state, dict) and state.get("margin_features", False)) or ("judger.margin_norm.weight" in sys2_state):
+        if "judger.margin_norm.weight" in sys2_state:
+            m_dim = sys2_state["judger.margin_norm.weight"].shape[0]
+            kwargs["margin_dim"] = m_dim
+            if m_dim == 5 or (isinstance(state, dict) and state.get("consensus_features", False)):
+                kwargs["consensus_features"] = True
+            else:
+                kwargs["margin_features"] = True
+        elif isinstance(state, dict) and state.get("consensus_features", False):
+            kwargs["consensus_features"] = True
+            kwargs["margin_dim"] = 5
+        elif isinstance(state, dict) and state.get("margin_features", False):
             kwargs["margin_features"] = True
+            kwargs["margin_dim"] = 3
+        if isinstance(state, dict) and state.get("judger_win_emb", False):
+            kwargs["judger_win_emb"] = True
         if isinstance(state, dict) and "margin_gamma" in state:
             kwargs["margin_gamma"] = state["margin_gamma"]
         if isinstance(state, dict) and "prob_margin_gamma" in state:
