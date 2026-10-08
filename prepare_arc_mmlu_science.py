@@ -1,147 +1,122 @@
-"""prepare_arc_mmlu_science.py - Curated Multi-Source Scientific Reasoning Dataset.
+"""prepare_arc_mmlu_science.py - Prepare ARC + MMLU Pure High-School/Conceptual Science.
 
-Combines:
-1. AI2 ARC (Challenge Train/Val + Easy Train/Val): 4,300 in-domain problems
-2. MMLU Pure Science Disciplines (Physics, Chemistry, Biology, Astronomy, Genetics):
-   - conceptual_physics
-   - high_school_physics
-   - college_physics
-   - high_school_chemistry
-   - college_chemistry
-   - high_school_biology
-   - college_biology
-   - astronomy
-   - medical_genetics
-   - anatomy
-   - virology
-   Total External: ~1,986 high-purity causal reasoning problems
-
-Evaluation Set:
-- Preserves the full canonical held-out AI2 ARC test set (3,530 problems)
-  to ensure strict comparability against all Phase 2 Baselines and SOTA (.best_metric = 0.6625).
+Combines canonical ARC train/val (4,220 samples) with 1,016 pure 4-choice natural science
+questions from MMLU (conceptual physics, high school physics, biology, and chemistry).
+Preserves the canonical 3,530 held-out ARC test problems 100% untouched.
 """
-import random
-from datasets import Dataset, DatasetDict, load_dataset
+from datasets import Dataset, DatasetDict, load_dataset, load_from_disk
+import os
 
 
-def prepare_arc_train():
-    challenge = load_dataset("allenai/ai2_arc", "ARC-Challenge")
-    easy = load_dataset("allenai/ai2_arc", "ARC-Easy")
+def format_arc_split(*splits):
     label_map = {"A": 0, "B": 1, "C": 2, "D": 3, "1": 0, "2": 1, "3": 2, "4": 3}
     records = []
-
-    for split in [challenge["train"], easy["train"], challenge["validation"], easy["validation"]]:
-        for ex in split:
+    
+    for split_data in splits:
+        for ex in split_data:
             key = ex.get("answerKey")
             choices = ex.get("choices", {})
             texts = choices.get("text", [])
+            
             if key not in label_map or len(texts) != 4:
                 continue
+            
             q = ex["question"].strip()
-            c_texts = [t.strip() for t in texts]
-            formatted_text = f"Question: {q}\n(A) {c_texts[0]}\n(B) {c_texts[1]}\n(C) {c_texts[2]}\n(D) {c_texts[3]}"
+            formatted_text = (
+                f"Question: {q}\n"
+                f"(A) {texts[0]}\n"
+                f"(B) {texts[1]}\n"
+                f"(C) {texts[2]}\n"
+                f"(D) {texts[3]}"
+            )
             records.append({
                 "question": q,
-                "choices": c_texts,
+                "choices": [texts[0], texts[1], texts[2], texts[3]],
                 "text": formatted_text,
-                "label": label_map[key],
-                "source": "arc",
+                "label": label_map[key]
             })
     return records
 
 
-def prepare_mmlu_science_train():
-    subjects = [
+def format_mmlu_science():
+    sub_configs = [
         "conceptual_physics",
         "high_school_physics",
-        "college_physics",
-        "high_school_chemistry",
-        "college_chemistry",
         "high_school_biology",
-        "college_biology",
-        "astronomy",
-        "medical_genetics",
-        "anatomy",
-        "virology",
+        "high_school_chemistry",
     ]
     records = []
-    for sub in subjects:
-        try:
-            ds = load_dataset("cais/mmlu", sub)
-            for split_name in ds:
-                for ex in ds[split_name]:
-                    q = ex.get("question", "").strip()
-                    choices = ex.get("choices", [])
-                    ans = ex.get("answer")
-                    if not q or len(choices) != 4 or ans not in [0, 1, 2, 3]:
-                        continue
-                    c_texts = [str(c).strip() for c in choices]
-                    formatted_text = f"Question: {q}\n(A) {c_texts[0]}\n(B) {c_texts[1]}\n(C) {c_texts[2]}\n(D) {c_texts[3]}"
-                    records.append({
-                        "question": q,
-                        "choices": c_texts,
-                        "text": formatted_text,
-                        "label": ans,
-                        "source": f"mmlu_{sub}",
-                    })
-        except Exception as e:
-            print(f"Warning: failed to load cais/mmlu/{sub}: {e}")
-    return records
-
-
-def prepare_arc_test():
-    challenge = load_dataset("allenai/ai2_arc", "ARC-Challenge")["test"]
-    easy = load_dataset("allenai/ai2_arc", "ARC-Easy")["test"]
-    label_map = {"A": 0, "B": 1, "C": 2, "D": 3, "1": 0, "2": 1, "3": 2, "4": 3}
-    records = []
-
-    for split in [challenge, easy]:
-        for ex in split:
-            key = ex.get("answerKey")
-            choices = ex.get("choices", {})
-            texts = choices.get("text", [])
-            if key not in label_map or len(texts) != 4:
-                continue
-            q = ex["question"].strip()
-            c_texts = [t.strip() for t in texts]
-            formatted_text = f"Question: {q}\n(A) {c_texts[0]}\n(B) {c_texts[1]}\n(C) {c_texts[2]}\n(D) {c_texts[3]}"
-            records.append({
-                "question": q,
-                "choices": c_texts,
-                "text": formatted_text,
-                "label": label_map[key],
-                "source": "arc",
-            })
+    for sub in sub_configs:
+        for split in ["test", "validation", "dev"]:
+            ds = load_dataset("cais/mmlu", sub, split=split)
+            for ex in ds:
+                choices = ex["choices"]
+                if len(choices) != 4:
+                    continue
+                q = ex["question"].strip()
+                label = ex["answer"]
+                if label not in [0, 1, 2, 3]:
+                    continue
+                formatted_text = (
+                    f"Question: {q}\n"
+                    f"(A) {choices[0]}\n"
+                    f"(B) {choices[1]}\n"
+                    f"(C) {choices[2]}\n"
+                    f"(D) {choices[3]}"
+                )
+                records.append({
+                    "question": q,
+                    "choices": [choices[0], choices[1], choices[2], choices[3]],
+                    "text": formatted_text,
+                    "label": label
+                })
     return records
 
 
 def main():
-    print("Preparing ARC train records...")
-    arc_train = prepare_arc_train()
-    print(f"ARC train: {len(arc_train)} samples")
-
-    print("Preparing MMLU pure STEM science records...")
-    mmlu_train = prepare_mmlu_science_train()
-    print(f"MMLU science train: {len(mmlu_train)} samples")
-
-    all_train = arc_train + mmlu_train
-    # Deterministic shuffle
-    random.Random(42).shuffle(all_train)
-    print(f"Total Combined Training Pool: {len(all_train)} samples")
-
-    print("Preparing held-out ARC test records...")
-    arc_test = prepare_arc_test()
-    print(f"Canonical held-out ARC test: {len(arc_test)} samples")
-
+    print("Loading allenai/ai2_arc...")
+    challenge = load_dataset("allenai/ai2_arc", "ARC-Challenge")
+    easy = load_dataset("allenai/ai2_arc", "ARC-Easy")
+    
+    arc_train_records = format_arc_split(
+        challenge["train"],
+        easy["train"],
+        challenge["validation"],
+        easy["validation"],
+    )
+    print(f"Loaded {len(arc_train_records)} ARC train records.")
+    
+    mmlu_science_records = format_mmlu_science()
+    print(f"Loaded {len(mmlu_science_records)} MMLU pure science records.")
+    
+    # Format canonical test set
+    arc_test_records = format_arc_split(challenge["test"], easy["test"])
+    test_questions = set(r["question"].strip().lower() for r in arc_test_records)
+    print(f"Canonical ARC test set has {len(arc_test_records)} problems.")
+    
+    # Filter MMLU records to guarantee 0% contamination with ARC test
+    clean_mmlu = []
+    for r in mmlu_science_records:
+        if r["question"].strip().lower() not in test_questions:
+            clean_mmlu.append(r)
+        else:
+            print("Filtered overlapping question:", r["question"])
+    print(f"Clean MMLU science records: {len(clean_mmlu)}")
+    
+    combined_train = arc_train_records + clean_mmlu
+    print(f"Combined train set size: {len(combined_train)} samples (+{len(clean_mmlu)/len(arc_train_records)*100:.1f}%)")
+    
+    train_ds = Dataset.from_list(combined_train)
+    test_ds = Dataset.from_list(arc_test_records)
+    
+    output_dir = "./data/arc_mmlu_science"
+    os.makedirs(output_dir, exist_ok=True)
     dataset_dict = DatasetDict({
-        "train": Dataset.from_list(all_train),
-        "test": Dataset.from_list(arc_test),
+        "train": train_ds,
+        "test": test_ds
     })
-
-    out_dir = "./data/arc_mmlu_science"
-    print(f"Saving curated dataset to {out_dir}...")
-    dataset_dict.save_to_disk(out_dir)
-    print(f"Successfully saved {out_dir}!")
+    dataset_dict.save_to_disk(output_dir)
+    print(f"Successfully saved clean dataset to {output_dir}!")
 
 
 if __name__ == "__main__":
