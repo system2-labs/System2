@@ -11,4 +11,7 @@ data/arc_scienceqa/
 __pycache__/
 *.pyc
 .DS_Store
+# scratch / cache files
+scratch/
+*.pt
 # NOTE: .best_metric is intentionally TRACKED - it is the loop's memory.
