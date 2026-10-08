@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 21: Decisive Judger Supervision & Dynamic Decision-Level Gradient Battery
-- Test 1: Sharpened Target & Amplified Judger Supervision (soft_target_tau=0.55, lambda_judge=0.20)
-- Test 2: Direct Decision-Level Ensemble Cross-Entropy Supervision (lambda_ens_ce=0.20, detach_judger=False)
-- Test 3: Joint Decisive Judger & Coupled Decision Gradient Synergy (soft_target_tau=0.60, lambda_judge=0.18, lambda_ens_ce=0.15, detach_judger=False)
+Battery 22: Déjà vu Deliberation Battery (Decisiveness Veto & Dual-Stream Contest)
+- Test 1: Option A.1 Calibrated Decisiveness Veto (veto_blend=0.40, margin_gamma=0.20)
+- Test 2: Option A.2 Déjà vu Dual-Stream 1-on-1 Contest (dual_stream_contest=True, blend=0.30, alpha=0.50)
+- Test 3: Option A.1 + A.2 Joint Decisiveness & Dual-Stream Contest Synergy
 """
 import json
 import os
@@ -166,6 +166,9 @@ def main():
         "cand_margin": 1.0,
         "cand_margin_mode": "hard",
         "veto_blend": 0.0,
+        "dual_stream_contest": False,
+        "dual_stream_blend": 0.0,
+        "dual_stream_alpha": 0.5,
         "permute_choices": False,
         "asym_roles": False,
         "asym_spans": True,
@@ -178,14 +181,14 @@ def main():
         "judger_soft_emb": True,
         "judger_soft_tau": 1.0,
     }
-    # Test 1: Sharpened Target & Amplified Judger Supervision (soft_target_tau=0.55, lambda_judge=0.20)
+    # Test 1: Option A.1 Calibrated Decisiveness Veto (veto_blend=0.40, margin_gamma=0.20)
     t1_params = dict(base_params)
-    t1_params["soft_target_tau"] = 0.55
-    t1_params["lambda_judge"] = 0.20
+    t1_params["veto_blend"] = 0.40
+    t1_params["margin_gamma"] = 0.20
     r1 = run_experiment(
-        name="Test 1: Sharpened Target & Amplified Judger Supervision (tau=0.55, lambda=0.20)",
+        name="Test 1: Option A.1 Calibrated Decisiveness Veto (vb=0.40, gamma=0.20)",
         hyperparams=t1_params,
-        description="Battery 21 Test 1: Sharpened Target & Amplified Judger Supervision (tau=0.55, lambda=0.20)",
+        description="Battery 22 Test 1: Option A.1 Calibrated Decisiveness Veto (vb=0.40, gamma=0.20)",
     )
     results.append(r1)
 
@@ -195,14 +198,15 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Direct Decision-Level Ensemble Cross-Entropy Supervision (lambda_ens_ce=0.20, detach_judger=False)
+    # Test 2: Option A.2 Déjà vu Dual-Stream 1-on-1 Contest (dual_stream_contest=True, blend=0.30, alpha=0.50)
     t2_params = dict(base_params)
-    t2_params["lambda_ens_ce"] = 0.20
-    t2_params["detach_judger"] = False
+    t2_params["dual_stream_contest"] = True
+    t2_params["dual_stream_blend"] = 0.30
+    t2_params["dual_stream_alpha"] = 0.50
     r2 = run_experiment(
-        name="Test 2: Direct Decision-Level Ensemble Cross-Entropy Supervision (lambda_ens_ce=0.20, detach=False)",
+        name="Test 2: Option A.2 Déjà vu Dual-Stream 1-on-1 Contest (contest=True, blend=0.30)",
         hyperparams=t2_params,
-        description="Battery 21 Test 2: Direct Decision-Level Ensemble Cross-Entropy Supervision (lambda_ens_ce=0.20, detach=False)",
+        description="Battery 22 Test 2: Option A.2 Déjà vu Dual-Stream 1-on-1 Contest (contest=True, blend=0.30)",
     )
     results.append(r2)
 
@@ -212,16 +216,17 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Joint Decisive Judger & Coupled Decision Gradient Synergy (soft_target_tau=0.60, lambda_judge=0.18, lambda_ens_ce=0.15, detach_judger=False)
+    # Test 3: Joint Option A.1 + A.2 Decisiveness & Dual-Stream Contest Synergy
     t3_params = dict(base_params)
-    t3_params["soft_target_tau"] = 0.60
-    t3_params["lambda_judge"] = 0.18
-    t3_params["lambda_ens_ce"] = 0.15
-    t3_params["detach_judger"] = False
+    t3_params["veto_blend"] = 0.35
+    t3_params["margin_gamma"] = 0.15
+    t3_params["dual_stream_contest"] = True
+    t3_params["dual_stream_blend"] = 0.25
+    t3_params["dual_stream_alpha"] = 0.50
     r3 = run_experiment(
-        name="Test 3: Joint Decisive Judger & Coupled Decision Gradient Synergy (tau=0.60, judge=0.18, ens=0.15)",
+        name="Test 3: Option A.1 + A.2 Decisiveness Veto & Dual-Stream Contest Synergy",
         hyperparams=t3_params,
-        description="Battery 21 Test 3: Joint Decisive Judger & Coupled Decision Gradient Synergy (tau=0.60, judge=0.18, ens=0.15)",
+        description="Battery 22 Test 3: Option A.1 + A.2 Decisiveness Veto & Dual-Stream Contest Synergy",
     )
     results.append(r3)
 
