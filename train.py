@@ -99,8 +99,8 @@ HYPERPARAMS = {
     "permute_choices": False,
     "asym_roles": False,
     "asym_spans": True,
-    "asym_span_mode": "balanced_spectrum",
-    "head_weights": [1.0, 1.0, 1.2, 1.0, 0.50],
+    "asym_span_mode": "choice_forward",
+    "head_weights": [1.0, 1.0, 1.15, 1.0, 0.38],
     "train_head_weights": None,
     "train_ensemble_temp": 1.8,
     "head_margin_weights": None,
@@ -185,6 +185,7 @@ def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False
             v0 = holistic
             v1 = 0.40 * q_vec + 0.60 * a_vec
             v2 = 0.20 * q_vec + 0.80 * a_vec
+            v3 = 0.50 * q_vec + 0.50 * a_vec
             v4 = 0.05 * q_vec + 0.95 * a_vec
         elif asym_span_mode == "balanced_spectrum":
             v0 = holistic
