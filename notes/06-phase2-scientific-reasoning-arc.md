@@ -1044,6 +1044,22 @@ Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), 
   3. **Protocol Action**:
      All 3 trials safely reverted by `runner.sh`. Guarded record firmly intact at `.best_metric = 0.6713` (Accuracy **`58.56%`**, Brier **`0.2430`**).
 
+### 5.58 Diagnostic Analysis of Battery 16: Option-Aware Judger Deliberation & Dynamic Arbitration Battery (The 0.6743 SOTA Breakthrough 🏆):
+- **Hypothesis**: By equipping the Judger with dynamic choice margin features (`margin_features=True`: top-2 margin $m_1$, salience $m_{\text{mean}}$, and prediction entropy $ent$) and replacing collapsed winner-take-all argmax supervision with smooth soft-target likelihood distillation (`soft_judge_targets=True`, $\tau=0.8$), can System2 un-collapse the Judger, eliminate quadratic Brier penalties, and break through the 0.6713 ceiling?
+- **Results Across the Battery**:
+  - **Test 1: Option-Aware Decision Margin Deliberation (`margin_features=True`, static target)**: Accuracy **58.16%** (2,053 / 3,530), Brier **0.2450**, Metric **0.6683** (Reverted: $0.6683 \le 0.6713$).
+  - **Test 2: Dynamic Margin Deliberation with Correctness Supervision (`oracle_judge_target=True`, `margin_features=True`)**: Accuracy **58.19%** (2,054 / 3,530), Brier **0.2437**, Metric **0.6691** (Reverted: $0.6691 \le 0.6713$).
+  - **Test 3: Soft-Target Margin Arbitration (`soft_judge_targets=True`, $\tau=0.8$, `margin_features=True`)**: Accuracy **`58.16%`** (2,053 / 3,530), Brier **`0.2329`** (**NEW ALL-TIME RECORD CALIBRATION! 🏆**), Metric **`0.6743`** (**NEW ALL-TIME SOTA RECORD COMMITTED & PUSHED TO MAIN! 🏆**, commit [`133b882`](https://github.com/tj-doomer-it/System2/commit/133b882)).
+- **Deep Scientific Diagnosis**:
+  1. **The Historic Calibration Leap (0.2430 $\to$ 0.2329)**:
+     In Test 3, soft-target likelihood distillation allocated supervision probability directly proportional to each head's negative cross-entropy on the true label ($q_h \propto (p_h(\text{true\_label}))^{1/\tau}$).
+     This prevented the Judger from driving winning scores to extreme positive values ($+5.0$), which historically caused output confidence $\sigma(s_{\text{best}})$ to balloon to $0.85-0.90$.
+     Instead, output confidence was bounded smoothly around empirical accuracy, causing quadratic Brier error to plunge by **-0.0101** from **`0.2430` down to `0.2329`**—the single greatest calibration improvement in repository history!
+  2. **Breaking the Multi-Battery Ceiling**:
+     After 7 batteries of stalled scalar head weight tuning, un-collapsing the Judger with dynamic decision margins and soft-target distillation surged the guarded benchmark metric from **`0.6713` to `0.6743`** (+0.0030), successfully promoting a new model checkpoint to `models/system2.pt`.
+  3. **Protocol Action**:
+     Test 3 committed and pushed to GitHub `main` as the new project record: **`.best_metric = 0.6743`**.
+
 ### The Core Architectural Principles of System2:
 
 
