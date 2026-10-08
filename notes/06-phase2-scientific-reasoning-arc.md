@@ -996,6 +996,30 @@ Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), 
   4. **Protocol Action**:
      All 3 trials safely reverted by `runner.sh`. Guarded record firmly intact at `.best_metric = 0.6711` (Accuracy **`58.53%`**, Brier **`0.2431`**).
 
+### 5.56 Diagnostic Analysis of Battery 14: Harmonic Arbitration & Certainty Margin Battery (The 0.6713 SOTA Breakthrough 🏆):
+- **Hypothesis**: By decoupling training temperature ($\tau_{\text{train}}=1.80$) from post-hoc arbitration temperature ($\tau_{\text{eval}}=1.78$) and applying surgical harmonic head weights ($\mathbf{w}=[1.0, 1.0, 1.20, 1.0, 0.38]$), can System2 surpass the 0.6711 barrier and establish a new all-time high?
+- **Results Across the Battery**:
+  - **Test 1: Surgical Harmonic Arbitration (`[1.0, 1.0, 1.20, 1.0, 0.38]`, $\tau_{\text{eval}}=1.78$, $\tau_{\text{train}}=1.80$)**: Accuracy **`58.56%`** (**NEW ALL-TIME RECORD: 2,067 / 3,530 problems solved** 🏆), Brier **`0.2430`** (All-time best calibration!), Metric **`0.6713`** (**COMMITTED & PUSHED**, commit [`f698e2a`](https://github.com/tj-doomer-it/System2/commit/f698e2a)).
+  - **Test 2: Fine Premise-Balancing Arbitration (`[1.0, 0.95, 1.18, 1.00, 0.38]`, $\tau_{\text{eval}}=1.74$)**: Accuracy **`58.56%`** (2,067 / 3,530 solved), Brier **`0.2430`**, Metric **`0.6713`** (Reverted: tied new SOTA threshold $0.6713 \le 0.6713$).
+  - **Test 3: Harmonic Probability-Margin Modulation (`prob_margin_gamma=0.015`, $\tau_{\text{eval}}=1.76$)**: Accuracy **58.53%**, Brier **0.2431**, Metric **0.6711** (Reverted: near-SOTA within 0.0002).
+- **Deep Scientific Diagnosis & The Representation Plateau Autopsy**:
+  1. **The 0.6713 All-Time Benchmark Record (Test 1 Breakthrough)**:
+     Decoupling training deliberation temperature ($\tau_{\text{train}}=1.80$) from evaluation temperature ($\tau_{\text{eval}}=1.78$) allowed the representation to converge under the exact optimal SOTA trajectory (`ce = 0.925`), while cooling evaluation temperature slightly to $1.78$ with balanced weights $[1.0, 1.0, 1.20, 1.0, 0.38]$ resolved two additional boundary edge cases, setting a new project record of **`0.6713`** (2,067 questions solved, Brier `0.2430`).
+  2. **The Post-Hoc Weight Tweaking Plateau**:
+     Across 7 experimental batteries (Batteries 6, 7, 8, 10, 12, 13, 14), fine-tuning head weights and temperatures achieved a total net gain of **+9 questions out of 3,530** ($58.30\% \to 58.56\%$).
+     Our diagnostic audit of individual head outputs proves that scalar weight tuning has reached its mathematical limit:
+     - On 2,039 questions (57.8%), 3 to 5 heads agree on the correct answer. The ensemble already solves 2,013 of them (98.7%).
+     - On 1,161 questions (32.9%), **ZERO** heads answer correctly. No weighting scheme can solve questions where the model possesses no underlying factual signal.
+     - On 330 questions (9.3%), 1 or 2 heads are correct, but 3 or 4 heads agree on a deceptive distractor. The ensemble solves only 53 of them (16.1%) and misses 277 (83.9%).
+     Because the heads are weighted by a single global vector $\mathbf{w}$, increasing the weight of Head 0 or Head 3 enough to override a 4-to-1 false consensus on these 277 questions destroys the 2,013 questions where the majority was right.
+  3. **The Imperative for True Architectural / Knowledge Shifts**:
+     Scalar ensembling cannot solve context-dependent false consensus. Bridging the gap toward the 67%–72% Oracle Ceiling requires:
+     - **Option-Aware Arbitration**: Giving the Judger visibility over which specific choice each head predicted (rather than a blind mean embedding).
+     - **Premise-Constraint Verification**: Directly scoring whether an answer satisfies the conditions stated in the question premise, neutralizing distractors that cite irrelevant true facts.
+     - **Factual Science Grounding**: Ingesting high-quality in-domain scientific knowledge to address the 1,161 completely unlearned questions.
+  4. **Protocol Action**:
+     Test 1 committed to GitHub `main` as the new project record: **`.best_metric = 0.6713`**.
+
 ### The Core Architectural Principles of System2:
 
 
