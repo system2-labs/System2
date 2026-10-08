@@ -101,10 +101,10 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active SOTA baseline: 0.6745 (Accuracy 58.19%, Brier 0.2329)
-    # Battery 17: Sharpened Deliberation & Harmonic Calibration Optimization
+    # Active SOTA baseline: 0.6757 (Accuracy 58.24%, Brier 0.2310)
+    # Battery 19: Continuous Hypothesis Deliberation & Hard-Negative Contrast Battery
 
-    # Base SOTA parameters
+    # Base SOTA parameters (incorporating Battery 19 Test 3 SOTA)
     base_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -162,9 +162,9 @@ def main():
         "judger_residual": False,
         "head_mlp_dim": 256,
         "head_norm_diff": False,
-        "lambda_cand_margin": 0.05,
+        "lambda_cand_margin": 0.03,
         "cand_margin": 1.0,
-        "cand_margin_mode": "mean",
+        "cand_margin_mode": "hard",
         "veto_blend": 0.0,
         "permute_choices": False,
         "asym_roles": False,
@@ -175,17 +175,16 @@ def main():
         "train_ensemble_temp": 1.80,
         "head_margin_weights": None,
         "head_center_logits": False,
-        "judger_soft_emb": False,
+        "judger_soft_emb": True,
         "judger_soft_tau": 1.0,
     }
-    # Test 1: Continuous Soft Hypothesis Embedding in Judger (judger_soft_emb=True, tau=1.0)
+    # Test 1: Sharpened Continuous Hypothesis Embedding in Judger (judger_soft_tau=0.75)
     t1_params = dict(base_params)
-    t1_params["judger_soft_emb"] = True
-    t1_params["judger_soft_tau"] = 1.0
+    t1_params["judger_soft_tau"] = 0.75
     r1 = run_experiment(
-        name="Test 1: Continuous Soft Hypothesis Embedding in Judger (judger_soft_emb=True, tau=1.0)",
+        name="Test 1: Sharpened Continuous Hypothesis Embedding (judger_soft_tau=0.75)",
         hyperparams=t1_params,
-        description="Battery 19 Test 1: Continuous Soft Hypothesis Embedding in Judger (judger_soft_emb=True, tau=1.0)",
+        description="Battery 20 Test 1: Sharpened Continuous Hypothesis Embedding (judger_soft_tau=0.75)",
     )
     results.append(r1)
 
@@ -195,14 +194,13 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Hardest Negative Margin Regularization (cand_margin_mode="hard", lambda=0.03)
+    # Test 2: Calibrated Hard-Margin Tuning (cand_margin_mode='hard', lambda=0.04)
     t2_params = dict(base_params)
-    t2_params["cand_margin_mode"] = "hard"
-    t2_params["lambda_cand_margin"] = 0.03
+    t2_params["lambda_cand_margin"] = 0.04
     r2 = run_experiment(
-        name="Test 2: Hardest Negative Margin Regularization (cand_margin_mode='hard', lambda=0.03)",
+        name="Test 2: Calibrated Hard-Margin Tuning (lambda=0.04)",
         hyperparams=t2_params,
-        description="Battery 19 Test 2: Hardest Negative Margin Regularization (cand_margin_mode='hard', lambda=0.03)",
+        description="Battery 20 Test 2: Calibrated Hard-Margin Tuning (lambda=0.04)",
     )
     results.append(r2)
 
@@ -212,16 +210,14 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Joint Soft Hypothesis & Hard Margin Synergy (judger_soft_emb=True, cand_margin_mode="hard", lambda=0.03)
+    # Test 3: Dual Sharpened Hypothesis & Calibrated Margin (judger_soft_tau=0.80, lambda=0.035)
     t3_params = dict(base_params)
-    t3_params["judger_soft_emb"] = True
-    t3_params["judger_soft_tau"] = 1.0
-    t3_params["cand_margin_mode"] = "hard"
-    t3_params["lambda_cand_margin"] = 0.03
+    t3_params["judger_soft_tau"] = 0.80
+    t3_params["lambda_cand_margin"] = 0.035
     r3 = run_experiment(
-        name="Test 3: Joint Soft Hypothesis & Hard Margin Synergy (judger_soft_emb=True, hard margin)",
+        name="Test 3: Dual Sharpened Hypothesis & Calibrated Margin (tau=0.80, lambda=0.035)",
         hyperparams=t3_params,
-        description="Battery 19 Test 3: Joint Soft Hypothesis & Hard Margin Synergy (judger_soft_emb=True, hard margin)",
+        description="Battery 20 Test 3: Dual Sharpened Hypothesis & Calibrated Margin (tau=0.80, lambda=0.035)",
     )
     results.append(r3)
 
