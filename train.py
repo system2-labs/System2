@@ -69,8 +69,8 @@ HYPERPARAMS = {
     "learnable_temp": False,
     "use_scheduler": True,
     "scheduler_min_lr": 1e-05,
-    "soft_judge_targets": False,
-    "soft_target_tau": 0.5,
+    "soft_judge_targets": True,
+    "soft_target_tau": 0.8,
     "ensemble_heads": True,
     "centered_conf": False,
     "judge_cal_smoothing": 0.3,
@@ -562,8 +562,8 @@ def main():
                         torch.nn.functional.cross_entropy(h, lab, reduction='none')
                         for h in logits.unbind(1)
                     ], dim=1)  # (b, N)
-                    tau = HYPERPARAMS.get("soft_target_tau", 0.5)
-                    masked_scores = torch.where(is_head_correct, confs / tau, torch.full_like(confs, -1e9))
+                    tau = HYPERPARAMS.get("soft_target_tau", 0.8)
+                    masked_scores = torch.where(is_head_correct, -ce_per_h / tau, torch.full_like(ce_per_h, -1e9))
                     has_correct = is_head_correct.any(dim=1, keepdim=True)
                     fallback_scores = -ce_per_h / tau
                     target_logits = torch.where(has_correct, masked_scores, fallback_scores)
