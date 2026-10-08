@@ -107,6 +107,9 @@ HYPERPARAMS = {
     "head_center_logits": False,
     "consensus_features": False,
     "judger_win_emb": False,
+    "judger_soft_emb": False,
+    "judger_soft_tau": 1.0,
+    "cand_margin_mode": "mean",
 }
 
 
@@ -363,6 +366,8 @@ def main():
             head_center_logits=HYPERPARAMS.get("head_center_logits", False),
             consensus_features=HYPERPARAMS.get("consensus_features", False),
             judger_win_emb=HYPERPARAMS.get("judger_win_emb", False),
+            judger_soft_emb=HYPERPARAMS.get("judger_soft_emb", False),
+            judger_soft_tau=HYPERPARAMS.get("judger_soft_tau", 1.0),
         )
     sys2.to(device)
     sys2.train()
@@ -546,7 +551,11 @@ def main():
                     diffs = correct_scores - h
                     loss_m = torch.clamp(c_margin - diffs, min=0.0)
                     mask = torch.ones_like(loss_m).scatter_(1, lab.unsqueeze(1), 0.0)
-                    m_head = (loss_m * mask).sum(dim=1) / (loss_m.size(1) - 1)
+                    if HYPERPARAMS.get("cand_margin_mode", "mean") == "hard":
+                        masked_loss = torch.where(mask.bool(), loss_m, torch.full_like(loss_m, -1e9))
+                        m_head = torch.clamp(masked_loss.max(dim=1).values, min=0.0)
+                    else:
+                        m_head = (loss_m * mask).sum(dim=1) / (loss_m.size(1) - 1)
                     m_losses.append(w_m * m_head)
                 cand_margin_loss = torch.stack(m_losses).mean() if m_losses else torch.tensor(0.0, device=device)
             else:
@@ -701,6 +710,9 @@ def main():
         "head_center_logits": HYPERPARAMS.get("head_center_logits", False),
         "consensus_features": HYPERPARAMS.get("consensus_features", False),
         "judger_win_emb": HYPERPARAMS.get("judger_win_emb", False),
+        "judger_soft_emb": HYPERPARAMS.get("judger_soft_emb", False),
+        "judger_soft_tau": HYPERPARAMS.get("judger_soft_tau", 1.0),
+        "cand_margin_mode": HYPERPARAMS.get("cand_margin_mode", "mean"),
     }
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}

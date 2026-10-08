@@ -234,6 +234,10 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             kwargs["margin_dim"] = 3
         if isinstance(state, dict) and state.get("judger_win_emb", False):
             kwargs["judger_win_emb"] = True
+        if isinstance(state, dict) and state.get("judger_soft_emb", False):
+            kwargs["judger_soft_emb"] = True
+        if isinstance(state, dict) and "judger_soft_tau" in state:
+            kwargs["judger_soft_tau"] = state["judger_soft_tau"]
         if isinstance(state, dict) and "margin_gamma" in state:
             kwargs["margin_gamma"] = state["margin_gamma"]
         if isinstance(state, dict) and "prob_margin_gamma" in state:
