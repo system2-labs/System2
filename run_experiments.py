@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 15: Pure Scientific Knowledge Scaling & Balanced Anchor Battery
-- Test 1: Curated Natural Science Scaling (5.2k samples from ARC + MMLU Pure Science)
-- Test 2: High Scrutiny Deliberation on Scaled Science (head_weights=[1.0, 1.0, 1.25, 1.0, 0.35], tau=1.78)
-- Test 3: Balanced Premise Anchor on Scaled Science (head_weights=[1.05, 1.0, 1.20, 1.05, 0.35], tau=1.78)
+Battery 21: Decisive Judger Supervision & Dynamic Decision-Level Gradient Battery
+- Test 1: Sharpened Target & Amplified Judger Supervision (soft_target_tau=0.55, lambda_judge=0.20)
+- Test 2: Direct Decision-Level Ensemble Cross-Entropy Supervision (lambda_ens_ce=0.20, detach_judger=False)
+- Test 3: Joint Decisive Judger & Coupled Decision Gradient Synergy (soft_target_tau=0.60, lambda_judge=0.18, lambda_ens_ce=0.15, detach_judger=False)
 """
 import json
 import os
@@ -178,13 +178,14 @@ def main():
         "judger_soft_emb": True,
         "judger_soft_tau": 1.0,
     }
-    # Test 1: Sharpened Continuous Hypothesis Embedding in Judger (judger_soft_tau=0.75)
+    # Test 1: Sharpened Target & Amplified Judger Supervision (soft_target_tau=0.55, lambda_judge=0.20)
     t1_params = dict(base_params)
-    t1_params["judger_soft_tau"] = 0.75
+    t1_params["soft_target_tau"] = 0.55
+    t1_params["lambda_judge"] = 0.20
     r1 = run_experiment(
-        name="Test 1: Sharpened Continuous Hypothesis Embedding (judger_soft_tau=0.75)",
+        name="Test 1: Sharpened Target & Amplified Judger Supervision (tau=0.55, lambda=0.20)",
         hyperparams=t1_params,
-        description="Battery 20 Test 1: Sharpened Continuous Hypothesis Embedding (judger_soft_tau=0.75)",
+        description="Battery 21 Test 1: Sharpened Target & Amplified Judger Supervision (tau=0.55, lambda=0.20)",
     )
     results.append(r1)
 
@@ -194,13 +195,14 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Calibrated Hard-Margin Tuning (cand_margin_mode='hard', lambda=0.04)
+    # Test 2: Direct Decision-Level Ensemble Cross-Entropy Supervision (lambda_ens_ce=0.20, detach_judger=False)
     t2_params = dict(base_params)
-    t2_params["lambda_cand_margin"] = 0.04
+    t2_params["lambda_ens_ce"] = 0.20
+    t2_params["detach_judger"] = False
     r2 = run_experiment(
-        name="Test 2: Calibrated Hard-Margin Tuning (lambda=0.04)",
+        name="Test 2: Direct Decision-Level Ensemble Cross-Entropy Supervision (lambda_ens_ce=0.20, detach=False)",
         hyperparams=t2_params,
-        description="Battery 20 Test 2: Calibrated Hard-Margin Tuning (lambda=0.04)",
+        description="Battery 21 Test 2: Direct Decision-Level Ensemble Cross-Entropy Supervision (lambda_ens_ce=0.20, detach=False)",
     )
     results.append(r2)
 
@@ -210,14 +212,16 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Dual Sharpened Hypothesis & Calibrated Margin (judger_soft_tau=0.80, lambda=0.035)
+    # Test 3: Joint Decisive Judger & Coupled Decision Gradient Synergy (soft_target_tau=0.60, lambda_judge=0.18, lambda_ens_ce=0.15, detach_judger=False)
     t3_params = dict(base_params)
-    t3_params["judger_soft_tau"] = 0.80
-    t3_params["lambda_cand_margin"] = 0.035
+    t3_params["soft_target_tau"] = 0.60
+    t3_params["lambda_judge"] = 0.18
+    t3_params["lambda_ens_ce"] = 0.15
+    t3_params["detach_judger"] = False
     r3 = run_experiment(
-        name="Test 3: Dual Sharpened Hypothesis & Calibrated Margin (tau=0.80, lambda=0.035)",
+        name="Test 3: Joint Decisive Judger & Coupled Decision Gradient Synergy (tau=0.60, judge=0.18, ens=0.15)",
         hyperparams=t3_params,
-        description="Battery 20 Test 3: Dual Sharpened Hypothesis & Calibrated Margin (tau=0.80, lambda=0.035)",
+        description="Battery 21 Test 3: Joint Decisive Judger & Coupled Decision Gradient Synergy (tau=0.60, judge=0.18, ens=0.15)",
     )
     results.append(r3)
 
