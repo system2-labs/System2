@@ -263,6 +263,12 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
                 kwargs["head_mlp_dim"] = sys2_state["heads.0.hypothesis_head.1.weight"].shape[0]
         if isinstance(state, dict) and "veto_blend" in state:
             kwargs["veto_blend"] = state["veto_blend"]
+        if isinstance(state, dict) and "dual_stream_contest" in state:
+            kwargs["dual_stream_contest"] = state["dual_stream_contest"]
+        if isinstance(state, dict) and "dual_stream_blend" in state:
+            kwargs["dual_stream_blend"] = state["dual_stream_blend"]
+        if isinstance(state, dict) and "dual_stream_alpha" in state:
+            kwargs["dual_stream_alpha"] = state["dual_stream_alpha"]
         if head_weights is not None:
             kwargs["head_weights"] = head_weights
         elif isinstance(state, dict) and "head_weights" in state:

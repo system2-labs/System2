@@ -72,7 +72,7 @@ class System2(nn.Module):
     2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0, head_weights=None, prob_margin_gamma=0.0, head_center_logits=False, consensus_features=False, judger_win_emb=False, margin_dim=3, judger_soft_emb=False, judger_soft_tau=1.0):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0, head_weights=None, prob_margin_gamma=0.0, head_center_logits=False, consensus_features=False, judger_win_emb=False, margin_dim=3, judger_soft_emb=False, judger_soft_tau=1.0, dual_stream_contest=False, dual_stream_blend=0.0, dual_stream_alpha=0.5):
         super().__init__()
         self.pairwise = pairwise
         self.diff_features = diff_features
@@ -93,6 +93,9 @@ class System2(nn.Module):
         self.head_mlp_dim = head_mlp_dim
         self.head_norm_diff = head_norm_diff
         self.veto_blend = veto_blend
+        self.dual_stream_contest = dual_stream_contest
+        self.dual_stream_blend = dual_stream_blend
+        self.dual_stream_alpha = dual_stream_alpha
         self.head_weights = head_weights
         self.head_center_logits = head_center_logits
         effective_margin_dim = 5 if consensus_features else (margin_dim if (margin_features or consensus_features) else 0)
@@ -197,6 +200,28 @@ class System2(nn.Module):
                 vb = getattr(self, "veto_blend", 0.0)
                 peak_logits = logits[torch.arange(logits.size(0), device=logits.device), best]
                 ens_logits = (1.0 - vb) * ens_logits + vb * peak_logits
+            if getattr(self, "dual_stream_contest", False):
+                # Option A.2: Déjà vu Dual-Stream 1-on-1 Duel between top 2 hypotheses
+                sorted_heads = scores.argsort(dim=-1, descending=True)
+                h1 = sorted_heads[:, 0]
+                h2 = sorted_heads[:, 1]
+                B_curr = logits.size(0)
+                l1 = logits[torch.arange(B_curr, device=logits.device), h1]
+                l2 = logits[torch.arange(B_curr, device=logits.device), h2]
+                c1 = l1.argmax(dim=-1)
+                c2 = l2.argmax(dim=-1)
+                conflict = (c1 != c2)
+                if conflict.any():
+                    d1 = l1[torch.arange(B_curr, device=logits.device), c1] - l1[torch.arange(B_curr, device=logits.device), c2]
+                    d2 = l2[torch.arange(B_curr, device=logits.device), c2] - l2[torch.arange(B_curr, device=logits.device), c1]
+                    s1 = scores[torch.arange(B_curr, device=scores.device), h1]
+                    s2 = scores[torch.arange(B_curr, device=scores.device), h2]
+                    alpha = getattr(self, "dual_stream_alpha", 0.5)
+                    duel_diff = (s1 - s2) + alpha * (d1 - d2)
+                    winner = torch.where(duel_diff > 0, c1, c2)
+                    ds_blend = getattr(self, "dual_stream_blend", 0.3)
+                    duel_boost = torch.zeros_like(ens_logits).scatter_(1, winner.unsqueeze(1), ds_blend)
+                    ens_logits = torch.where(conflict.unsqueeze(1), ens_logits + duel_boost, ens_logits)
             return best, best_conf, pruned, confidences, logits, embeddings, scores, ens_logits
         else:
             # Single-vector classification: (B, 1024)
