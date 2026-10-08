@@ -161,6 +161,11 @@ def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=Non
 
 def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir="./data/arc", ensemble=False, head_weights=None, ensemble_temp=None):
     device = device or ("mps" if torch.backends.mps.is_available() else "cpu")
+    state = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+    bert_name = state.get("bert_model", "answerdotai/ModernBERT-large") if isinstance(state, dict) else "answerdotai/ModernBERT-large"
+    from bert import get_bert
+    global tokenizer, model
+    tokenizer, model = get_bert(bert_name)
     model.to(device)
     ds = load_from_disk(data_dir)
     test = ds["test"]
@@ -168,8 +173,6 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
     cols = test[:n]
     labels = torch.tensor(cols["label"], device=device)
     has_choices = "choices" in cols and cols["choices"] is not None
-
-    state = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     if isinstance(state, dict) and "sys2" in state:
         sys2_state = state["sys2"]
         if "lora" in state:

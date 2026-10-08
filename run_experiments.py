@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 22: Déjà vu Deliberation Battery (Decisiveness Veto & Dual-Stream Contest)
-- Test 1: Option A.1 Calibrated Decisiveness Veto (veto_blend=0.40, margin_gamma=0.20)
-- Test 2: Option A.2 Déjà vu Dual-Stream 1-on-1 Contest (dual_stream_contest=True, blend=0.30, alpha=0.50)
-- Test 3: Option A.1 + A.2 Joint Decisiveness & Dual-Stream Contest Synergy
+Battery 23: ModernBERT-Large-Instruct Backbone Swap & Deliberation Alignment
+- Test 1: Pure ModernBERT-Large-Instruct Baseline Swap (SOTA hyperparams, vb=0.40, gamma=0.20)
+- Test 2: ModernBERT-Large-Instruct with Sharpened Candidate Margin (cand_margin=1.0, lambda_cand_margin=0.04, vb=0.45)
+- Test 3: ModernBERT-Large-Instruct with Calibrated Judger Distillation (tau=0.65, lambda_judge=0.15)
 """
 import json
 import os
@@ -30,6 +30,7 @@ def set_hyperparam(key, value):
         rf'("{key}":\s*).*?(,\s*(?:#.*)?)$',
         rf'\g<1>{val_str}\g<2>',
         content,
+        count=1,
         flags=re.MULTILINE,
     )
     with open("train.py", "w") as f:
@@ -154,7 +155,7 @@ def main():
         "lora_dropout": 0.0,
         "head_dropout": 0.0,
         "head_label_smoothing": 0.08,
-        "margin_gamma": 0.0,
+        "margin_gamma": 0.20,
         "prob_margin_gamma": 0.0,
         "prob_ensemble": False,
         "head_prob_temp": 1.0,
@@ -165,7 +166,7 @@ def main():
         "lambda_cand_margin": 0.03,
         "cand_margin": 1.0,
         "cand_margin_mode": "hard",
-        "veto_blend": 0.0,
+        "veto_blend": 0.40,
         "dual_stream_contest": False,
         "dual_stream_blend": 0.0,
         "dual_stream_alpha": 0.5,
@@ -180,15 +181,15 @@ def main():
         "head_center_logits": False,
         "judger_soft_emb": True,
         "judger_soft_tau": 1.0,
+        "bert_model": "answerdotai/ModernBERT-large",
     }
-    # Test 1: Option A.1 Calibrated Decisiveness Veto (veto_blend=0.40, margin_gamma=0.20)
+    # Test 1: Pure ModernBERT-Large-Instruct Baseline Swap (SOTA hyperparams, vb=0.40, gamma=0.20)
     t1_params = dict(base_params)
-    t1_params["veto_blend"] = 0.40
-    t1_params["margin_gamma"] = 0.20
+    t1_params["bert_model"] = "answerdotai/ModernBERT-Large-Instruct"
     r1 = run_experiment(
-        name="Test 1: Option A.1 Calibrated Decisiveness Veto (vb=0.40, gamma=0.20)",
+        name="Test 1: Pure ModernBERT-Large-Instruct Backbone Swap (vb=0.40, gamma=0.20)",
         hyperparams=t1_params,
-        description="Battery 22 Test 1: Option A.1 Calibrated Decisiveness Veto (vb=0.40, gamma=0.20)",
+        description="Battery 23 Test 1: Pure ModernBERT-Large-Instruct Backbone Swap (vb=0.40, gamma=0.20)",
     )
     results.append(r1)
 
@@ -198,15 +199,15 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Option A.2 Déjà vu Dual-Stream 1-on-1 Contest (dual_stream_contest=True, blend=0.30, alpha=0.50)
+    # Test 2: ModernBERT-Large-Instruct with Sharpened Candidate Margin (cand_margin=1.0, lambda=0.04, vb=0.45)
     t2_params = dict(base_params)
-    t2_params["dual_stream_contest"] = True
-    t2_params["dual_stream_blend"] = 0.30
-    t2_params["dual_stream_alpha"] = 0.50
+    t2_params["bert_model"] = "answerdotai/ModernBERT-Large-Instruct"
+    t2_params["lambda_cand_margin"] = 0.04
+    t2_params["veto_blend"] = 0.45
     r2 = run_experiment(
-        name="Test 2: Option A.2 Déjà vu Dual-Stream 1-on-1 Contest (contest=True, blend=0.30)",
+        name="Test 2: ModernBERT-Large-Instruct with Sharpened Margin (lambda=0.04, vb=0.45)",
         hyperparams=t2_params,
-        description="Battery 22 Test 2: Option A.2 Déjà vu Dual-Stream 1-on-1 Contest (contest=True, blend=0.30)",
+        description="Battery 23 Test 2: ModernBERT-Large-Instruct with Sharpened Margin (lambda=0.04, vb=0.45)",
     )
     results.append(r2)
 
@@ -216,17 +217,15 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Joint Option A.1 + A.2 Decisiveness & Dual-Stream Contest Synergy
+    # Test 3: ModernBERT-Large-Instruct with Calibrated Judger Distillation (tau=0.65, lambda_judge=0.15)
     t3_params = dict(base_params)
-    t3_params["veto_blend"] = 0.35
-    t3_params["margin_gamma"] = 0.15
-    t3_params["dual_stream_contest"] = True
-    t3_params["dual_stream_blend"] = 0.25
-    t3_params["dual_stream_alpha"] = 0.50
+    t3_params["bert_model"] = "answerdotai/ModernBERT-Large-Instruct"
+    t3_params["soft_target_tau"] = 0.65
+    t3_params["lambda_judge"] = 0.15
     r3 = run_experiment(
-        name="Test 3: Option A.1 + A.2 Decisiveness Veto & Dual-Stream Contest Synergy",
+        name="Test 3: ModernBERT-Large-Instruct with Calibrated Judger Distillation (tau=0.65, lambda_judge=0.15)",
         hyperparams=t3_params,
-        description="Battery 22 Test 3: Option A.1 + A.2 Decisiveness Veto & Dual-Stream Contest Synergy",
+        description="Battery 23 Test 3: ModernBERT-Large-Instruct with Calibrated Judger Distillation (tau=0.65, lambda_judge=0.15)",
     )
     results.append(r3)
 
