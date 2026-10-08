@@ -164,6 +164,7 @@ def main():
         "head_norm_diff": False,
         "lambda_cand_margin": 0.05,
         "cand_margin": 1.0,
+        "cand_margin_mode": "mean",
         "veto_blend": 0.0,
         "permute_choices": False,
         "asym_roles": False,
@@ -174,14 +175,17 @@ def main():
         "train_ensemble_temp": 1.80,
         "head_margin_weights": None,
         "head_center_logits": False,
+        "judger_soft_emb": False,
+        "judger_soft_tau": 1.0,
     }
-    # Test 1: Consensus-Aware Decision Deliberation (consensus_features=True)
+    # Test 1: Continuous Soft Hypothesis Embedding in Judger (judger_soft_emb=True, tau=1.0)
     t1_params = dict(base_params)
-    t1_params["consensus_features"] = True
+    t1_params["judger_soft_emb"] = True
+    t1_params["judger_soft_tau"] = 1.0
     r1 = run_experiment(
-        name="Test 1: Consensus-Aware Decision Deliberation (consensus_features=True)",
+        name="Test 1: Continuous Soft Hypothesis Embedding in Judger (judger_soft_emb=True, tau=1.0)",
         hyperparams=t1_params,
-        description="Battery 18 Test 1: Consensus-Aware Decision Deliberation (consensus_features=True)",
+        description="Battery 19 Test 1: Continuous Soft Hypothesis Embedding in Judger (judger_soft_emb=True, tau=1.0)",
     )
     results.append(r1)
 
@@ -191,14 +195,14 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Winning Hypothesis Representation in Judger (judger_win_emb=True, consensus_features=True)
+    # Test 2: Hardest Negative Margin Regularization (cand_margin_mode="hard", lambda=0.03)
     t2_params = dict(base_params)
-    t2_params["consensus_features"] = True
-    t2_params["judger_win_emb"] = True
+    t2_params["cand_margin_mode"] = "hard"
+    t2_params["lambda_cand_margin"] = 0.03
     r2 = run_experiment(
-        name="Test 2: Winning Hypothesis Representation in Judger (judger_win_emb=True, consensus_features=True)",
+        name="Test 2: Hardest Negative Margin Regularization (cand_margin_mode='hard', lambda=0.03)",
         hyperparams=t2_params,
-        description="Battery 18 Test 2: Winning Hypothesis Representation in Judger (judger_win_emb=True, consensus_features=True)",
+        description="Battery 19 Test 2: Hardest Negative Margin Regularization (cand_margin_mode='hard', lambda=0.03)",
     )
     results.append(r2)
 
@@ -208,15 +212,16 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Balanced Premise-Aware Consensus Arbitration (consensus_features=True, judger_win_emb=True, [1.0, 1.0, 1.10, 1.0, 0.45])
+    # Test 3: Joint Soft Hypothesis & Hard Margin Synergy (judger_soft_emb=True, cand_margin_mode="hard", lambda=0.03)
     t3_params = dict(base_params)
-    t3_params["consensus_features"] = True
-    t3_params["judger_win_emb"] = True
-    t3_params["head_weights"] = [1.0, 1.0, 1.10, 1.0, 0.45]
+    t3_params["judger_soft_emb"] = True
+    t3_params["judger_soft_tau"] = 1.0
+    t3_params["cand_margin_mode"] = "hard"
+    t3_params["lambda_cand_margin"] = 0.03
     r3 = run_experiment(
-        name="Test 3: Balanced Premise-Aware Consensus Arbitration ([1.0, 1.0, 1.10, 1.0, 0.45])",
+        name="Test 3: Joint Soft Hypothesis & Hard Margin Synergy (judger_soft_emb=True, hard margin)",
         hyperparams=t3_params,
-        description="Battery 18 Test 3: Balanced Premise-Aware Consensus Arbitration ([1.0, 1.0, 1.10, 1.0, 0.45])",
+        description="Battery 19 Test 3: Joint Soft Hypothesis & Hard Margin Synergy (judger_soft_emb=True, hard margin)",
     )
     results.append(r3)
 

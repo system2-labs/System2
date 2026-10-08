@@ -72,7 +72,7 @@ class System2(nn.Module):
     2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0, head_weights=None, prob_margin_gamma=0.0, head_center_logits=False, consensus_features=False, judger_win_emb=False, margin_dim=3):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0, head_weights=None, prob_margin_gamma=0.0, head_center_logits=False, consensus_features=False, judger_win_emb=False, margin_dim=3, judger_soft_emb=False, judger_soft_tau=1.0):
         super().__init__()
         self.pairwise = pairwise
         self.diff_features = diff_features
@@ -82,6 +82,8 @@ class System2(nn.Module):
         self.margin_features = margin_features
         self.consensus_features = consensus_features
         self.judger_win_emb = judger_win_emb
+        self.judger_soft_emb = judger_soft_emb
+        self.judger_soft_tau = judger_soft_tau
         self.margin_gamma = margin_gamma
         self.prob_margin_gamma = prob_margin_gamma
         self.prob_ensemble = prob_ensemble
@@ -117,7 +119,12 @@ class System2(nn.Module):
                     cand_scores = head.hypothesis_head(feat).squeeze(-1)
                 else:
                     cand_scores = head.hypothesis_head(x).squeeze(-1)  # (B, num_choices)
-                if getattr(self, "judger_win_emb", False):
+                if getattr(self, "judger_soft_emb", False):
+                    soft_tau = getattr(self, "judger_soft_tau", 1.0)
+                    p_c = torch.softmax(cand_scores / soft_tau, dim=-1)
+                    soft_x = torch.einsum('bc,bcd->bd', p_c, x)
+                    head_emb = 0.5 * x.mean(dim=1) + 0.5 * soft_x
+                elif getattr(self, "judger_win_emb", False):
                     win_c = cand_scores.argmax(dim=-1)
                     win_x = x[torch.arange(x.size(0), device=x.device), win_c]
                     head_emb = 0.5 * x.mean(dim=1) + 0.5 * win_x
