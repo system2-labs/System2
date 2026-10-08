@@ -101,8 +101,8 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active SOTA baseline: 0.6697 (Accuracy 58.30%, Brier 0.2435)
-    # Battery 7: Pure In-Domain Causal Data Augmentation & Calibrated Arbitration Battery
+    # Active SOTA baseline: 0.6745 (Accuracy 58.19%, Brier 0.2329)
+    # Battery 17: Sharpened Deliberation & Harmonic Calibration Optimization
 
     # Base SOTA parameters
     base_params = {
@@ -133,20 +133,23 @@ def main():
         "lambda_judge": 0.10,
         "lambda_cal": 0.50,
         "lambda_judge_cal": 0.06,
-        "oracle_judge_target": False,
+        "oracle_judge_target": True,
         "detach_judger": True,
         "shuffle_per_epoch": False,
         "seed": 0,
         "label_smoothing": 0.15,
-        "soft_judge_targets": False,
+        "soft_judge_targets": True,
+        "soft_target_tau": 0.8,
         "ensemble_heads": True,
         "centered_conf": False,
         "judge_cal_smoothing": 0.30,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
-        "ensemble_temp": 1.80,
+        "ensemble_temp": 1.78,
         "lambda_head_balance": 0.0,
-        "margin_features": False,
+        "margin_features": True,
+        "consensus_features": False,
+        "judger_win_emb": False,
         "span_pooling": False,
         "lora_dropout": 0.0,
         "head_dropout": 0.0,
@@ -166,20 +169,19 @@ def main():
         "asym_roles": False,
         "asym_spans": True,
         "asym_span_mode": "choice_forward",
-        "head_weights": [1.0, 1.0, 1.20, 1.0, 0.38],
+        "head_weights": [1.0, 1.0, 1.15, 1.0, 0.38],
         "train_head_weights": None,
         "train_ensemble_temp": 1.80,
         "head_margin_weights": None,
         "head_center_logits": False,
     }
-    # Test 1: Curated Natural Science Scaling (5.2k samples from ARC + MMLU Pure Science)
+    # Test 1: Consensus-Aware Decision Deliberation (consensus_features=True)
     t1_params = dict(base_params)
-    t1_params["data_dir"] = "./data/arc_mmlu_science"
-    t1_params["train_size"] = 5300
+    t1_params["consensus_features"] = True
     r1 = run_experiment(
-        name="Test 1: Curated Natural Science Scaling (5.2k samples)",
+        name="Test 1: Consensus-Aware Decision Deliberation (consensus_features=True)",
         hyperparams=t1_params,
-        description="Battery 15: Curated Natural Science Scaling (5.2k samples)",
+        description="Battery 18 Test 1: Consensus-Aware Decision Deliberation (consensus_features=True)",
     )
     results.append(r1)
 
@@ -189,15 +191,14 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: High Scrutiny Deliberation on Scaled Science (head_weights=[1.0, 1.0, 1.25, 1.0, 0.35], tau=1.78)
+    # Test 2: Winning Hypothesis Representation in Judger (judger_win_emb=True, consensus_features=True)
     t2_params = dict(base_params)
-    t2_params["data_dir"] = "./data/arc_mmlu_science"
-    t2_params["train_size"] = 5300
-    t2_params["head_weights"] = [1.0, 1.0, 1.25, 1.0, 0.35]
+    t2_params["consensus_features"] = True
+    t2_params["judger_win_emb"] = True
     r2 = run_experiment(
-        name="Test 2: High Scrutiny Deliberation on Scaled Science ([1.0, 1.0, 1.25, 1.0, 0.35])",
+        name="Test 2: Winning Hypothesis Representation in Judger (judger_win_emb=True, consensus_features=True)",
         hyperparams=t2_params,
-        description="Battery 15: High Scrutiny Deliberation on Scaled Science ([1.0, 1.0, 1.25, 1.0, 0.35])",
+        description="Battery 18 Test 2: Winning Hypothesis Representation in Judger (judger_win_emb=True, consensus_features=True)",
     )
     results.append(r2)
 
@@ -207,15 +208,15 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Balanced Premise Anchor on Scaled Science (head_weights=[1.05, 1.0, 1.20, 1.05, 0.35], tau=1.78)
+    # Test 3: Balanced Premise-Aware Consensus Arbitration (consensus_features=True, judger_win_emb=True, [1.0, 1.0, 1.10, 1.0, 0.45])
     t3_params = dict(base_params)
-    t3_params["data_dir"] = "./data/arc_mmlu_science"
-    t3_params["train_size"] = 5300
-    t3_params["head_weights"] = [1.05, 1.0, 1.20, 1.05, 0.35]
+    t3_params["consensus_features"] = True
+    t3_params["judger_win_emb"] = True
+    t3_params["head_weights"] = [1.0, 1.0, 1.10, 1.0, 0.45]
     r3 = run_experiment(
-        name="Test 3: Balanced Premise Anchor on Scaled Science ([1.05, 1.0, 1.20, 1.05, 0.35])",
+        name="Test 3: Balanced Premise-Aware Consensus Arbitration ([1.0, 1.0, 1.10, 1.0, 0.45])",
         hyperparams=t3_params,
-        description="Battery 15: Balanced Premise Anchor on Scaled Science ([1.05, 1.0, 1.20, 1.05, 0.35])",
+        description="Battery 18 Test 3: Balanced Premise-Aware Consensus Arbitration ([1.0, 1.0, 1.10, 1.0, 0.45])",
     )
     results.append(r3)
 
