@@ -6,7 +6,7 @@
 - **Strictly Non-Autoregressive**: The architecture must remain 100% feedforward and non-autoregressive. No token-by-token generation loops or sequential autoregressive decoders.
 
 ## 2. Encoder & Representation Learning
-- **Frozen Base Backbone**: ModernBERT-large (395M) weights remain strictly frozen. Feature extraction produces dense bidirectional embeddings without autoregressive drift or alignment artifacts.
+- **Frozen Base Backbone**: ModernBERT-large / ModernBERT-Large-Instruct (395M) weights remain strictly frozen. Feature extraction produces dense bidirectional embeddings without autoregressive drift or alignment artifacts.
 - **The Subspace Rank Sweet Spot**: LoRA adaptation is restricted to the top 8 layers (layers 20–27). The optimal capacity boundary is $r=32, \alpha=32$ (~1.57M parameters). Adapting deeper than 8 layers causes lexical distortion; higher rank without scheduled decay induces late-epoch overfitting.
 - **The In-Domain Causal Purity Law**: Do not mix external factual trivia datasets (e.g. SciQ, OpenBookQA) into the shared LoRA backbone. Multi-domain mixing warps the shared representations toward surface syntax, severely harming in-domain causal reasoning. Expand data only using pure in-domain splits (ARC train + validation).
 

@@ -1174,6 +1174,37 @@ Across our rigorous AutoResearch battery on ARC Scientific Reasoning (Phase 2), 
 8. **The Independent Deliberation Law**:
    Every ThoughtHead must receive full, unattenuated cross-entropy loss ($\lambda_{\text{ens\_ce}} = 0.0$). Blending ensemble cross-entropy into the training objective diffuses credit across heads, inducing free-riding and preventing cross-entropy from descending to 0.710. Ensembling must remain strictly an arbitration / decision-time operation.
 
+---
+
+## Battery 23: ModernBERT-Large-Instruct Backbone Swap & Deliberation Alignment
+
+- **Hypothesis**: Replacing the base pre-trained encoder (`answerdotai/ModernBERT-large`) with its instruction-tuned counterpart (`answerdotai/ModernBERT-Large-Instruct`, 395M parameters, identical 28-layer / 1024-dim architecture) will enhance bidirectional question-choice semantic alignment. When coupled with our Option A.1 Calibrated Decisiveness Veto and contrastive margin loss, the instruction-tuned representation will break through the prior 70.14% Oracle Ceiling.
+- **Results Across the Battery**:
+  - **Test 1: Pure ModernBERT-Large-Instruct Backbone Swap (`vb=0.40`, `gamma=0.20`)**:
+    - **Accuracy `66.66%` (2,353 / 3,530 solved, +285 extra problems solved!), Brier `0.2155`, Metric `0.7255`** (🏆 **NEW SOTA COMMITTED**, commit [`a46e86c`](https://github.com/tj-doomer-it/System2/commit/a46e86c)).
+  - **Test 2: ModernBERT-Large-Instruct with Sharpened Candidate Margin (`cand_margin=1.0`, $\lambda=0.04$, `vb=0.45`)**:
+    - **Accuracy `67.00%` (2,365 / 3,530 solved, +12 problems solved!), Brier `0.2131`, Metric `0.7284`** (🏆 **NEW SOTA COMMITTED**, commit [`0edc4a4`](https://github.com/tj-doomer-it/System2/commit/0edc4a4)).
+  - **Test 3: ModernBERT-Large-Instruct with Calibrated Judger Distillation ($\tau_{\text{soft}}=0.65$, $\lambda_{\text{judge}}=0.15$)**:
+    - **Accuracy `67.05%` (2,367 / 3,530 solved, +2 problems solved!), Brier `0.2118`, Metric `0.7294`** (🏆 **NEW ALL-TIME PROJECT SOTA COMMITTED & PUSHED**, commit [`df189cc`](https://github.com/tj-doomer-it/System2/commit/df189cc)).
+
+- **Head Diagnostics & New Oracle Ceiling**:
+  - Head 0 Accuracy: **65.81%** (2,323 / 3,530)
+  - Head 1 Accuracy: **66.35%** (2,342 / 3,530)
+  - Head 2 Accuracy: **66.09%** (2,333 / 3,530)
+  - Head 3 Accuracy: **65.95%** (2,328 / 3,530)
+  - Head 4 Accuracy: **62.55%** (2,208 / 3,530)
+  - Pure Judger Selection Accuracy: **66.71%** (2,355 / 3,530)
+  - Veto Deliberation Accuracy (Official System 2): **67.05%** (2,367 / 3,530)
+  - **NEW ORACLE CEILING ACROSS 5 HEADS**: **77.56% (2,738 / 3,530 problems solved)**!
+- **Scientific Breakthrough**:
+  1. **A Massive +8.47% Accuracy Leap (+300 Problems Solved)**:
+     The base ModernBERT-large was trained on general masked language modeling, requiring the top-8 LoRA layers to bridge both instruction syntax and scientific causal deduction simultaneously. `ModernBERT-Large-Instruct` comes pre-aligned with instruction-following attention geometries, allowing LoRA to focus 100% of its subspace capacity on complex scientific physical reasoning.
+  2. **Exploding the Oracle Ceiling (70.14% $\to$ 77.56%)**:
+     The upper bound of solvable problems expanded from 2,476 to 2,738 (+262 problems). Every single ThoughtHead is now performing between 62.5% and 66.35% (compared to 55.4% - 57.3% previously).
+  3. **Calibration Excellence (Brier 0.2313 $\to$ 0.2118)**:
+     Not only did accuracy surge, but uncertainty calibration sharply improved, driving quadratic Brier error down to 0.2118, yielding a record composite metric of **0.7294**.
+
+
 
 
 
