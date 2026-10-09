@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 23: ModernBERT-Large-Instruct Backbone Swap & Deliberation Alignment
-- Test 1: Pure ModernBERT-Large-Instruct Baseline Swap (SOTA hyperparams, vb=0.40, gamma=0.20)
-- Test 2: ModernBERT-Large-Instruct with Sharpened Candidate Margin (cand_margin=1.0, lambda_cand_margin=0.04, vb=0.45)
-- Test 3: ModernBERT-Large-Instruct with Calibrated Judger Distillation (tau=0.65, lambda_judge=0.15)
+Battery 24: Head-4 Contrarian Re-Equilibration & Capacity Scaling Battery
+- Test 1: Head-4 Contrarian Re-Equilibration & Calibrated Arbitration (w4=0.65, tau=1.55, gamma=0.18, vb=0.45)
+- Test 2: Extended Cosine Cooling (6 Epochs, w4=0.65, tau=1.55)
+- Test 3: High-Capacity LoRA Subspace (r=48, alpha=48 on Instruct, w4=0.65, tau=1.55)
 """
 import json
 import os
@@ -131,7 +131,7 @@ def main():
         "scheduler_min_lr": 1e-5,
         "warmup_ratio": 0.0,
         "weight_decay": 0.0,
-        "lambda_judge": 0.10,
+        "lambda_judge": 0.15,
         "lambda_cal": 0.50,
         "lambda_judge_cal": 0.06,
         "oracle_judge_target": True,
@@ -140,7 +140,7 @@ def main():
         "seed": 0,
         "label_smoothing": 0.15,
         "soft_judge_targets": True,
-        "soft_target_tau": 0.8,
+        "soft_target_tau": 0.65,
         "ensemble_heads": True,
         "centered_conf": False,
         "judge_cal_smoothing": 0.30,
@@ -163,10 +163,10 @@ def main():
         "judger_residual": False,
         "head_mlp_dim": 256,
         "head_norm_diff": False,
-        "lambda_cand_margin": 0.03,
+        "lambda_cand_margin": 0.04,
         "cand_margin": 1.0,
         "cand_margin_mode": "hard",
-        "veto_blend": 0.40,
+        "veto_blend": 0.45,
         "dual_stream_contest": False,
         "dual_stream_blend": 0.0,
         "dual_stream_alpha": 0.5,
@@ -181,15 +181,18 @@ def main():
         "head_center_logits": False,
         "judger_soft_emb": True,
         "judger_soft_tau": 1.0,
-        "bert_model": "answerdotai/ModernBERT-large",
+        "bert_model": "answerdotai/ModernBERT-Large-Instruct",
     }
-    # Test 1: Pure ModernBERT-Large-Instruct Baseline Swap (SOTA hyperparams, vb=0.40, gamma=0.20)
+    # Test 1: Head-4 Contrarian Re-Equilibration & Calibrated Arbitration (w4=0.65, tau=1.55, gamma=0.18, vb=0.45)
     t1_params = dict(base_params)
-    t1_params["bert_model"] = "answerdotai/ModernBERT-Large-Instruct"
+    t1_params["head_weights"] = [1.0, 1.0, 1.15, 1.0, 0.65]
+    t1_params["ensemble_temp"] = 1.55
+    t1_params["margin_gamma"] = 0.18
+    t1_params["veto_blend"] = 0.45
     r1 = run_experiment(
-        name="Test 1: Pure ModernBERT-Large-Instruct Backbone Swap (vb=0.40, gamma=0.20)",
+        name="Test 1: Head-4 Re-Equilibration (w4=0.65, tau=1.55, gamma=0.18)",
         hyperparams=t1_params,
-        description="Battery 23 Test 1: Pure ModernBERT-Large-Instruct Backbone Swap (vb=0.40, gamma=0.20)",
+        description="Battery 24 Test 1: Head-4 Re-Equilibration (w4=0.65, tau=1.55, gamma=0.18)",
     )
     results.append(r1)
 
@@ -199,15 +202,17 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: ModernBERT-Large-Instruct with Sharpened Candidate Margin (cand_margin=1.0, lambda=0.04, vb=0.45)
+    # Test 2: Extended Cosine Cooling (6 Epochs, w4=0.65, tau=1.55)
     t2_params = dict(base_params)
-    t2_params["bert_model"] = "answerdotai/ModernBERT-Large-Instruct"
-    t2_params["lambda_cand_margin"] = 0.04
+    t2_params["epochs"] = 6
+    t2_params["head_weights"] = [1.0, 1.0, 1.15, 1.0, 0.65]
+    t2_params["ensemble_temp"] = 1.55
+    t2_params["margin_gamma"] = 0.18
     t2_params["veto_blend"] = 0.45
     r2 = run_experiment(
-        name="Test 2: ModernBERT-Large-Instruct with Sharpened Margin (lambda=0.04, vb=0.45)",
+        name="Test 2: Extended Cosine Cooling (6 Epochs, w4=0.65, tau=1.55)",
         hyperparams=t2_params,
-        description="Battery 23 Test 2: ModernBERT-Large-Instruct with Sharpened Margin (lambda=0.04, vb=0.45)",
+        description="Battery 24 Test 2: Extended Cosine Cooling (6 Epochs, w4=0.65, tau=1.55)",
     )
     results.append(r2)
 
@@ -217,15 +222,18 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: ModernBERT-Large-Instruct with Calibrated Judger Distillation (tau=0.65, lambda_judge=0.15)
+    # Test 3: High-Capacity LoRA Subspace (r=48, alpha=48 on Instruct)
     t3_params = dict(base_params)
-    t3_params["bert_model"] = "answerdotai/ModernBERT-Large-Instruct"
-    t3_params["soft_target_tau"] = 0.65
-    t3_params["lambda_judge"] = 0.15
+    t3_params["lora_r"] = 48
+    t3_params["lora_alpha"] = 48
+    t3_params["head_weights"] = [1.0, 1.0, 1.15, 1.0, 0.65]
+    t3_params["ensemble_temp"] = 1.55
+    t3_params["margin_gamma"] = 0.18
+    t3_params["veto_blend"] = 0.45
     r3 = run_experiment(
-        name="Test 3: ModernBERT-Large-Instruct with Calibrated Judger Distillation (tau=0.65, lambda_judge=0.15)",
+        name="Test 3: High-Capacity Subspace Rank (r=48, alpha=48 on Instruct)",
         hyperparams=t3_params,
-        description="Battery 23 Test 3: ModernBERT-Large-Instruct with Calibrated Judger Distillation (tau=0.65, lambda_judge=0.15)",
+        description="Battery 24 Test 3: High-Capacity Subspace Rank (r=48, alpha=48 on Instruct)",
     )
     results.append(r3)
 
