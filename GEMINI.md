@@ -18,3 +18,6 @@
 ## 4. Training Dynamics & Loss Formulations
 - **The Cosine Annealing Cooling Law**: All training must use a Cosine Annealing learning rate schedule decaying to $1\times 10^{-5}$ across total steps. Constant learning rates cause late-epoch oscillation around narrow minima.
 - **Coupled Decision-Level Calibration Gradient**: The Judger must receive sharp, unattenuated gradients from whether its selected hypothesis is objectively correct ($\mathcal{L}_{\text{judge\_cal}}$). Never sever this gradient with detached calibrators or soften it with uncalibrated temperature dividers.
+
+## 5. Deliberation Arbitration & Scale Invariance
+- **The Scale-Invariant Logit Law**: Because individual ThoughtHeads operate across asymmetric span formulations (holistic vs. question-skewed vs. choice-forward), raw output logits develop severe inter-head variance disparities (e.g. std $1.72$ vs. std $0.00048$). Unnormalized summation drowns low-variance heads. All ensemble deliberation arbitration MUST z-score standardize candidate choice logits per head ($z_{b, h, c} = \frac{l_{b, h, c} - \mu_{b, h}}{\sigma_{b, h} + \epsilon}$) prior to weighted pooling, ensuring every cognitive perspective contributes in equal statistical currency (standard deviation units).
