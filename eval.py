@@ -159,7 +159,7 @@ def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=Non
     return pooled.view(b, 4, -1)
 
 
-def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir="./data/arc", ensemble=False, head_weights=None, ensemble_temp=None, head_norm_logits=None, veto_blend=None, margin_gamma=None):
+def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir="./data/arc", ensemble=False, head_weights=None, ensemble_temp=None, head_norm_logits=None, veto_blend=None, margin_gamma=None, decision_conf=None, decision_conf_mode=None, decision_conf_tau=None, decision_conf_alpha=None):
     device = device or ("mps" if torch.backends.mps.is_available() else "cpu")
     state = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     bert_name = state.get("bert_model", "answerdotai/ModernBERT-large") if isinstance(state, dict) else "answerdotai/ModernBERT-large"
@@ -288,6 +288,24 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             kwargs["head_norm_logits"] = True
         if (isinstance(state, dict) and state.get("head_input_norm", False)) or ("heads.0.input_norm.weight" in sys2_state):
             kwargs["head_input_norm"] = True
+        if decision_conf is not None:
+            kwargs["decision_conf"] = decision_conf
+        elif isinstance(state, dict) and state.get("decision_conf", False):
+            kwargs["decision_conf"] = True
+        if decision_conf_mode is not None:
+            kwargs["decision_conf_mode"] = decision_conf_mode
+        elif isinstance(state, dict) and "decision_conf_mode" in state:
+            kwargs["decision_conf_mode"] = state["decision_conf_mode"]
+        if decision_conf_tau is not None:
+            kwargs["decision_conf_tau"] = decision_conf_tau
+        elif isinstance(state, dict) and "decision_conf_tau" in state:
+            kwargs["decision_conf_tau"] = state["decision_conf_tau"]
+        if decision_conf_alpha is not None:
+            kwargs["decision_conf_alpha"] = decision_conf_alpha
+        elif isinstance(state, dict) and "decision_conf_alpha" in state:
+            kwargs["decision_conf_alpha"] = state["decision_conf_alpha"]
+        if (isinstance(state, dict) and state.get("decision_conf_learnable", False)) or ("log_decision_tau" in sys2_state):
+            kwargs["decision_conf_learnable"] = True
         import inspect
         if "recurrence" in inspect.signature(System2.__init__).parameters:
             kwargs["recurrence"] = has_recurrence
@@ -362,10 +380,14 @@ if __name__ == "__main__":
         ap.add_argument("--head-norm-logits", action="store_true", default=None, help="Force per-head logit normalization")
         ap.add_argument("--veto-blend", type=float, default=None, help="Veto blend weight")
         ap.add_argument("--margin-gamma", type=float, default=None, help="Margin gamma weight")
+        ap.add_argument("--decision-conf", action="store_true", default=None, help="Force decision-level confidence")
+        ap.add_argument("--decision-conf-mode", default=None, help="Confidence mode: softmax, margin, hybrid")
+        ap.add_argument("--decision-conf-tau", type=float, default=None, help="Decision confidence temperature")
+        ap.add_argument("--decision-conf-alpha", type=float, default=None, help="Hybrid confidence alpha blend")
         args = ap.parse_args()
         ckpt = args.ckpt
         hw = [float(x) for x in args.head_weights.split(",")] if args.head_weights else None
-        m = evaluate(ckpt, max_samples=args.max_samples, data_dir=args.data, ensemble=args.ensemble, head_weights=hw, ensemble_temp=args.ensemble_temp, head_norm_logits=args.head_norm_logits, veto_blend=args.veto_blend, margin_gamma=args.margin_gamma)
+        m = evaluate(ckpt, max_samples=args.max_samples, data_dir=args.data, ensemble=args.ensemble, head_weights=hw, ensemble_temp=args.ensemble_temp, head_norm_logits=args.head_norm_logits, veto_blend=args.veto_blend, margin_gamma=args.margin_gamma, decision_conf=args.decision_conf, decision_conf_mode=args.decision_conf_mode, decision_conf_tau=args.decision_conf_tau, decision_conf_alpha=args.decision_conf_alpha)
         metric = 0.5 * m["accuracy"] + 0.5 * (1 - m["brier"])
         print(json.dumps({"metric": round(metric, 4), "accuracy": round(m["accuracy"], 4), "brier": round(m["brier"], 4)}))
     except Exception as e:

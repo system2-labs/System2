@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 26: Scale-Invariant Margin Calibration & Contrast Input Normalization
-- Test 1: Fine-Tuned Scale-Invariant Arbitration (tau=0.75, w1=1.05, w4=0.50, vb=0, gamma=0)
-- Test 2: Scale-Invariant Margin Calibration (norm_cand_margin=True, cand_margin=1.0)
-- Test 3: Head Input LayerNorm (head_input_norm=True)
+Battery 27: Coupled Decision-Level Confidence & Rank-2 Error Minimization
+- Test 1: Coupled Decision Confidence Calibration (decision_conf=True, softmax, tau=0.75, learnable=True)
+- Test 2: Ensemble Cross-Entropy Optimization (lambda_ens_ce=0.15)
+- Test 3: Choice-Forward Re-equilibration & Arbitration Sharpening (w=[0.9, 1.0, 1.0, 1.0, 0.55], tau=0.75)
 """
 import json
 import os
@@ -102,10 +102,7 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active SOTA baseline: 0.6757 (Accuracy 58.24%, Brier 0.2310)
-    # Battery 19: Continuous Hypothesis Deliberation & Hard-Negative Contrast Battery
-
-    # Base SOTA parameters (incorporating Battery 19 Test 3 SOTA)
+    # Active SOTA baseline: 0.7313 (Accuracy 67.39%, Brier 0.2114)
     base_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -146,7 +143,7 @@ def main():
         "judge_cal_smoothing": 0.30,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
-        "ensemble_temp": 1.78,
+        "ensemble_temp": 0.80,
         "lambda_head_balance": 0.0,
         "margin_features": True,
         "consensus_features": False,
@@ -155,7 +152,7 @@ def main():
         "lora_dropout": 0.0,
         "head_dropout": 0.0,
         "head_label_smoothing": 0.08,
-        "margin_gamma": 0.20,
+        "margin_gamma": 0.0,
         "prob_margin_gamma": 0.0,
         "prob_ensemble": False,
         "head_prob_temp": 1.0,
@@ -166,7 +163,7 @@ def main():
         "lambda_cand_margin": 0.04,
         "cand_margin": 1.0,
         "cand_margin_mode": "hard",
-        "veto_blend": 0.45,
+        "veto_blend": 0.0,
         "dual_stream_contest": False,
         "dual_stream_blend": 0.0,
         "dual_stream_alpha": 0.5,
@@ -174,7 +171,7 @@ def main():
         "asym_roles": False,
         "asym_spans": True,
         "asym_span_mode": "choice_forward",
-        "head_weights": [1.0, 1.0, 1.15, 1.0, 0.38],
+        "head_weights": [1.0, 1.0, 1.15, 1.0, 0.50],
         "train_head_weights": None,
         "train_ensemble_temp": 1.80,
         "head_margin_weights": None,
@@ -184,19 +181,25 @@ def main():
         "norm_cand_margin": False,
         "judger_soft_emb": True,
         "judger_soft_tau": 1.0,
+        "decision_conf": False,
+        "decision_conf_mode": "softmax",
+        "decision_conf_tau": 0.75,
+        "decision_conf_learnable": False,
+        "decision_conf_alpha": 0.3,
+        "lr_decision_tau": 1e-2,
         "bert_model": "answerdotai/ModernBERT-Large-Instruct",
     }
-    # Test 1: Fine-Tuned Scale-Invariant Arbitration (tau=0.75, w4=0.50, w2=1.15, w1=1.05)
+
+    # Test 1: Coupled Decision Confidence Calibration (decision_conf=True, softmax, tau=0.75, learnable=True)
     t1_params = dict(base_params)
-    t1_params["ensemble_temp"] = 0.75
-    t1_params["head_weights"] = [1.0, 1.05, 1.15, 1.0, 0.50]
-    t1_params["head_norm_logits"] = True
-    t1_params["margin_gamma"] = 0.0
-    t1_params["veto_blend"] = 0.0
+    t1_params["decision_conf"] = True
+    t1_params["decision_conf_mode"] = "softmax"
+    t1_params["decision_conf_tau"] = 0.75
+    t1_params["decision_conf_learnable"] = True
     r1 = run_experiment(
-        name="Test 1: Fine Arbitration Tuning (tau=0.75, w1=1.05, w4=0.5)",
+        name="Test 1: Coupled Decision Confidence Calibration (softmax, tau=0.75, learnable=True)",
         hyperparams=t1_params,
-        description="Battery 26 Test 1: Fine Arbitration Tuning (tau=0.75, w1=1.05, w4=0.5)",
+        description="Battery 27 Test 1: Coupled Decision Confidence Calibration (softmax, tau=0.75, learnable=True)",
     )
     results.append(r1)
 
@@ -206,15 +209,13 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Scale-Invariant Margin Calibration (norm_cand_margin=True, cand_margin=1.0)
+    # Test 2: Ensemble Cross-Entropy Optimization (lambda_ens_ce=0.15)
     t2_params = dict(base_params)
-    t2_params["norm_cand_margin"] = True
-    t2_params["cand_margin"] = 1.0
-    t2_params["lambda_cand_margin"] = 0.04
+    t2_params["lambda_ens_ce"] = 0.15
     r2 = run_experiment(
-        name="Test 2: Scale-Invariant Margin Calibration (norm_cand_margin=True)",
+        name="Test 2: Ensemble Cross-Entropy Optimization (lambda_ens_ce=0.15)",
         hyperparams=t2_params,
-        description="Battery 26 Test 2: Scale-Invariant Margin Calibration (norm_cand_margin=True)",
+        description="Battery 27 Test 2: Ensemble Cross-Entropy Optimization (lambda_ens_ce=0.15)",
     )
     results.append(r2)
 
@@ -224,15 +225,22 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Head Input LayerNorm (head_input_norm=True)
+    # Test 3: Choice-Forward Re-equilibration & Arbitration Sharpening (w=[0.9, 1.0, 1.0, 1.0, 0.55], tau=0.75)
     t3_params = dict(base_params)
-    t3_params["head_input_norm"] = True
+    t3_params["head_weights"] = [0.90, 1.0, 1.0, 1.0, 0.55]
+    t3_params["ensemble_temp"] = 0.75
     r3 = run_experiment(
-        name="Test 3: Head Input LayerNorm (head_input_norm=True)",
+        name="Test 3: Choice-Forward Re-equilibration (w=[0.9, 1.0, 1.0, 1.0, 0.55], tau=0.75)",
         hyperparams=t3_params,
-        description="Battery 26 Test 3: Head Input LayerNorm (head_input_norm=True)",
+        description="Battery 27 Test 3: Choice-Forward Re-equilibration (w=[0.9, 1.0, 1.0, 1.0, 0.55], tau=0.75)",
     )
     results.append(r3)
+
+    if r3["committed"]:
+        print(f">>> Test 3 committed as new SOTA! Retaining improvements.")
+        base_params = dict(t3_params)
+    else:
+        print(f">>> Test 3 reverted.")
 
     print("\n" + "=" * 80)
     print("ALL TESTS COMPLETED - SUMMARY REPORT")

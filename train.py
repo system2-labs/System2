@@ -117,6 +117,12 @@ HYPERPARAMS = {
     "head_norm_logits": True,
     "head_input_norm": False,
     "norm_cand_margin": False,
+    "decision_conf": False,
+    "decision_conf_mode": "softmax",
+    "decision_conf_tau": 0.75,
+    "decision_conf_learnable": False,
+    "decision_conf_alpha": 0.3,
+    "lr_decision_tau": 1e-2,
 }
 
 
@@ -385,6 +391,11 @@ def main():
             judger_win_emb=HYPERPARAMS.get("judger_win_emb", False),
             judger_soft_emb=HYPERPARAMS.get("judger_soft_emb", False),
             judger_soft_tau=HYPERPARAMS.get("judger_soft_tau", 1.0),
+            decision_conf=HYPERPARAMS.get("decision_conf", False),
+            decision_conf_mode=HYPERPARAMS.get("decision_conf_mode", "softmax"),
+            decision_conf_tau=HYPERPARAMS.get("decision_conf_tau", 0.75),
+            decision_conf_learnable=HYPERPARAMS.get("decision_conf_learnable", False),
+            decision_conf_alpha=HYPERPARAMS.get("decision_conf_alpha", 0.3),
         )
     sys2.to(device)
     sys2.train()
@@ -406,12 +417,15 @@ def main():
     else:
         head_params = [p for h in sys2.heads for p in h.parameters()]
         judger_params = list(sys2.judger.parameters())
-        for p in head_params + judger_params:
+        extra_params = [p for name, p in sys2.named_parameters() if not name.startswith("heads.") and not name.startswith("judger.") and not name.startswith("router.") and not name.startswith("soft_centroids.")]
+        for p in head_params + judger_params + extra_params:
             assert p.requires_grad
         param_groups = [
             {"params": head_params, "lr": HYPERPARAMS["lr_heads"]},
             {"params": judger_params, "lr": HYPERPARAMS["lr_judger"]},
         ]
+        if extra_params:
+            param_groups.append({"params": extra_params, "lr": HYPERPARAMS.get("lr_decision_tau", 1e-2)})
 
     if encoder_params:
         enc_lr = HYPERPARAMS.get("lr_lora", 2e-4) if use_lora else HYPERPARAMS.get("lr_encoder", 1e-5)
@@ -739,6 +753,12 @@ def main():
         "cand_margin_mode": "hard",
         "cand_margin": HYPERPARAMS.get("cand_margin", 1.0),
         "lambda_cand_margin": HYPERPARAMS.get("lambda_cand_margin", 0.03),
+        "decision_conf": HYPERPARAMS.get("decision_conf", False),
+        "decision_conf_mode": HYPERPARAMS.get("decision_conf_mode", "softmax"),
+        "decision_conf_tau": float(torch.exp(sys2.log_decision_tau).item()) if (HYPERPARAMS.get("decision_conf_learnable", False) and hasattr(sys2, "log_decision_tau")) else HYPERPARAMS.get("decision_conf_tau", 0.75),
+        "decision_conf_learnable": HYPERPARAMS.get("decision_conf_learnable", False),
+        "decision_conf_alpha": HYPERPARAMS.get("decision_conf_alpha", 0.3),
+        "lambda_ens_ce": HYPERPARAMS.get("lambda_ens_ce", 0.0),
         "bert_model": bert_name,
     }
     if use_lora:

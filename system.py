@@ -72,7 +72,7 @@ class System2(nn.Module):
     2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0, head_weights=None, prob_margin_gamma=0.0, head_center_logits=False, head_norm_logits=False, head_input_norm=False, consensus_features=False, judger_win_emb=False, margin_dim=3, judger_soft_emb=False, judger_soft_tau=1.0, dual_stream_contest=False, dual_stream_blend=0.0, dual_stream_alpha=0.5):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0, head_weights=None, prob_margin_gamma=0.0, head_center_logits=False, head_norm_logits=False, head_input_norm=False, consensus_features=False, judger_win_emb=False, margin_dim=3, judger_soft_emb=False, judger_soft_tau=1.0, dual_stream_contest=False, dual_stream_blend=0.0, dual_stream_alpha=0.5, decision_conf=False, decision_conf_mode="softmax", decision_conf_tau=0.75, decision_conf_learnable=False, decision_conf_alpha=0.3):
         super().__init__()
         self.pairwise = pairwise
         self.diff_features = diff_features
@@ -100,6 +100,13 @@ class System2(nn.Module):
         self.head_center_logits = head_center_logits
         self.head_norm_logits = head_norm_logits
         self.head_input_norm = head_input_norm
+        self.decision_conf = decision_conf
+        self.decision_conf_mode = decision_conf_mode
+        self.decision_conf_tau = decision_conf_tau
+        self.decision_conf_alpha = decision_conf_alpha
+        self.decision_conf_learnable = decision_conf_learnable
+        if decision_conf_learnable:
+            self.log_decision_tau = nn.Parameter(torch.tensor(math.log(max(decision_conf_tau, 0.01))))
         effective_margin_dim = 5 if consensus_features else (margin_dim if (margin_features or consensus_features) else 0)
         self.margin_dim = effective_margin_dim
         head_classes = 1 if pairwise else num_classes
@@ -235,8 +242,28 @@ class System2(nn.Module):
                     winner = torch.where(duel_diff > 0, c1, c2)
                     ds_blend = getattr(self, "dual_stream_blend", 0.3)
                     duel_boost = torch.zeros_like(ens_logits).scatter_(1, winner.unsqueeze(1), ds_blend)
-                    ens_logits = torch.where(conflict.unsqueeze(1), ens_logits + duel_boost, ens_logits)
-            return best, best_conf, pruned, confidences, logits, embeddings, scores, ens_logits
+            if getattr(self, "decision_conf", False):
+                conf_tau = torch.exp(self.log_decision_tau).clamp(min=0.1, max=10.0) if (getattr(self, "decision_conf_learnable", False) and hasattr(self, "log_decision_tau")) else getattr(self, "decision_conf_tau", 0.75)
+                conf_mode = getattr(self, "decision_conf_mode", "softmax")
+                ens_for_conf = ens_logits.detach()
+                if conf_mode == "softmax":
+                    probs = torch.softmax(ens_for_conf / conf_tau, dim=-1)
+                    win_conf = probs.max(dim=-1).values
+                elif conf_mode == "margin":
+                    sorted_e, _ = torch.sort(ens_for_conf, dim=-1, descending=True)
+                    m = sorted_e[:, 0] - sorted_e[:, 1]
+                    win_conf = torch.sigmoid(m / conf_tau)
+                elif conf_mode == "hybrid":
+                    alpha = getattr(self, "decision_conf_alpha", 0.3)
+                    sorted_e, _ = torch.sort(ens_for_conf, dim=-1, descending=True)
+                    m = sorted_e[:, 0] - sorted_e[:, 1]
+                    m_conf = torch.sigmoid(m / conf_tau)
+                    win_conf = alpha * best_conf + (1.0 - alpha) * m_conf
+                else:
+                    win_conf = best_conf
+            else:
+                win_conf = best_conf
+            return best, win_conf, pruned, confidences, logits, embeddings, scores, ens_logits
         else:
             # Single-vector classification: (B, 1024)
             embeddings, confidences = [], []
