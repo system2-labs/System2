@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 27: Coupled Decision-Level Confidence & Rank-2 Error Minimization
-- Test 1: Coupled Decision Confidence Calibration (decision_conf=True, softmax, tau=0.75, learnable=True)
-- Test 2: Ensemble Cross-Entropy Optimization (lambda_ens_ce=0.15)
-- Test 3: Choice-Forward Re-equilibration & Arbitration Sharpening (w=[0.9, 1.0, 1.0, 1.0, 0.55], tau=0.75)
+Battery 28: Hybrid Decision Calibration, Soft-Embedding Sharpening, and Judger Residual Stream
+- Test 1: Hybrid Confidence Calibration (decision_conf_mode="hybrid", alpha=0.3, tau=1.0)
+- Test 2: Judger Soft-Embedding Sharpening (judger_soft_tau=0.50)
+- Test 3: Pre-LN Judger Residual Stream (judger_residual=True)
 """
 import json
 import os
@@ -102,7 +102,8 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active SOTA baseline: 0.7313 (Accuracy 67.39%, Brier 0.2114)
+    # Active SOTA baseline: 0.7337 (Accuracy 67.34%, Brier 0.2059)
+    # Incorporating Battery 27 Test 1 SOTA: decision_conf=True, softmax, tau=0.75, learnable=True
     base_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -181,25 +182,24 @@ def main():
         "norm_cand_margin": False,
         "judger_soft_emb": True,
         "judger_soft_tau": 1.0,
-        "decision_conf": False,
+        "decision_conf": True,
         "decision_conf_mode": "softmax",
         "decision_conf_tau": 0.75,
-        "decision_conf_learnable": False,
+        "decision_conf_learnable": True,
         "decision_conf_alpha": 0.3,
         "lr_decision_tau": 1e-2,
         "bert_model": "answerdotai/ModernBERT-Large-Instruct",
     }
 
-    # Test 1: Coupled Decision Confidence Calibration (decision_conf=True, softmax, tau=0.75, learnable=True)
+    # Test 1: Hybrid Confidence Calibration (decision_conf_mode="hybrid", alpha=0.3, tau=1.0)
     t1_params = dict(base_params)
-    t1_params["decision_conf"] = True
-    t1_params["decision_conf_mode"] = "softmax"
-    t1_params["decision_conf_tau"] = 0.75
-    t1_params["decision_conf_learnable"] = True
+    t1_params["decision_conf_mode"] = "hybrid"
+    t1_params["decision_conf_alpha"] = 0.3
+    t1_params["decision_conf_tau"] = 1.0
     r1 = run_experiment(
-        name="Test 1: Coupled Decision Confidence Calibration (softmax, tau=0.75, learnable=True)",
+        name="Test 1: Hybrid Confidence Calibration (hybrid, alpha=0.3, tau=1.0)",
         hyperparams=t1_params,
-        description="Battery 27 Test 1: Coupled Decision Confidence Calibration (softmax, tau=0.75, learnable=True)",
+        description="Battery 28 Test 1: Hybrid Confidence Calibration (hybrid, alpha=0.3, tau=1.0)",
     )
     results.append(r1)
 
@@ -209,13 +209,13 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Ensemble Cross-Entropy Optimization (lambda_ens_ce=0.15)
+    # Test 2: Judger Soft-Embedding Sharpening (judger_soft_tau=0.50)
     t2_params = dict(base_params)
-    t2_params["lambda_ens_ce"] = 0.15
+    t2_params["judger_soft_tau"] = 0.50
     r2 = run_experiment(
-        name="Test 2: Ensemble Cross-Entropy Optimization (lambda_ens_ce=0.15)",
+        name="Test 2: Judger Soft-Embedding Sharpening (judger_soft_tau=0.50)",
         hyperparams=t2_params,
-        description="Battery 27 Test 2: Ensemble Cross-Entropy Optimization (lambda_ens_ce=0.15)",
+        description="Battery 28 Test 2: Judger Soft-Embedding Sharpening (judger_soft_tau=0.50)",
     )
     results.append(r2)
 
@@ -225,14 +225,13 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Choice-Forward Re-equilibration & Arbitration Sharpening (w=[0.9, 1.0, 1.0, 1.0, 0.55], tau=0.75)
+    # Test 3: Pre-LN Judger Residual Stream (judger_residual=True)
     t3_params = dict(base_params)
-    t3_params["head_weights"] = [0.90, 1.0, 1.0, 1.0, 0.55]
-    t3_params["ensemble_temp"] = 0.75
+    t3_params["judger_residual"] = True
     r3 = run_experiment(
-        name="Test 3: Choice-Forward Re-equilibration (w=[0.9, 1.0, 1.0, 1.0, 0.55], tau=0.75)",
+        name="Test 3: Pre-LN Judger Residual Stream (judger_residual=True)",
         hyperparams=t3_params,
-        description="Battery 27 Test 3: Choice-Forward Re-equilibration (w=[0.9, 1.0, 1.0, 1.0, 0.55], tau=0.75)",
+        description="Battery 28 Test 3: Pre-LN Judger Residual Stream (judger_residual=True)",
     )
     results.append(r3)
 
