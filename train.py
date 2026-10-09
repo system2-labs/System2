@@ -207,6 +207,12 @@ def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False
             v2 = 0.20 * q_vec + 0.80 * a_vec
             v3 = 0.50 * q_vec + 0.50 * a_vec
             v4 = 0.05 * q_vec + 0.95 * a_vec
+        elif asym_span_mode == "choice_forward_v2":
+            v0 = holistic
+            v1 = 0.40 * q_vec + 0.60 * a_vec
+            v2 = 0.20 * q_vec + 0.80 * a_vec
+            v3 = 0.50 * q_vec + 0.50 * a_vec
+            v4 = 0.15 * q_vec + 0.85 * a_vec
         elif asym_span_mode == "balanced_spectrum":
             v0 = holistic
             v1 = 0.40 * q_vec + 0.60 * a_vec
