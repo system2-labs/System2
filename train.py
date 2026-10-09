@@ -117,12 +117,12 @@ HYPERPARAMS = {
     "head_norm_logits": True,
     "head_input_norm": False,
     "norm_cand_margin": False,
-    "decision_conf": False,
+    "decision_conf": True,
     "decision_conf_mode": "softmax",
     "decision_conf_tau": 0.75,
-    "decision_conf_learnable": False,
+    "decision_conf_learnable": True,
     "decision_conf_alpha": 0.3,
-    "lr_decision_tau": 1e-2,
+    "lr_decision_tau": 0.01,
 }
 
 
