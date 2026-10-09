@@ -91,7 +91,7 @@ HYPERPARAMS = {
     "prob_ensemble": False,
     "head_prob_temp": 1.0,
     "head_norm_first": False,
-    "judger_residual": False,
+    "judger_residual": True,
     "head_mlp_dim": 256,
     "head_norm_diff": False,
     "lambda_cand_margin": 0.04,
