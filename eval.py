@@ -159,7 +159,7 @@ def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=Non
     return pooled.view(b, 4, -1)
 
 
-def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir="./data/arc", ensemble=False, head_weights=None, ensemble_temp=None):
+def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir="./data/arc", ensemble=False, head_weights=None, ensemble_temp=None, head_norm_logits=None, veto_blend=None, margin_gamma=None):
     device = device or ("mps" if torch.backends.mps.is_available() else "cpu")
     state = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     bert_name = state.get("bert_model", "answerdotai/ModernBERT-large") if isinstance(state, dict) else "answerdotai/ModernBERT-large"
@@ -241,7 +241,9 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             kwargs["judger_soft_emb"] = True
         if isinstance(state, dict) and "judger_soft_tau" in state:
             kwargs["judger_soft_tau"] = state["judger_soft_tau"]
-        if isinstance(state, dict) and "margin_gamma" in state:
+        if margin_gamma is not None:
+            kwargs["margin_gamma"] = margin_gamma
+        elif isinstance(state, dict) and "margin_gamma" in state:
             kwargs["margin_gamma"] = state["margin_gamma"]
         if isinstance(state, dict) and "prob_margin_gamma" in state:
             kwargs["prob_margin_gamma"] = state["prob_margin_gamma"]
@@ -264,7 +266,9 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             kwargs["head_norm_diff"] = True
             if "heads.0.hypothesis_head.1.weight" in sys2_state:
                 kwargs["head_mlp_dim"] = sys2_state["heads.0.hypothesis_head.1.weight"].shape[0]
-        if isinstance(state, dict) and "veto_blend" in state:
+        if veto_blend is not None:
+            kwargs["veto_blend"] = veto_blend
+        elif isinstance(state, dict) and "veto_blend" in state:
             kwargs["veto_blend"] = state["veto_blend"]
         if isinstance(state, dict) and "dual_stream_contest" in state:
             kwargs["dual_stream_contest"] = state["dual_stream_contest"]
@@ -278,6 +282,10 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             kwargs["head_weights"] = state["head_weights"]
         if isinstance(state, dict) and state.get("head_center_logits", False):
             kwargs["head_center_logits"] = True
+        if head_norm_logits is not None:
+            kwargs["head_norm_logits"] = head_norm_logits
+        elif isinstance(state, dict) and state.get("head_norm_logits", False):
+            kwargs["head_norm_logits"] = True
         import inspect
         if "recurrence" in inspect.signature(System2.__init__).parameters:
             kwargs["recurrence"] = has_recurrence
@@ -349,10 +357,13 @@ if __name__ == "__main__":
         ap.add_argument("--ensemble", action="store_true", help="Force ensemble evaluation over all heads")
         ap.add_argument("--head-weights", default=None, help="Comma-separated head weights e.g. 1.0,1.0,1.2,1.0,0.4")
         ap.add_argument("--ensemble-temp", type=float, default=None, help="Deliberation arbitration temperature tau")
+        ap.add_argument("--head-norm-logits", action="store_true", default=None, help="Force per-head logit normalization")
+        ap.add_argument("--veto-blend", type=float, default=None, help="Veto blend weight")
+        ap.add_argument("--margin-gamma", type=float, default=None, help="Margin gamma weight")
         args = ap.parse_args()
         ckpt = args.ckpt
         hw = [float(x) for x in args.head_weights.split(",")] if args.head_weights else None
-        m = evaluate(ckpt, max_samples=args.max_samples, data_dir=args.data, ensemble=args.ensemble, head_weights=hw, ensemble_temp=args.ensemble_temp)
+        m = evaluate(ckpt, max_samples=args.max_samples, data_dir=args.data, ensemble=args.ensemble, head_weights=hw, ensemble_temp=args.ensemble_temp, head_norm_logits=args.head_norm_logits, veto_blend=args.veto_blend, margin_gamma=args.margin_gamma)
         metric = 0.5 * m["accuracy"] + 0.5 * (1 - m["brier"])
         print(json.dumps({"metric": round(metric, 4), "accuracy": round(m["accuracy"], 4), "brier": round(m["brier"], 4)}))
     except Exception as e:
