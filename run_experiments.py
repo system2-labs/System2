@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 24: Head-4 Contrarian Re-Equilibration & Capacity Scaling Battery
-- Test 1: Head-4 Contrarian Re-Equilibration & Calibrated Arbitration (w4=0.65, tau=1.55, gamma=0.18, vb=0.45)
-- Test 2: Extended Cosine Cooling (6 Epochs, w4=0.65, tau=1.55)
-- Test 3: High-Capacity LoRA Subspace (r=48, alpha=48 on Instruct, w4=0.65, tau=1.55)
+Battery 25: Scale-Invariant Deliberation & Cognitive Spectrum Battery
+- Test 1: Scale-Invariant Deliberation via Logit Standardization (head_norm_logits=True, tau=0.8, w4=0.5, vb=0, gamma=0)
+- Test 2: Cognitive Spectrum Rebalancing (constraint_spectrum: Q-Anchor + Choice)
+- Test 3: Pre-LN Norm Stability (head_norm_first=True)
 """
 import json
 import os
@@ -179,20 +179,22 @@ def main():
         "train_ensemble_temp": 1.80,
         "head_margin_weights": None,
         "head_center_logits": False,
+        "head_norm_logits": False,
         "judger_soft_emb": True,
         "judger_soft_tau": 1.0,
         "bert_model": "answerdotai/ModernBERT-Large-Instruct",
     }
-    # Test 1: Head-4 Contrarian Re-Equilibration & Calibrated Arbitration (w4=0.65, tau=1.55, gamma=0.18, vb=0.45)
+    # Test 1: Scale-Invariant Deliberation via Logit Standardization (head_norm_logits=True, tau=0.8, w4=0.5, vb=0, gamma=0)
     t1_params = dict(base_params)
-    t1_params["head_weights"] = [1.0, 1.0, 1.15, 1.0, 0.65]
-    t1_params["ensemble_temp"] = 1.55
-    t1_params["margin_gamma"] = 0.18
-    t1_params["veto_blend"] = 0.45
+    t1_params["head_norm_logits"] = True
+    t1_params["ensemble_temp"] = 0.8
+    t1_params["head_weights"] = [1.0, 1.0, 1.15, 1.0, 0.50]
+    t1_params["margin_gamma"] = 0.0
+    t1_params["veto_blend"] = 0.0
     r1 = run_experiment(
-        name="Test 1: Head-4 Re-Equilibration (w4=0.65, tau=1.55, gamma=0.18)",
+        name="Test 1: Scale-Invariant Deliberation (head_norm_logits=True, tau=0.8, w4=0.5)",
         hyperparams=t1_params,
-        description="Battery 24 Test 1: Head-4 Re-Equilibration (w4=0.65, tau=1.55, gamma=0.18)",
+        description="Battery 25 Test 1: Scale-Invariant Deliberation (head_norm_logits=True, tau=0.8, w4=0.5)",
     )
     results.append(r1)
 
@@ -202,17 +204,18 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Extended Cosine Cooling (6 Epochs, w4=0.65, tau=1.55)
+    # Test 2: Cognitive Spectrum Rebalancing (constraint_spectrum: Q-Anchor + Choice)
     t2_params = dict(base_params)
-    t2_params["epochs"] = 6
-    t2_params["head_weights"] = [1.0, 1.0, 1.15, 1.0, 0.65]
-    t2_params["ensemble_temp"] = 1.55
-    t2_params["margin_gamma"] = 0.18
-    t2_params["veto_blend"] = 0.45
+    t2_params["asym_span_mode"] = "constraint_spectrum"
+    t2_params["head_norm_logits"] = True
+    t2_params["ensemble_temp"] = 0.8
+    t2_params["head_weights"] = [1.0, 1.0, 1.15, 1.0, 0.50]
+    t2_params["margin_gamma"] = 0.0
+    t2_params["veto_blend"] = 0.0
     r2 = run_experiment(
-        name="Test 2: Extended Cosine Cooling (6 Epochs, w4=0.65, tau=1.55)",
+        name="Test 2: Cognitive Spectrum Rebalancing (constraint_spectrum)",
         hyperparams=t2_params,
-        description="Battery 24 Test 2: Extended Cosine Cooling (6 Epochs, w4=0.65, tau=1.55)",
+        description="Battery 25 Test 2: Cognitive Spectrum Rebalancing (constraint_spectrum)",
     )
     results.append(r2)
 
@@ -222,18 +225,13 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: High-Capacity LoRA Subspace (r=48, alpha=48 on Instruct)
+    # Test 3: Pre-LN Norm Stability (head_norm_first=True)
     t3_params = dict(base_params)
-    t3_params["lora_r"] = 48
-    t3_params["lora_alpha"] = 48
-    t3_params["head_weights"] = [1.0, 1.0, 1.15, 1.0, 0.65]
-    t3_params["ensemble_temp"] = 1.55
-    t3_params["margin_gamma"] = 0.18
-    t3_params["veto_blend"] = 0.45
+    t3_params["head_norm_first"] = True
     r3 = run_experiment(
-        name="Test 3: High-Capacity Subspace Rank (r=48, alpha=48 on Instruct)",
+        name="Test 3: Pre-LN Norm Stability (head_norm_first=True)",
         hyperparams=t3_params,
-        description="Battery 24 Test 3: High-Capacity Subspace Rank (r=48, alpha=48 on Instruct)",
+        description="Battery 25 Test 3: Pre-LN Norm Stability (head_norm_first=True)",
     )
     results.append(r3)
 
