@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 28: Hybrid Decision Calibration, Soft-Embedding Sharpening, and Judger Residual Stream
-- Test 1: Hybrid Confidence Calibration (decision_conf_mode="hybrid", alpha=0.3, tau=1.0)
-- Test 2: Judger Soft-Embedding Sharpening (judger_soft_tau=0.50)
-- Test 3: Pre-LN Judger Residual Stream (judger_residual=True)
+Battery 29: Judger Scoring MLP Capacity, Attention Subspace Dimension, and Temperature Initialization
+- Test 1: Judger Scoring MLP Capacity (judger_mlp_dim=128)
+- Test 2: Judger Attention Subspace Dimension (judger_num_heads=4)
+- Test 3: Calibrated Decision Temperature Initialization (decision_conf_tau=0.90)
 """
 import json
 import os
@@ -102,8 +102,8 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active SOTA baseline: 0.7337 (Accuracy 67.34%, Brier 0.2059)
-    # Incorporating Battery 27 Test 1 SOTA: decision_conf=True, softmax, tau=0.75, learnable=True
+    # Active SOTA baseline: 0.7339 (Accuracy 67.37%, Brier 0.2059)
+    # Incorporating Battery 28 Test 3 SOTA: judger_residual=True, softmax, tau=0.75, learnable=True
     base_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -158,7 +158,9 @@ def main():
         "prob_ensemble": False,
         "head_prob_temp": 1.0,
         "head_norm_first": False,
-        "judger_residual": False,
+        "judger_residual": True,
+        "judger_mlp_dim": 64,
+        "judger_num_heads": 8,
         "head_mlp_dim": 256,
         "head_norm_diff": False,
         "lambda_cand_margin": 0.04,
@@ -191,15 +193,13 @@ def main():
         "bert_model": "answerdotai/ModernBERT-Large-Instruct",
     }
 
-    # Test 1: Hybrid Confidence Calibration (decision_conf_mode="hybrid", alpha=0.3, tau=1.0)
+    # Test 1: Judger Scoring MLP Capacity (judger_mlp_dim=128)
     t1_params = dict(base_params)
-    t1_params["decision_conf_mode"] = "hybrid"
-    t1_params["decision_conf_alpha"] = 0.3
-    t1_params["decision_conf_tau"] = 1.0
+    t1_params["judger_mlp_dim"] = 128
     r1 = run_experiment(
-        name="Test 1: Hybrid Confidence Calibration (hybrid, alpha=0.3, tau=1.0)",
+        name="Test 1: Judger Scoring MLP Capacity (judger_mlp_dim=128)",
         hyperparams=t1_params,
-        description="Battery 28 Test 1: Hybrid Confidence Calibration (hybrid, alpha=0.3, tau=1.0)",
+        description="Battery 29 Test 1: Judger Scoring MLP Capacity (judger_mlp_dim=128)",
     )
     results.append(r1)
 
@@ -209,13 +209,13 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Judger Soft-Embedding Sharpening (judger_soft_tau=0.50)
+    # Test 2: Judger Attention Subspace Dimension (judger_num_heads=4)
     t2_params = dict(base_params)
-    t2_params["judger_soft_tau"] = 0.50
+    t2_params["judger_num_heads"] = 4
     r2 = run_experiment(
-        name="Test 2: Judger Soft-Embedding Sharpening (judger_soft_tau=0.50)",
+        name="Test 2: Judger Attention Subspace Dimension (judger_num_heads=4)",
         hyperparams=t2_params,
-        description="Battery 28 Test 2: Judger Soft-Embedding Sharpening (judger_soft_tau=0.50)",
+        description="Battery 29 Test 2: Judger Attention Subspace Dimension (judger_num_heads=4)",
     )
     results.append(r2)
 
@@ -225,13 +225,13 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Pre-LN Judger Residual Stream (judger_residual=True)
+    # Test 3: Calibrated Decision Temperature Initialization (decision_conf_tau=0.90)
     t3_params = dict(base_params)
-    t3_params["judger_residual"] = True
+    t3_params["decision_conf_tau"] = 0.90
     r3 = run_experiment(
-        name="Test 3: Pre-LN Judger Residual Stream (judger_residual=True)",
+        name="Test 3: Calibrated Decision Temperature Initialization (decision_conf_tau=0.90)",
         hyperparams=t3_params,
-        description="Battery 28 Test 3: Pre-LN Judger Residual Stream (judger_residual=True)",
+        description="Battery 29 Test 3: Calibrated Decision Temperature Initialization (decision_conf_tau=0.90)",
     )
     results.append(r3)
 

@@ -306,6 +306,12 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             kwargs["decision_conf_alpha"] = state["decision_conf_alpha"]
         if (isinstance(state, dict) and state.get("decision_conf_learnable", False)) or ("log_decision_tau" in sys2_state):
             kwargs["decision_conf_learnable"] = True
+        if "judger.score.0.weight" in sys2_state:
+            kwargs["judger_mlp_dim"] = sys2_state["judger.score.0.weight"].shape[0]
+        elif isinstance(state, dict) and "judger_mlp_dim" in state:
+            kwargs["judger_mlp_dim"] = state["judger_mlp_dim"]
+        if isinstance(state, dict) and "judger_num_heads" in state:
+            kwargs["judger_num_heads"] = state["judger_num_heads"]
         import inspect
         if "recurrence" in inspect.signature(System2.__init__).parameters:
             kwargs["recurrence"] = has_recurrence
