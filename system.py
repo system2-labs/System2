@@ -72,7 +72,7 @@ class System2(nn.Module):
     2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0, head_weights=None, prob_margin_gamma=0.0, head_center_logits=False, consensus_features=False, judger_win_emb=False, margin_dim=3, judger_soft_emb=False, judger_soft_tau=1.0, dual_stream_contest=False, dual_stream_blend=0.0, dual_stream_alpha=0.5):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0, head_weights=None, prob_margin_gamma=0.0, head_center_logits=False, head_norm_logits=False, consensus_features=False, judger_win_emb=False, margin_dim=3, judger_soft_emb=False, judger_soft_tau=1.0, dual_stream_contest=False, dual_stream_blend=0.0, dual_stream_alpha=0.5):
         super().__init__()
         self.pairwise = pairwise
         self.diff_features = diff_features
@@ -98,6 +98,7 @@ class System2(nn.Module):
         self.dual_stream_alpha = dual_stream_alpha
         self.head_weights = head_weights
         self.head_center_logits = head_center_logits
+        self.head_norm_logits = head_norm_logits
         effective_margin_dim = 5 if consensus_features else (margin_dim if (margin_features or consensus_features) else 0)
         self.margin_dim = effective_margin_dim
         head_classes = 1 if pairwise else num_classes
@@ -189,16 +190,26 @@ class System2(nn.Module):
                 else:
                     weights = torch.softmax(arb_scores, dim=-1)
 
+                if getattr(self, "head_norm_logits", False):
+                    logits_mean = logits.mean(dim=-1, keepdim=True)
+                    logits_std = logits.std(dim=-1, keepdim=True).clamp(min=1e-5)
+                    normed_logits = (logits - logits_mean) / logits_std
+                elif getattr(self, "head_center_logits", False):
+                    normed_logits = logits - logits.mean(dim=-1, keepdim=True)
+                else:
+                    normed_logits = logits
+
                 if getattr(self, "prob_ensemble", False):
                     head_tau = getattr(self, "head_prob_temp", 1.0)
                     probs = torch.softmax(logits / head_tau, dim=-1)
                     ens_probs = torch.einsum('bn,bnc->bc', weights, probs)
                     ens_logits = torch.log(ens_probs.clamp(min=1e-8))
                 else:
-                    ens_logits = torch.einsum('bn,bnc->bc', weights, logits)
+                    ens_logits = torch.einsum('bn,bnc->bc', weights, normed_logits)
             if getattr(self, "veto_blend", 0.0) > 0.0:
                 vb = getattr(self, "veto_blend", 0.0)
-                peak_logits = logits[torch.arange(logits.size(0), device=logits.device), best]
+                active_l = normed_logits if (getattr(self, "head_norm_logits", False) or getattr(self, "head_center_logits", False)) else logits
+                peak_logits = active_l[torch.arange(logits.size(0), device=logits.device), best]
                 ens_logits = (1.0 - vb) * ens_logits + vb * peak_logits
             if getattr(self, "dual_stream_contest", False):
                 # Option A.2: Déjà vu Dual-Stream 1-on-1 Duel between top 2 hypotheses
@@ -284,13 +295,22 @@ class System2(nn.Module):
                 else:
                     weights = torch.softmax(arb_scores, dim=-1)
 
+                if getattr(self, "head_norm_logits", False):
+                    logits_mean = logits.mean(dim=-1, keepdim=True)
+                    logits_std = logits.std(dim=-1, keepdim=True).clamp(min=1e-5)
+                    normed_logits = (logits - logits_mean) / logits_std
+                elif getattr(self, "head_center_logits", False):
+                    normed_logits = logits - logits.mean(dim=-1, keepdim=True)
+                else:
+                    normed_logits = logits
+
                 if getattr(self, "prob_ensemble", False):
                     head_tau = getattr(self, "head_prob_temp", 1.0)
                     probs = torch.softmax(logits / head_tau, dim=-1)
                     ens_probs = torch.einsum('bn,bnc->bc', weights, probs)
                     ens_logits = torch.log(ens_probs.clamp(min=1e-8))
                 else:
-                    ens_logits = torch.einsum('bn,bnc->bc', weights, logits)
+                    ens_logits = torch.einsum('bn,bnc->bc', weights, normed_logits)
             return best, best_conf, pruned, confidences, logits, embeddings, scores, ens_logits
 
 
