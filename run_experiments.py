@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 29: Judger Scoring MLP Capacity, Attention Subspace Dimension, and Temperature Initialization
-- Test 1: Judger Scoring MLP Capacity (judger_mlp_dim=128)
-- Test 2: Judger Attention Subspace Dimension (judger_num_heads=4)
-- Test 3: Calibrated Decision Temperature Initialization (decision_conf_tau=0.90)
+Battery 30: Deliberation Re-Equilibration, Un-Collapsed Asymmetric Spans, and Gentle Veto Blending
+- Test 1: Re-Equilibrated Deliberation Weights (head_weights=[1.0, 1.0, 1.10, 1.0, 0.50], ensemble_temp=0.75)
+- Test 2: Un-Collapsed Choice-Forward Span Mode (asym_span_mode="choice_forward_v2", v4=0.15q+0.85a)
+- Test 3: Gentle Judger Veto Blending (veto_blend=0.02)
 """
 import json
 import os
@@ -193,13 +193,14 @@ def main():
         "bert_model": "answerdotai/ModernBERT-Large-Instruct",
     }
 
-    # Test 1: Judger Scoring MLP Capacity (judger_mlp_dim=128)
+    # Test 1: Re-Equilibrated Deliberation Weights (head_weights=[1.0, 1.0, 1.10, 1.0, 0.50], ensemble_temp=0.75)
     t1_params = dict(base_params)
-    t1_params["judger_mlp_dim"] = 128
+    t1_params["head_weights"] = [1.0, 1.0, 1.10, 1.0, 0.50]
+    t1_params["ensemble_temp"] = 0.75
     r1 = run_experiment(
-        name="Test 1: Judger Scoring MLP Capacity (judger_mlp_dim=128)",
+        name="Test 1: Re-Equilibrated Deliberation Weights (head_weights=[1.0, 1.0, 1.10, 1.0, 0.50], ensemble_temp=0.75)",
         hyperparams=t1_params,
-        description="Battery 29 Test 1: Judger Scoring MLP Capacity (judger_mlp_dim=128)",
+        description="Battery 30 Test 1: Re-Equilibrated Deliberation Weights (head_weights=[1.0, 1.0, 1.10, 1.0, 0.50], ensemble_temp=0.75)",
     )
     results.append(r1)
 
@@ -209,13 +210,13 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Judger Attention Subspace Dimension (judger_num_heads=4)
+    # Test 2: Un-Collapsed Choice-Forward Span Mode (asym_span_mode="choice_forward_v2")
     t2_params = dict(base_params)
-    t2_params["judger_num_heads"] = 4
+    t2_params["asym_span_mode"] = "choice_forward_v2"
     r2 = run_experiment(
-        name="Test 2: Judger Attention Subspace Dimension (judger_num_heads=4)",
+        name="Test 2: Un-Collapsed Choice-Forward Span Mode (choice_forward_v2, v4=0.15q+0.85a)",
         hyperparams=t2_params,
-        description="Battery 29 Test 2: Judger Attention Subspace Dimension (judger_num_heads=4)",
+        description="Battery 30 Test 2: Un-Collapsed Choice-Forward Span Mode (choice_forward_v2, v4=0.15q+0.85a)",
     )
     results.append(r2)
 
@@ -225,13 +226,13 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Calibrated Decision Temperature Initialization (decision_conf_tau=0.90)
+    # Test 3: Gentle Judger Veto Blending (veto_blend=0.02)
     t3_params = dict(base_params)
-    t3_params["decision_conf_tau"] = 0.90
+    t3_params["veto_blend"] = 0.02
     r3 = run_experiment(
-        name="Test 3: Calibrated Decision Temperature Initialization (decision_conf_tau=0.90)",
+        name="Test 3: Gentle Judger Veto Blending (veto_blend=0.02)",
         hyperparams=t3_params,
-        description="Battery 29 Test 3: Calibrated Decision Temperature Initialization (decision_conf_tau=0.90)",
+        description="Battery 30 Test 3: Gentle Judger Veto Blending (veto_blend=0.02)",
     )
     results.append(r3)
 
