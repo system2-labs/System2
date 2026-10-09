@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 25: Scale-Invariant Deliberation & Cognitive Spectrum Battery
-- Test 1: Scale-Invariant Deliberation via Logit Standardization (head_norm_logits=True, tau=0.8, w4=0.5, vb=0, gamma=0)
-- Test 2: Cognitive Spectrum Rebalancing (constraint_spectrum: Q-Anchor + Choice)
-- Test 3: Pre-LN Norm Stability (head_norm_first=True)
+Battery 26: Scale-Invariant Margin Calibration & Contrast Input Normalization
+- Test 1: Fine-Tuned Scale-Invariant Arbitration (tau=0.75, w1=1.05, w4=0.50, vb=0, gamma=0)
+- Test 2: Scale-Invariant Margin Calibration (norm_cand_margin=True, cand_margin=1.0)
+- Test 3: Head Input LayerNorm (head_input_norm=True)
 """
 import json
 import os
@@ -179,22 +179,24 @@ def main():
         "train_ensemble_temp": 1.80,
         "head_margin_weights": None,
         "head_center_logits": False,
-        "head_norm_logits": False,
+        "head_norm_logits": True,
+        "head_input_norm": False,
+        "norm_cand_margin": False,
         "judger_soft_emb": True,
         "judger_soft_tau": 1.0,
         "bert_model": "answerdotai/ModernBERT-Large-Instruct",
     }
-    # Test 1: Scale-Invariant Deliberation via Logit Standardization (head_norm_logits=True, tau=0.8, w4=0.5, vb=0, gamma=0)
+    # Test 1: Fine-Tuned Scale-Invariant Arbitration (tau=0.75, w4=0.50, w2=1.15, w1=1.05)
     t1_params = dict(base_params)
+    t1_params["ensemble_temp"] = 0.75
+    t1_params["head_weights"] = [1.0, 1.05, 1.15, 1.0, 0.50]
     t1_params["head_norm_logits"] = True
-    t1_params["ensemble_temp"] = 0.8
-    t1_params["head_weights"] = [1.0, 1.0, 1.15, 1.0, 0.50]
     t1_params["margin_gamma"] = 0.0
     t1_params["veto_blend"] = 0.0
     r1 = run_experiment(
-        name="Test 1: Scale-Invariant Deliberation (head_norm_logits=True, tau=0.8, w4=0.5)",
+        name="Test 1: Fine Arbitration Tuning (tau=0.75, w1=1.05, w4=0.5)",
         hyperparams=t1_params,
-        description="Battery 25 Test 1: Scale-Invariant Deliberation (head_norm_logits=True, tau=0.8, w4=0.5)",
+        description="Battery 26 Test 1: Fine Arbitration Tuning (tau=0.75, w1=1.05, w4=0.5)",
     )
     results.append(r1)
 
@@ -204,18 +206,15 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Cognitive Spectrum Rebalancing (constraint_spectrum: Q-Anchor + Choice)
+    # Test 2: Scale-Invariant Margin Calibration (norm_cand_margin=True, cand_margin=1.0)
     t2_params = dict(base_params)
-    t2_params["asym_span_mode"] = "constraint_spectrum"
-    t2_params["head_norm_logits"] = True
-    t2_params["ensemble_temp"] = 0.8
-    t2_params["head_weights"] = [1.0, 1.0, 1.15, 1.0, 0.50]
-    t2_params["margin_gamma"] = 0.0
-    t2_params["veto_blend"] = 0.0
+    t2_params["norm_cand_margin"] = True
+    t2_params["cand_margin"] = 1.0
+    t2_params["lambda_cand_margin"] = 0.04
     r2 = run_experiment(
-        name="Test 2: Cognitive Spectrum Rebalancing (constraint_spectrum)",
+        name="Test 2: Scale-Invariant Margin Calibration (norm_cand_margin=True)",
         hyperparams=t2_params,
-        description="Battery 25 Test 2: Cognitive Spectrum Rebalancing (constraint_spectrum)",
+        description="Battery 26 Test 2: Scale-Invariant Margin Calibration (norm_cand_margin=True)",
     )
     results.append(r2)
 
@@ -225,13 +224,13 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Pre-LN Norm Stability (head_norm_first=True)
+    # Test 3: Head Input LayerNorm (head_input_norm=True)
     t3_params = dict(base_params)
-    t3_params["head_norm_first"] = True
+    t3_params["head_input_norm"] = True
     r3 = run_experiment(
-        name="Test 3: Pre-LN Norm Stability (head_norm_first=True)",
+        name="Test 3: Head Input LayerNorm (head_input_norm=True)",
         hyperparams=t3_params,
-        description="Battery 25 Test 3: Pre-LN Norm Stability (head_norm_first=True)",
+        description="Battery 26 Test 3: Head Input LayerNorm (head_input_norm=True)",
     )
     results.append(r3)
 

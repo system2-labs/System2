@@ -11,11 +11,12 @@ class ThoughtHead(nn.Module):
     Params: ~40M  (4-bit: ~160MB)
     """
 
-    def __init__(self, hidden_size=1024, head_dim=512, vocab_size=30522, num_classes=None, diff_features=False, num_layers=2, dropout=0.0, norm_first=False, mlp_dim=256, norm_diff=False):
+    def __init__(self, hidden_size=1024, head_dim=512, vocab_size=30522, num_classes=None, diff_features=False, num_layers=2, dropout=0.0, norm_first=False, mlp_dim=256, norm_diff=False, input_norm=False):
         super().__init__()
         self.diff_features = diff_features
         self.mlp_dim = mlp_dim
         self.norm_diff = norm_diff
+        self.input_norm = nn.LayerNorm(head_dim) if input_norm else None
 
         # 1024 -> 512 projection
         self.input_proj = nn.Linear(hidden_size, head_dim)
@@ -59,6 +60,8 @@ class ThoughtHead(nn.Module):
         Returns: (hypo_token: tensor, confidence: tensor)
         """
         x = self.input_proj(encoder_output)  # (B, 512)
+        if self.input_norm is not None:
+            x = self.input_norm(x)
         x = x.unsqueeze(1)                   # (B, 1, 512)
         x = self.layers(x).squeeze(1)       # (B, 512)
 

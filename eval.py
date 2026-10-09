@@ -286,6 +286,8 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             kwargs["head_norm_logits"] = head_norm_logits
         elif isinstance(state, dict) and state.get("head_norm_logits", False):
             kwargs["head_norm_logits"] = True
+        if (isinstance(state, dict) and state.get("head_input_norm", False)) or ("heads.0.input_norm.weight" in sys2_state):
+            kwargs["head_input_norm"] = True
         import inspect
         if "recurrence" in inspect.signature(System2.__init__).parameters:
             kwargs["recurrence"] = has_recurrence
