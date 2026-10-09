@@ -115,6 +115,8 @@ HYPERPARAMS = {
     "judger_soft_tau": 1.0,
     "cand_margin_mode": "hard",
     "head_norm_logits": True,
+    "head_input_norm": False,
+    "norm_cand_margin": False,
 }
 
 
@@ -378,6 +380,7 @@ def main():
             prob_margin_gamma=HYPERPARAMS.get("prob_margin_gamma", 0.0),
             head_center_logits=HYPERPARAMS.get("head_center_logits", False),
             head_norm_logits=HYPERPARAMS.get("head_norm_logits", False),
+            head_input_norm=HYPERPARAMS.get("head_input_norm", False),
             consensus_features=HYPERPARAMS.get("consensus_features", False),
             judger_win_emb=HYPERPARAMS.get("judger_win_emb", False),
             judger_soft_emb=HYPERPARAMS.get("judger_soft_emb", False),
@@ -551,13 +554,14 @@ def main():
             if lambda_cand_margin > 0.0 and logits.dim() == 3:
                 c_margin = HYPERPARAMS.get("cand_margin", 1.0)
                 m_losses = []
+                margin_logits = (logits - logits.mean(dim=-1, keepdim=True)) / logits.std(dim=-1, keepdim=True).clamp(min=1e-5) if HYPERPARAMS.get("norm_cand_margin", False) else logits
                 if HYPERPARAMS.get("head_margin_weights") is not None:
                     margin_weights = HYPERPARAMS["head_margin_weights"]
                 elif HYPERPARAMS.get("asym_roles", False):
                     margin_weights = HYPERPARAMS.get("asym_margin_weights", [0.0, 0.0, 1.5, 1.5, 1.0])
                 else:
                     margin_weights = [1.0] * logits.size(1)
-                for idx, h in enumerate(logits.unbind(1)):
+                for idx, h in enumerate(margin_logits.unbind(1)):
                     w_m = margin_weights[idx]
                     if w_m <= 0.0:
                         continue
@@ -726,6 +730,8 @@ def main():
         "head_margin_weights": None,
         "head_center_logits": False,
         "head_norm_logits": HYPERPARAMS.get("head_norm_logits", False),
+        "head_input_norm": HYPERPARAMS.get("head_input_norm", False),
+        "norm_cand_margin": HYPERPARAMS.get("norm_cand_margin", False),
         "consensus_features": False,
         "judger_win_emb": False,
         "judger_soft_emb": True,

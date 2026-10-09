@@ -72,7 +72,7 @@ class System2(nn.Module):
     2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0, head_weights=None, prob_margin_gamma=0.0, head_center_logits=False, head_norm_logits=False, consensus_features=False, judger_win_emb=False, margin_dim=3, judger_soft_emb=False, judger_soft_tau=1.0, dual_stream_contest=False, dual_stream_blend=0.0, dual_stream_alpha=0.5):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0, head_weights=None, prob_margin_gamma=0.0, head_center_logits=False, head_norm_logits=False, head_input_norm=False, consensus_features=False, judger_win_emb=False, margin_dim=3, judger_soft_emb=False, judger_soft_tau=1.0, dual_stream_contest=False, dual_stream_blend=0.0, dual_stream_alpha=0.5):
         super().__init__()
         self.pairwise = pairwise
         self.diff_features = diff_features
@@ -99,11 +99,12 @@ class System2(nn.Module):
         self.head_weights = head_weights
         self.head_center_logits = head_center_logits
         self.head_norm_logits = head_norm_logits
+        self.head_input_norm = head_input_norm
         effective_margin_dim = 5 if consensus_features else (margin_dim if (margin_features or consensus_features) else 0)
         self.margin_dim = effective_margin_dim
         head_classes = 1 if pairwise else num_classes
         self.heads = nn.ModuleList([
-            ThoughtHead(num_classes=head_classes, diff_features=diff_features, num_layers=head_layers, dropout=head_dropout, norm_first=head_norm_first, mlp_dim=head_mlp_dim, norm_diff=head_norm_diff)
+            ThoughtHead(num_classes=head_classes, diff_features=diff_features, num_layers=head_layers, dropout=head_dropout, norm_first=head_norm_first, mlp_dim=head_mlp_dim, norm_diff=head_norm_diff, input_norm=head_input_norm)
             for _ in range(num_heads)
         ])
         self.judger = Judger(learnable_temp=learnable_temp, centered_conf=centered_conf, margin_features=(margin_features or consensus_features), margin_dim=effective_margin_dim, residual=judger_residual)
@@ -115,6 +116,8 @@ class System2(nn.Module):
             for n, head in enumerate(self.heads):
                 head_in = encoder_output[:, n, :, :] if encoder_output.dim() == 4 else encoder_output
                 x = head.input_proj(head_in)  # (B, num_choices, 512)
+                if getattr(head, "input_norm", None) is not None:
+                    x = head.input_norm(x)
                 x = head.layers(x)            # (B, num_choices, 512) - cross-candidate self-attention
                 if self.diff_features:
                     # Centroid difference: contrast candidate against the group mean
@@ -239,6 +242,8 @@ class System2(nn.Module):
             embeddings, confidences = [], []
             for head in self.heads:
                 x = head.input_proj(encoder_output).unsqueeze(1)
+                if getattr(head, "input_norm", None) is not None:
+                    x = head.input_norm(x)
                 x = head.layers(x).squeeze(1)  # (B, 512)
                 embeddings.append(x)
                 confidences.append(torch.sigmoid(head.confidence_head(x)).squeeze(-1))
