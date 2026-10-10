@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 38: Distillation Limit Sharpening, Micro Arbitration, and Margin Refinement
-- Test 1: Ultra-Sharp Soft Distillation (soft_target_tau=0.50)
-- Test 2: Micro Arbitration Temperature (ensemble_temp=0.74)
-- Test 3: Contrastive Choice Margin Refinement (lambda_cand_margin=0.035)
+Battery 39: Golden Ratio Calibration, Distillation Frontier, and Confidence Tau Alignment
+- Test 1: Intermediate Calibration Smoothing (judge_cal_smoothing=0.17)
+- Test 2: Fine Distillation Frontier (soft_target_tau=0.53)
+- Test 3: Decision Confidence Tau Alignment (decision_conf_tau=0.72)
 """
 import json
 import os
@@ -102,8 +102,8 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active SOTA baseline: 0.7393 (Accuracy 67.20%, Brier 0.1933)
-    # Incorporating Battery 37 Test 1 SOTA: soft_target_tau=0.55
+    # Active SOTA baseline: 0.7394 (Accuracy 67.22%, Brier 0.1933)
+    # Incorporating Battery 38 Test 2 SOTA: ensemble_temp=0.74
     base_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -144,7 +144,7 @@ def main():
         "judge_cal_smoothing": 0.18,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
-        "ensemble_temp": 0.75,
+        "ensemble_temp": 0.74,
         "lambda_head_balance": 0.0,
         "margin_features": True,
         "consensus_features": False,
@@ -194,13 +194,13 @@ def main():
         "bert_model": "answerdotai/ModernBERT-Large-Instruct",
     }
 
-    # Test 1: Ultra-Sharp Soft Distillation (soft_target_tau=0.50)
+    # Test 1: Intermediate Calibration Smoothing (judge_cal_smoothing=0.17)
     t1_params = dict(base_params)
-    t1_params["soft_target_tau"] = 0.50
+    t1_params["judge_cal_smoothing"] = 0.17
     r1 = run_experiment(
-        name="Test 1: Ultra-Sharp Soft Distillation (soft_target_tau=0.50)",
+        name="Test 1: Intermediate Calibration Smoothing (judge_cal_smoothing=0.17)",
         hyperparams=t1_params,
-        description="Battery 38 Test 1: Ultra-Sharp Soft Distillation (soft_target_tau=0.50)",
+        description="Battery 39 Test 1: Intermediate Calibration Smoothing (judge_cal_smoothing=0.17)",
     )
     results.append(r1)
 
@@ -210,13 +210,13 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Micro Arbitration Temperature (ensemble_temp=0.74)
+    # Test 2: Fine Distillation Frontier (soft_target_tau=0.53)
     t2_params = dict(base_params)
-    t2_params["ensemble_temp"] = 0.74
+    t2_params["soft_target_tau"] = 0.53
     r2 = run_experiment(
-        name="Test 2: Micro Arbitration Temperature (ensemble_temp=0.74)",
+        name="Test 2: Fine Distillation Frontier (soft_target_tau=0.53)",
         hyperparams=t2_params,
-        description="Battery 38 Test 2: Micro Arbitration Temperature (ensemble_temp=0.74)",
+        description="Battery 39 Test 2: Fine Distillation Frontier (soft_target_tau=0.53)",
     )
     results.append(r2)
 
@@ -226,13 +226,13 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Contrastive Choice Margin Refinement (lambda_cand_margin=0.035)
+    # Test 3: Decision Confidence Tau Alignment (decision_conf_tau=0.72)
     t3_params = dict(base_params)
-    t3_params["lambda_cand_margin"] = 0.035
+    t3_params["decision_conf_tau"] = 0.72
     r3 = run_experiment(
-        name="Test 3: Contrastive Choice Margin Refinement (lambda_cand_margin=0.035)",
+        name="Test 3: Decision Confidence Tau Alignment (decision_conf_tau=0.72)",
         hyperparams=t3_params,
-        description="Battery 38 Test 3: Contrastive Choice Margin Refinement (lambda_cand_margin=0.035)",
+        description="Battery 39 Test 3: Decision Confidence Tau Alignment (decision_conf_tau=0.72)",
     )
     results.append(r3)
 
