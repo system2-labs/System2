@@ -74,7 +74,7 @@ HYPERPARAMS = {
     "soft_target_tau": 0.65,
     "ensemble_heads": True,
     "centered_conf": False,
-    "judge_cal_smoothing": 0.3,
+    "judge_cal_smoothing": 0.25,
     "lambda_ens_ce": 0.0,
     "uniform_ensemble": False,
     "ensemble_temp": 0.75,
