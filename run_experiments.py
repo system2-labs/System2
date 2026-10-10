@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 33: Arbitration Temperature Sharpening, Calibration Target Expansion, and Calibration Loss Balance
-- Test 1: Arbitration Temperature Sharpening (ensemble_temp=0.70)
-- Test 2: Calibrated Decision Confidence Target Expansion (judge_cal_smoothing=0.25)
-- Test 3: Calibration Loss Balance (lambda_judge_cal=0.08)
+Battery 34: Decision Target Expansion, Head Supervision Sharpening, and Micro Warmup
+- Test 1: Further Decision Calibration Target Expansion (judge_cal_smoothing=0.20)
+- Test 2: Sharpened ThoughtHead Supervision (head_label_smoothing=0.05)
+- Test 3: Micro Cosine Annealing Warmup (warmup_ratio=0.01)
 """
 import json
 import os
@@ -102,8 +102,8 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active SOTA baseline: 0.7341 (Accuracy 67.42%, Brier 0.2060)
-    # Incorporating Battery 30 Test 1 SOTA: head_weights=[1.0, 1.0, 1.10, 1.0, 0.50], ensemble_temp=0.75
+    # Active SOTA baseline: 0.7361 (Accuracy 67.42%, Brier 0.2021)
+    # Incorporating Battery 33 Test 2 SOTA: judge_cal_smoothing=0.25
     base_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -141,7 +141,7 @@ def main():
         "soft_target_tau": 0.65,
         "ensemble_heads": True,
         "centered_conf": False,
-        "judge_cal_smoothing": 0.30,
+        "judge_cal_smoothing": 0.25,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
         "ensemble_temp": 0.75,
@@ -194,13 +194,13 @@ def main():
         "bert_model": "answerdotai/ModernBERT-Large-Instruct",
     }
 
-    # Test 1: Arbitration Temperature Sharpening (ensemble_temp=0.70)
+    # Test 1: Further Decision Calibration Target Expansion (judge_cal_smoothing=0.20)
     t1_params = dict(base_params)
-    t1_params["ensemble_temp"] = 0.70
+    t1_params["judge_cal_smoothing"] = 0.20
     r1 = run_experiment(
-        name="Test 1: Arbitration Temperature Sharpening (ensemble_temp=0.70)",
+        name="Test 1: Further Decision Calibration Target Expansion (judge_cal_smoothing=0.20)",
         hyperparams=t1_params,
-        description="Battery 33 Test 1: Arbitration Temperature Sharpening (ensemble_temp=0.70)",
+        description="Battery 34 Test 1: Further Decision Calibration Target Expansion (judge_cal_smoothing=0.20)",
     )
     results.append(r1)
 
@@ -210,13 +210,13 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Calibrated Decision Confidence Target Expansion (judge_cal_smoothing=0.25)
+    # Test 2: Sharpened ThoughtHead Supervision (head_label_smoothing=0.05)
     t2_params = dict(base_params)
-    t2_params["judge_cal_smoothing"] = 0.25
+    t2_params["head_label_smoothing"] = 0.05
     r2 = run_experiment(
-        name="Test 2: Calibrated Decision Confidence Target Expansion (judge_cal_smoothing=0.25)",
+        name="Test 2: Sharpened ThoughtHead Supervision (head_label_smoothing=0.05)",
         hyperparams=t2_params,
-        description="Battery 33 Test 2: Calibrated Decision Confidence Target Expansion (judge_cal_smoothing=0.25)",
+        description="Battery 34 Test 2: Sharpened ThoughtHead Supervision (head_label_smoothing=0.05)",
     )
     results.append(r2)
 
@@ -226,13 +226,13 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Calibration Loss Balance (lambda_judge_cal=0.08)
+    # Test 3: Micro Cosine Annealing Warmup (warmup_ratio=0.01)
     t3_params = dict(base_params)
-    t3_params["lambda_judge_cal"] = 0.08
+    t3_params["warmup_ratio"] = 0.01
     r3 = run_experiment(
-        name="Test 3: Calibration Loss Balance (lambda_judge_cal=0.08)",
+        name="Test 3: Micro Cosine Annealing Warmup (warmup_ratio=0.01)",
         hyperparams=t3_params,
-        description="Battery 33 Test 3: Calibration Loss Balance (lambda_judge_cal=0.08)",
+        description="Battery 34 Test 3: Micro Cosine Annealing Warmup (warmup_ratio=0.01)",
     )
     results.append(r3)
 
