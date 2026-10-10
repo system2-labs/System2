@@ -12,7 +12,7 @@ class Judger(nn.Module):
     The best one is the one the encoder context supports most.
     """
 
-    def __init__(self, head_dim=512, learnable_temp=False, centered_conf=False, margin_features=False, margin_dim=3, residual=False, judger_mlp_dim=64, judger_num_heads=8):
+    def __init__(self, head_dim=512, learnable_temp=False, centered_conf=False, margin_features=False, margin_dim=3, residual=False, judger_mlp_dim=64, judger_num_heads=8, judger_dropout=0.0):
         super().__init__()
         self.learnable_temp = learnable_temp
         self.centered_conf = centered_conf
@@ -20,12 +20,13 @@ class Judger(nn.Module):
         self.residual = residual
         self.judger_mlp_dim = judger_mlp_dim
         self.judger_num_heads = judger_num_heads
+        self.judger_dropout = judger_dropout
         if residual:
             self.prenorm = nn.LayerNorm(head_dim)
         if learnable_temp:
             self.log_temp = nn.Parameter(torch.zeros(1))
         self.attention = nn.MultiheadAttention(
-            embed_dim=head_dim, num_heads=judger_num_heads, batch_first=True)
+            embed_dim=head_dim, num_heads=judger_num_heads, dropout=judger_dropout, batch_first=True)
         in_dim = head_dim + (margin_dim if margin_features else 0)
         if margin_features:
             self.margin_norm = nn.LayerNorm(margin_dim)
@@ -74,7 +75,7 @@ class System2(nn.Module):
     2. Pairwise candidate reasoning:  (B, num_choices, 1024) -> N heads evaluate candidates with cross-choice attention -> judger selects best head
     """
 
-    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0, head_weights=None, prob_margin_gamma=0.0, head_center_logits=False, head_norm_logits=False, head_input_norm=False, consensus_features=False, judger_win_emb=False, margin_dim=3, judger_soft_emb=False, judger_soft_tau=1.0, dual_stream_contest=False, dual_stream_blend=0.0, dual_stream_alpha=0.5, decision_conf=False, decision_conf_mode="softmax", decision_conf_tau=0.75, decision_conf_learnable=False, decision_conf_alpha=0.3, judger_mlp_dim=64, judger_num_heads=8):
+    def __init__(self, num_heads=5, num_classes=None, pairwise=False, diff_features=False, learnable_temp=False, head_layers=2, centered_conf=False, uniform_ensemble=False, ensemble_temp=1.0, margin_features=False, head_dropout=0.0, margin_gamma=0.0, prob_ensemble=False, head_prob_temp=1.0, head_norm_first=False, judger_residual=False, head_mlp_dim=256, head_norm_diff=False, veto_blend=0.0, head_weights=None, prob_margin_gamma=0.0, head_center_logits=False, head_norm_logits=False, head_input_norm=False, consensus_features=False, judger_win_emb=False, margin_dim=3, judger_soft_emb=False, judger_soft_tau=1.0, dual_stream_contest=False, dual_stream_blend=0.0, dual_stream_alpha=0.5, decision_conf=False, decision_conf_mode="softmax", decision_conf_tau=0.75, decision_conf_learnable=False, decision_conf_alpha=0.3, judger_mlp_dim=64, judger_num_heads=8, judger_dropout=0.0):
         super().__init__()
         self.pairwise = pairwise
         self.diff_features = diff_features
@@ -109,6 +110,7 @@ class System2(nn.Module):
         self.decision_conf_learnable = decision_conf_learnable
         self.judger_mlp_dim = judger_mlp_dim
         self.judger_num_heads = judger_num_heads
+        self.judger_dropout = judger_dropout
         if decision_conf_learnable:
             self.log_decision_tau = nn.Parameter(torch.tensor(math.log(max(decision_conf_tau, 0.01))))
         effective_margin_dim = 5 if consensus_features else (margin_dim if (margin_features or consensus_features) else 0)
@@ -118,7 +120,7 @@ class System2(nn.Module):
             ThoughtHead(num_classes=head_classes, diff_features=diff_features, num_layers=head_layers, dropout=head_dropout, norm_first=head_norm_first, mlp_dim=head_mlp_dim, norm_diff=head_norm_diff, input_norm=head_input_norm)
             for _ in range(num_heads)
         ])
-        self.judger = Judger(learnable_temp=learnable_temp, centered_conf=centered_conf, margin_features=(margin_features or consensus_features), margin_dim=effective_margin_dim, residual=judger_residual, judger_mlp_dim=judger_mlp_dim, judger_num_heads=judger_num_heads)
+        self.judger = Judger(learnable_temp=learnable_temp, centered_conf=centered_conf, margin_features=(margin_features or consensus_features), margin_dim=effective_margin_dim, residual=judger_residual, judger_mlp_dim=judger_mlp_dim, judger_num_heads=judger_num_heads, judger_dropout=judger_dropout)
 
     def forward(self, encoder_output, detach_judger=False):
         if encoder_output.dim() >= 3:

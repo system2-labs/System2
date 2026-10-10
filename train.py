@@ -125,6 +125,7 @@ HYPERPARAMS = {
     "lr_decision_tau": 0.01,
     "judger_mlp_dim": 64,
     "judger_num_heads": 8,
+    "judger_dropout": 0.0,
 }
 
 
@@ -406,6 +407,7 @@ def main():
             decision_conf_alpha=HYPERPARAMS.get("decision_conf_alpha", 0.3),
             judger_mlp_dim=HYPERPARAMS.get("judger_mlp_dim", 64),
             judger_num_heads=HYPERPARAMS.get("judger_num_heads", 8),
+            judger_dropout=HYPERPARAMS.get("judger_dropout", 0.0),
         )
     sys2.to(device)
     sys2.train()
@@ -743,6 +745,7 @@ def main():
         "judger_residual": HYPERPARAMS.get("judger_residual", False),
         "judger_mlp_dim": HYPERPARAMS.get("judger_mlp_dim", 64),
         "judger_num_heads": HYPERPARAMS.get("judger_num_heads", 8),
+        "judger_dropout": HYPERPARAMS.get("judger_dropout", 0.0),
         "head_mlp_dim": 256,
         "head_norm_diff": False,
         "veto_blend": HYPERPARAMS.get("veto_blend", 0.4),
