@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 32: Cosine Annealing Warmup, Amplified Contrastive Choice Margin, and Calibration Loss Weight
-- Test 1: Cosine Annealing Warmup (warmup_ratio=0.05)
-- Test 2: Amplified Contrastive Choice Margin (lambda_cand_margin=0.06)
-- Test 3: Enhanced Calibration Loss Weight (lambda_judge_cal=0.10)
+Battery 33: Arbitration Temperature Sharpening, Calibration Target Expansion, and Calibration Loss Balance
+- Test 1: Arbitration Temperature Sharpening (ensemble_temp=0.70)
+- Test 2: Calibrated Decision Confidence Target Expansion (judge_cal_smoothing=0.25)
+- Test 3: Calibration Loss Balance (lambda_judge_cal=0.08)
 """
 import json
 import os
@@ -194,13 +194,13 @@ def main():
         "bert_model": "answerdotai/ModernBERT-Large-Instruct",
     }
 
-    # Test 1: Cosine Annealing Warmup (warmup_ratio=0.05)
+    # Test 1: Arbitration Temperature Sharpening (ensemble_temp=0.70)
     t1_params = dict(base_params)
-    t1_params["warmup_ratio"] = 0.05
+    t1_params["ensemble_temp"] = 0.70
     r1 = run_experiment(
-        name="Test 1: Cosine Annealing Warmup (warmup_ratio=0.05)",
+        name="Test 1: Arbitration Temperature Sharpening (ensemble_temp=0.70)",
         hyperparams=t1_params,
-        description="Battery 32 Test 1: Cosine Annealing Warmup (warmup_ratio=0.05)",
+        description="Battery 33 Test 1: Arbitration Temperature Sharpening (ensemble_temp=0.70)",
     )
     results.append(r1)
 
@@ -210,13 +210,13 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Amplified Contrastive Choice Margin (lambda_cand_margin=0.06)
+    # Test 2: Calibrated Decision Confidence Target Expansion (judge_cal_smoothing=0.25)
     t2_params = dict(base_params)
-    t2_params["lambda_cand_margin"] = 0.06
+    t2_params["judge_cal_smoothing"] = 0.25
     r2 = run_experiment(
-        name="Test 2: Amplified Contrastive Choice Margin (lambda_cand_margin=0.06)",
+        name="Test 2: Calibrated Decision Confidence Target Expansion (judge_cal_smoothing=0.25)",
         hyperparams=t2_params,
-        description="Battery 32 Test 2: Amplified Contrastive Choice Margin (lambda_cand_margin=0.06)",
+        description="Battery 33 Test 2: Calibrated Decision Confidence Target Expansion (judge_cal_smoothing=0.25)",
     )
     results.append(r2)
 
@@ -226,13 +226,13 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Enhanced Calibration Loss Weight (lambda_judge_cal=0.10)
+    # Test 3: Calibration Loss Balance (lambda_judge_cal=0.08)
     t3_params = dict(base_params)
-    t3_params["lambda_judge_cal"] = 0.10
+    t3_params["lambda_judge_cal"] = 0.08
     r3 = run_experiment(
-        name="Test 3: Enhanced Calibration Loss Weight (lambda_judge_cal=0.10)",
+        name="Test 3: Calibration Loss Balance (lambda_judge_cal=0.08)",
         hyperparams=t3_params,
-        description="Battery 32 Test 3: Enhanced Calibration Loss Weight (lambda_judge_cal=0.10)",
+        description="Battery 33 Test 3: Calibration Loss Balance (lambda_judge_cal=0.08)",
     )
     results.append(r3)
 
