@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 39: Golden Ratio Calibration, Distillation Frontier, and Confidence Tau Alignment
-- Test 1: Intermediate Calibration Smoothing (judge_cal_smoothing=0.17)
-- Test 2: Fine Distillation Frontier (soft_target_tau=0.53)
-- Test 3: Decision Confidence Tau Alignment (decision_conf_tau=0.72)
+Battery 40: Deliberation Re-equilibration, Distillation Peak, and Cooling Law Refinement
+- Test 1: Head 2 Re-equilibration (head_weights=[1.0, 1.0, 1.08, 1.0, 0.50])
+- Test 2: Fine Distillation Target Peak (soft_target_tau=0.56)
+- Test 3: Cosine Annealing Cooling Law (scheduler_min_lr=5e-6)
 """
 import json
 import os
@@ -102,8 +102,8 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active SOTA baseline: 0.7394 (Accuracy 67.22%, Brier 0.1933)
-    # Incorporating Battery 38 Test 2 SOTA: ensemble_temp=0.74
+    # Active SOTA baseline: 0.7395 (Accuracy 67.22%, Brier 0.1933)
+    # Incorporating Battery 39 Test 1 SOTA: judge_cal_smoothing=0.17
     base_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -141,7 +141,7 @@ def main():
         "soft_target_tau": 0.55,
         "ensemble_heads": True,
         "centered_conf": False,
-        "judge_cal_smoothing": 0.18,
+        "judge_cal_smoothing": 0.17,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
         "ensemble_temp": 0.74,
@@ -194,13 +194,13 @@ def main():
         "bert_model": "answerdotai/ModernBERT-Large-Instruct",
     }
 
-    # Test 1: Intermediate Calibration Smoothing (judge_cal_smoothing=0.17)
+    # Test 1: Head 2 Re-equilibration (head_weights=[1.0, 1.0, 1.08, 1.0, 0.50])
     t1_params = dict(base_params)
-    t1_params["judge_cal_smoothing"] = 0.17
+    t1_params["head_weights"] = [1.0, 1.0, 1.08, 1.0, 0.50]
     r1 = run_experiment(
-        name="Test 1: Intermediate Calibration Smoothing (judge_cal_smoothing=0.17)",
+        name="Test 1: Head 2 Re-equilibration (head_weights=[1.0, 1.0, 1.08, 1.0, 0.50])",
         hyperparams=t1_params,
-        description="Battery 39 Test 1: Intermediate Calibration Smoothing (judge_cal_smoothing=0.17)",
+        description="Battery 40 Test 1: Head 2 Re-equilibration (head_weights=[1.0, 1.0, 1.08, 1.0, 0.50])",
     )
     results.append(r1)
 
@@ -210,13 +210,13 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Fine Distillation Frontier (soft_target_tau=0.53)
+    # Test 2: Fine Distillation Target Peak (soft_target_tau=0.56)
     t2_params = dict(base_params)
-    t2_params["soft_target_tau"] = 0.53
+    t2_params["soft_target_tau"] = 0.56
     r2 = run_experiment(
-        name="Test 2: Fine Distillation Frontier (soft_target_tau=0.53)",
+        name="Test 2: Fine Distillation Target Peak (soft_target_tau=0.56)",
         hyperparams=t2_params,
-        description="Battery 39 Test 2: Fine Distillation Frontier (soft_target_tau=0.53)",
+        description="Battery 40 Test 2: Fine Distillation Target Peak (soft_target_tau=0.56)",
     )
     results.append(r2)
 
@@ -226,13 +226,13 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Decision Confidence Tau Alignment (decision_conf_tau=0.72)
+    # Test 3: Cosine Annealing Cooling Law (scheduler_min_lr=5e-6)
     t3_params = dict(base_params)
-    t3_params["decision_conf_tau"] = 0.72
+    t3_params["scheduler_min_lr"] = 5e-6
     r3 = run_experiment(
-        name="Test 3: Decision Confidence Tau Alignment (decision_conf_tau=0.72)",
+        name="Test 3: Cosine Annealing Cooling Law (scheduler_min_lr=5e-6)",
         hyperparams=t3_params,
-        description="Battery 39 Test 3: Decision Confidence Tau Alignment (decision_conf_tau=0.72)",
+        description="Battery 40 Test 3: Cosine Annealing Cooling Law (scheduler_min_lr=5e-6)",
     )
     results.append(r3)
 
