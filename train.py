@@ -71,7 +71,7 @@ HYPERPARAMS = {
     "use_scheduler": True,
     "scheduler_min_lr": 1e-05,
     "soft_judge_targets": True,
-    "soft_target_tau": 0.65,
+    "soft_target_tau": 0.6,
     "ensemble_heads": True,
     "centered_conf": False,
     "judge_cal_smoothing": 0.18,
