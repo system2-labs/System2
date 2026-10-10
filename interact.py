@@ -278,10 +278,10 @@ def print_deliberation(res, gold_char=None):
     print("=" * 70 + "\n")
 
 
-def sample_test_set(sys2, meta, n=1):
+def sample_test_set(sys2, meta, n=1, data_dir="./data/arc"):
     from datasets import load_from_disk
     import random
-    ds = load_from_disk("./data/arc")["test"]
+    ds = load_from_disk(data_dir)["test"]
     chars = ["A", "B", "C", "D"]
     
     indices = random.sample(range(len(ds)), n)
@@ -299,14 +299,15 @@ def main():
     parser = argparse.ArgumentParser(description="Interact with System2 Deliberation Engine")
     parser.add_argument("args", nargs="*", help="Question followed by 4 choices")
     parser.add_argument("--ckpt", default="./models/system2.pt", help="Path to checkpoint")
-    parser.add_argument("--sample", action="store_true", help="Sample random question(s) from held-out ARC test set")
+    parser.add_argument("--data", default="./data/arc", help="Path to dataset for sampling")
+    parser.add_argument("--sample", action="store_true", help="Sample random question(s) from held-out test set")
     parser.add_argument("--n-samples", type=int, default=1, help="Number of test samples to evaluate")
     args = parser.parse_args()
 
     sys2, meta = load_system2(args.ckpt)
 
     if args.sample:
-        sample_test_set(sys2, meta, n=args.n_samples)
+        sample_test_set(sys2, meta, n=args.n_samples, data_dir=args.data)
         return
 
     if len(args.args) == 5:

@@ -63,8 +63,24 @@ def load_arc_mmlu_science(path="./data/arc_mmlu_science", train_size=None):
     return train, test
 
 
+def load_code_traces(path="./data/code_traces", train_size=None):
+    """Load System2 Track B code execution traces dataset."""
+    ds = load_from_disk(path)
+    train = [
+        {"question": ex.get("question"), "choices": ex.get("choices"), "text": ex["text"], "label": ex["label"], "source": ex.get("source")}
+        for ex in ds["train"]
+    ]
+    if train_size:
+        train = train[:train_size]
+    test = [
+        {"question": ex.get("question"), "choices": ex.get("choices"), "text": ex["text"], "label": ex["label"], "source": ex.get("source")}
+        for ex in ds["test"]
+    ]
+    return train, test
+
+
 if __name__ == "__main__":
-    train, test = load_arc(train_size=5)
-    print(f"ARC train: {len(train)}, test: {len(test)}")
+    train, test = load_code_traces(train_size=5)
+    print(f"Code traces train: {len(train)}, test: {len(test)}")
     print("sample:\n", train[0]["text"])
     print("label:", train[0]["label"])

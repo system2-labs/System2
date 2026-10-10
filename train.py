@@ -293,6 +293,7 @@ def main():
     ap.add_argument("--train-size", type=int, default=None)
     ap.add_argument("--epochs", type=int, default=None)
     ap.add_argument("--batch-size", type=int, default=None)
+    ap.add_argument("--max-len", type=int, default=None)
     ap.add_argument("--data", default=None)
     args = ap.parse_args()
     if args.train_size is not None:
@@ -301,6 +302,8 @@ def main():
         HYPERPARAMS["epochs"] = args.epochs
     if args.batch_size is not None:
         HYPERPARAMS["batch_size"] = args.batch_size
+    if args.max_len is not None:
+        HYPERPARAMS["max_len"] = args.max_len
 
     data_dir = args.data or HYPERPARAMS.get("data_dir", "./data/arc")
     ds = load_from_disk(data_dir)
@@ -723,7 +726,7 @@ def main():
         "task_prefixes": False,
         "use_mote": False,
         "mote_mode": mote_mode if use_mote else "baseline",
-        "max_len": 128,
+        "max_len": save_max_len,
         "ensemble_heads": True,
         "centered_conf": False,
         "judge_cal_smoothing": 0.3,
