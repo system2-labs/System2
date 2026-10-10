@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 30: Deliberation Re-Equilibration, Un-Collapsed Asymmetric Spans, and Gentle Veto Blending
-- Test 1: Re-Equilibrated Deliberation Weights (head_weights=[1.0, 1.0, 1.10, 1.0, 0.50], ensemble_temp=0.75)
-- Test 2: Un-Collapsed Choice-Forward Span Mode (asym_span_mode="choice_forward_v2", v4=0.15q+0.85a)
-- Test 3: Gentle Judger Veto Blending (veto_blend=0.02)
+Battery 31: Head 3 Re-Equilibration, Choice Margin Relaxation, and Judger Attention Dropout
+- Test 1: Head 3 Re-Equilibration (head_weights=[1.0, 1.0, 1.10, 1.05, 0.50])
+- Test 2: Choice Margin Relaxation (cand_margin=0.80)
+- Test 3: Judger Attention Dropout Regularization (judger_dropout=0.05)
 """
 import json
 import os
@@ -102,8 +102,8 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active SOTA baseline: 0.7339 (Accuracy 67.37%, Brier 0.2059)
-    # Incorporating Battery 28 Test 3 SOTA: judger_residual=True, softmax, tau=0.75, learnable=True
+    # Active SOTA baseline: 0.7341 (Accuracy 67.42%, Brier 0.2060)
+    # Incorporating Battery 30 Test 1 SOTA: head_weights=[1.0, 1.0, 1.10, 1.0, 0.50], ensemble_temp=0.75
     base_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -144,7 +144,7 @@ def main():
         "judge_cal_smoothing": 0.30,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
-        "ensemble_temp": 0.80,
+        "ensemble_temp": 0.75,
         "lambda_head_balance": 0.0,
         "margin_features": True,
         "consensus_features": False,
@@ -161,6 +161,7 @@ def main():
         "judger_residual": True,
         "judger_mlp_dim": 64,
         "judger_num_heads": 8,
+        "judger_dropout": 0.0,
         "head_mlp_dim": 256,
         "head_norm_diff": False,
         "lambda_cand_margin": 0.04,
@@ -174,7 +175,7 @@ def main():
         "asym_roles": False,
         "asym_spans": True,
         "asym_span_mode": "choice_forward",
-        "head_weights": [1.0, 1.0, 1.15, 1.0, 0.50],
+        "head_weights": [1.0, 1.0, 1.10, 1.0, 0.50],
         "train_head_weights": None,
         "train_ensemble_temp": 1.80,
         "head_margin_weights": None,
@@ -193,14 +194,13 @@ def main():
         "bert_model": "answerdotai/ModernBERT-Large-Instruct",
     }
 
-    # Test 1: Re-Equilibrated Deliberation Weights (head_weights=[1.0, 1.0, 1.10, 1.0, 0.50], ensemble_temp=0.75)
+    # Test 1: Head 3 Re-Equilibration (head_weights=[1.0, 1.0, 1.10, 1.05, 0.50])
     t1_params = dict(base_params)
-    t1_params["head_weights"] = [1.0, 1.0, 1.10, 1.0, 0.50]
-    t1_params["ensemble_temp"] = 0.75
+    t1_params["head_weights"] = [1.0, 1.0, 1.10, 1.05, 0.50]
     r1 = run_experiment(
-        name="Test 1: Re-Equilibrated Deliberation Weights (head_weights=[1.0, 1.0, 1.10, 1.0, 0.50], ensemble_temp=0.75)",
+        name="Test 1: Head 3 Re-Equilibration (head_weights=[1.0, 1.0, 1.10, 1.05, 0.50])",
         hyperparams=t1_params,
-        description="Battery 30 Test 1: Re-Equilibrated Deliberation Weights (head_weights=[1.0, 1.0, 1.10, 1.0, 0.50], ensemble_temp=0.75)",
+        description="Battery 31 Test 1: Head 3 Re-Equilibration (head_weights=[1.0, 1.0, 1.10, 1.05, 0.50])",
     )
     results.append(r1)
 
@@ -210,13 +210,13 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Un-Collapsed Choice-Forward Span Mode (asym_span_mode="choice_forward_v2")
+    # Test 2: Choice Margin Relaxation (cand_margin=0.80)
     t2_params = dict(base_params)
-    t2_params["asym_span_mode"] = "choice_forward_v2"
+    t2_params["cand_margin"] = 0.80
     r2 = run_experiment(
-        name="Test 2: Un-Collapsed Choice-Forward Span Mode (choice_forward_v2, v4=0.15q+0.85a)",
+        name="Test 2: Choice Margin Relaxation (cand_margin=0.80)",
         hyperparams=t2_params,
-        description="Battery 30 Test 2: Un-Collapsed Choice-Forward Span Mode (choice_forward_v2, v4=0.15q+0.85a)",
+        description="Battery 31 Test 2: Choice Margin Relaxation (cand_margin=0.80)",
     )
     results.append(r2)
 
@@ -226,13 +226,13 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Gentle Judger Veto Blending (veto_blend=0.02)
+    # Test 3: Judger Attention Dropout Regularization (judger_dropout=0.05)
     t3_params = dict(base_params)
-    t3_params["veto_blend"] = 0.02
+    t3_params["judger_dropout"] = 0.05
     r3 = run_experiment(
-        name="Test 3: Gentle Judger Veto Blending (veto_blend=0.02)",
+        name="Test 3: Judger Attention Dropout Regularization (judger_dropout=0.05)",
         hyperparams=t3_params,
-        description="Battery 30 Test 3: Gentle Judger Veto Blending (veto_blend=0.02)",
+        description="Battery 31 Test 3: Judger Attention Dropout Regularization (judger_dropout=0.05)",
     )
     results.append(r3)
 

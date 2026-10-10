@@ -318,6 +318,8 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
             kwargs["judger_mlp_dim"] = state["judger_mlp_dim"]
         if isinstance(state, dict) and "judger_num_heads" in state:
             kwargs["judger_num_heads"] = state["judger_num_heads"]
+        if isinstance(state, dict) and "judger_dropout" in state:
+            kwargs["judger_dropout"] = state["judger_dropout"]
         import inspect
         if "recurrence" in inspect.signature(System2.__init__).parameters:
             kwargs["recurrence"] = has_recurrence
