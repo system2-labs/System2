@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 31: Head 3 Re-Equilibration, Choice Margin Relaxation, and Judger Attention Dropout
-- Test 1: Head 3 Re-Equilibration (head_weights=[1.0, 1.0, 1.10, 1.05, 0.50])
-- Test 2: Choice Margin Relaxation (cand_margin=0.80)
-- Test 3: Judger Attention Dropout Regularization (judger_dropout=0.05)
+Battery 32: Cosine Annealing Warmup, Amplified Contrastive Choice Margin, and Calibration Loss Weight
+- Test 1: Cosine Annealing Warmup (warmup_ratio=0.05)
+- Test 2: Amplified Contrastive Choice Margin (lambda_cand_margin=0.06)
+- Test 3: Enhanced Calibration Loss Weight (lambda_judge_cal=0.10)
 """
 import json
 import os
@@ -194,13 +194,13 @@ def main():
         "bert_model": "answerdotai/ModernBERT-Large-Instruct",
     }
 
-    # Test 1: Head 3 Re-Equilibration (head_weights=[1.0, 1.0, 1.10, 1.05, 0.50])
+    # Test 1: Cosine Annealing Warmup (warmup_ratio=0.05)
     t1_params = dict(base_params)
-    t1_params["head_weights"] = [1.0, 1.0, 1.10, 1.05, 0.50]
+    t1_params["warmup_ratio"] = 0.05
     r1 = run_experiment(
-        name="Test 1: Head 3 Re-Equilibration (head_weights=[1.0, 1.0, 1.10, 1.05, 0.50])",
+        name="Test 1: Cosine Annealing Warmup (warmup_ratio=0.05)",
         hyperparams=t1_params,
-        description="Battery 31 Test 1: Head 3 Re-Equilibration (head_weights=[1.0, 1.0, 1.10, 1.05, 0.50])",
+        description="Battery 32 Test 1: Cosine Annealing Warmup (warmup_ratio=0.05)",
     )
     results.append(r1)
 
@@ -210,13 +210,13 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Choice Margin Relaxation (cand_margin=0.80)
+    # Test 2: Amplified Contrastive Choice Margin (lambda_cand_margin=0.06)
     t2_params = dict(base_params)
-    t2_params["cand_margin"] = 0.80
+    t2_params["lambda_cand_margin"] = 0.06
     r2 = run_experiment(
-        name="Test 2: Choice Margin Relaxation (cand_margin=0.80)",
+        name="Test 2: Amplified Contrastive Choice Margin (lambda_cand_margin=0.06)",
         hyperparams=t2_params,
-        description="Battery 31 Test 2: Choice Margin Relaxation (cand_margin=0.80)",
+        description="Battery 32 Test 2: Amplified Contrastive Choice Margin (lambda_cand_margin=0.06)",
     )
     results.append(r2)
 
@@ -226,13 +226,13 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Judger Attention Dropout Regularization (judger_dropout=0.05)
+    # Test 3: Enhanced Calibration Loss Weight (lambda_judge_cal=0.10)
     t3_params = dict(base_params)
-    t3_params["judger_dropout"] = 0.05
+    t3_params["lambda_judge_cal"] = 0.10
     r3 = run_experiment(
-        name="Test 3: Judger Attention Dropout Regularization (judger_dropout=0.05)",
+        name="Test 3: Enhanced Calibration Loss Weight (lambda_judge_cal=0.10)",
         hyperparams=t3_params,
-        description="Battery 31 Test 3: Judger Attention Dropout Regularization (judger_dropout=0.05)",
+        description="Battery 32 Test 3: Enhanced Calibration Loss Weight (lambda_judge_cal=0.10)",
     )
     results.append(r3)
 
