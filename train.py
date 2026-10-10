@@ -85,7 +85,7 @@ HYPERPARAMS = {
     "span_mode": "mean",
     "lora_dropout": 0.0,
     "head_dropout": 0.0,
-    "head_label_smoothing": 0.08,
+    "head_label_smoothing": 0.05,
     "margin_gamma": 0.0,
     "prob_margin_gamma": 0.0,
     "prob_ensemble": False,
