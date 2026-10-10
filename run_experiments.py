@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 34: Decision Target Expansion, Head Supervision Sharpening, and Micro Warmup
-- Test 1: Further Decision Calibration Target Expansion (judge_cal_smoothing=0.20)
-- Test 2: Sharpened ThoughtHead Supervision (head_label_smoothing=0.05)
-- Test 3: Micro Cosine Annealing Warmup (warmup_ratio=0.01)
+Battery 35: Target Expansion, Tau Equilibrium Init, and Head Supervision Refinement
+- Test 1: Further Decision Calibration Target Expansion (judge_cal_smoothing=0.18)
+- Test 2: Calibrated Decision Tau Equilibrium Init (decision_conf_tau=0.70)
+- Test 3: Head Label Smoothing Refinement (head_label_smoothing=0.06)
 """
 import json
 import os
@@ -102,8 +102,8 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active SOTA baseline: 0.7361 (Accuracy 67.42%, Brier 0.2021)
-    # Incorporating Battery 33 Test 2 SOTA: judge_cal_smoothing=0.25
+    # Active SOTA baseline: 0.7385 (Accuracy 67.14%, Brier 0.1944)
+    # Incorporating Battery 34 Test 2 SOTA: head_label_smoothing=0.05, judge_cal_smoothing=0.20
     base_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -141,7 +141,7 @@ def main():
         "soft_target_tau": 0.65,
         "ensemble_heads": True,
         "centered_conf": False,
-        "judge_cal_smoothing": 0.25,
+        "judge_cal_smoothing": 0.20,
         "lambda_ens_ce": 0.0,
         "uniform_ensemble": False,
         "ensemble_temp": 0.75,
@@ -152,7 +152,7 @@ def main():
         "span_pooling": False,
         "lora_dropout": 0.0,
         "head_dropout": 0.0,
-        "head_label_smoothing": 0.08,
+        "head_label_smoothing": 0.05,
         "margin_gamma": 0.0,
         "prob_margin_gamma": 0.0,
         "prob_ensemble": False,
@@ -194,13 +194,13 @@ def main():
         "bert_model": "answerdotai/ModernBERT-Large-Instruct",
     }
 
-    # Test 1: Further Decision Calibration Target Expansion (judge_cal_smoothing=0.20)
+    # Test 1: Further Decision Calibration Target Expansion (judge_cal_smoothing=0.18)
     t1_params = dict(base_params)
-    t1_params["judge_cal_smoothing"] = 0.20
+    t1_params["judge_cal_smoothing"] = 0.18
     r1 = run_experiment(
-        name="Test 1: Further Decision Calibration Target Expansion (judge_cal_smoothing=0.20)",
+        name="Test 1: Further Decision Calibration Target Expansion (judge_cal_smoothing=0.18)",
         hyperparams=t1_params,
-        description="Battery 34 Test 1: Further Decision Calibration Target Expansion (judge_cal_smoothing=0.20)",
+        description="Battery 35 Test 1: Further Decision Calibration Target Expansion (judge_cal_smoothing=0.18)",
     )
     results.append(r1)
 
@@ -210,13 +210,13 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Sharpened ThoughtHead Supervision (head_label_smoothing=0.05)
+    # Test 2: Calibrated Decision Tau Equilibrium Init (decision_conf_tau=0.70)
     t2_params = dict(base_params)
-    t2_params["head_label_smoothing"] = 0.05
+    t2_params["decision_conf_tau"] = 0.70
     r2 = run_experiment(
-        name="Test 2: Sharpened ThoughtHead Supervision (head_label_smoothing=0.05)",
+        name="Test 2: Calibrated Decision Tau Equilibrium Init (decision_conf_tau=0.70)",
         hyperparams=t2_params,
-        description="Battery 34 Test 2: Sharpened ThoughtHead Supervision (head_label_smoothing=0.05)",
+        description="Battery 35 Test 2: Calibrated Decision Tau Equilibrium Init (decision_conf_tau=0.70)",
     )
     results.append(r2)
 
@@ -226,13 +226,13 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Micro Cosine Annealing Warmup (warmup_ratio=0.01)
+    # Test 3: Head Label Smoothing Refinement (head_label_smoothing=0.06)
     t3_params = dict(base_params)
-    t3_params["warmup_ratio"] = 0.01
+    t3_params["head_label_smoothing"] = 0.06
     r3 = run_experiment(
-        name="Test 3: Micro Cosine Annealing Warmup (warmup_ratio=0.01)",
+        name="Test 3: Head Label Smoothing Refinement (head_label_smoothing=0.06)",
         hyperparams=t3_params,
-        description="Battery 34 Test 3: Micro Cosine Annealing Warmup (warmup_ratio=0.01)",
+        description="Battery 35 Test 3: Head Label Smoothing Refinement (head_label_smoothing=0.06)",
     )
     results.append(r3)
 
