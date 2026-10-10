@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """run_experiments.py - Runs sequential AutoResearch experiments back-to-back.
 
-Battery 36: Calibration Boundary Exploration, Judger Soft Target Sharpening, and Micro Arbitration
-- Test 1: Calibration Target Boundary Exploration (judge_cal_smoothing=0.16)
-- Test 2: Judger Soft Distillation Target Sharpening (soft_target_tau=0.60)
-- Test 3: Micro Arbitration Temperature Tuning (ensemble_temp=0.73)
+Battery 37: Judger Distillation Deep Sharpening, Judger Loss Weight, and Head Weight Balance
+- Test 1: Deep Soft Distillation Sharpening (soft_target_tau=0.55)
+- Test 2: Judger Loss Weight Amplification (lambda_judge=0.18)
+- Test 3: Holistic Head Balancing (head_weights=[1.05, 1.0, 1.10, 1.0, 0.50])
 """
 import json
 import os
@@ -102,8 +102,8 @@ def run_experiment(name, hyperparams, description):
 def main():
     results = []
 
-    # Active SOTA baseline: 0.7387 (Accuracy 67.14%, Brier 0.1941)
-    # Incorporating Battery 35 Test 1 SOTA: judge_cal_smoothing=0.18
+    # Active SOTA baseline: 0.7391 (Accuracy 67.20%, Brier 0.1937)
+    # Incorporating Battery 36 Test 2 SOTA: soft_target_tau=0.60
     base_params = {
         "use_mote": False,
         "data_dir": "./data/arc",
@@ -138,7 +138,7 @@ def main():
         "seed": 0,
         "label_smoothing": 0.15,
         "soft_judge_targets": True,
-        "soft_target_tau": 0.65,
+        "soft_target_tau": 0.60,
         "ensemble_heads": True,
         "centered_conf": False,
         "judge_cal_smoothing": 0.18,
@@ -194,13 +194,13 @@ def main():
         "bert_model": "answerdotai/ModernBERT-Large-Instruct",
     }
 
-    # Test 1: Calibration Target Boundary Exploration (judge_cal_smoothing=0.16)
+    # Test 1: Deep Soft Distillation Sharpening (soft_target_tau=0.55)
     t1_params = dict(base_params)
-    t1_params["judge_cal_smoothing"] = 0.16
+    t1_params["soft_target_tau"] = 0.55
     r1 = run_experiment(
-        name="Test 1: Calibration Target Boundary Exploration (judge_cal_smoothing=0.16)",
+        name="Test 1: Deep Soft Distillation Sharpening (soft_target_tau=0.55)",
         hyperparams=t1_params,
-        description="Battery 36 Test 1: Calibration Target Boundary Exploration (judge_cal_smoothing=0.16)",
+        description="Battery 37 Test 1: Deep Soft Distillation Sharpening (soft_target_tau=0.55)",
     )
     results.append(r1)
 
@@ -210,13 +210,13 @@ def main():
     else:
         print(f">>> Test 1 reverted.")
 
-    # Test 2: Judger Soft Distillation Target Sharpening (soft_target_tau=0.60)
+    # Test 2: Judger Loss Weight Amplification (lambda_judge=0.18)
     t2_params = dict(base_params)
-    t2_params["soft_target_tau"] = 0.60
+    t2_params["lambda_judge"] = 0.18
     r2 = run_experiment(
-        name="Test 2: Judger Soft Distillation Target Sharpening (soft_target_tau=0.60)",
+        name="Test 2: Judger Loss Weight Amplification (lambda_judge=0.18)",
         hyperparams=t2_params,
-        description="Battery 36 Test 2: Judger Soft Distillation Target Sharpening (soft_target_tau=0.60)",
+        description="Battery 37 Test 2: Judger Loss Weight Amplification (lambda_judge=0.18)",
     )
     results.append(r2)
 
@@ -226,13 +226,13 @@ def main():
     else:
         print(f">>> Test 2 reverted.")
 
-    # Test 3: Micro Arbitration Temperature Tuning (ensemble_temp=0.73)
+    # Test 3: Holistic Head Balancing (head_weights=[1.05, 1.0, 1.10, 1.0, 0.50])
     t3_params = dict(base_params)
-    t3_params["ensemble_temp"] = 0.73
+    t3_params["head_weights"] = [1.05, 1.0, 1.10, 1.0, 0.50]
     r3 = run_experiment(
-        name="Test 3: Micro Arbitration Temperature Tuning (ensemble_temp=0.73)",
+        name="Test 3: Holistic Head Balancing (head_weights=[1.05, 1.0, 1.10, 1.0, 0.50])",
         hyperparams=t3_params,
-        description="Battery 36 Test 3: Micro Arbitration Temperature Tuning (ensemble_temp=0.73)",
+        description="Battery 37 Test 3: Holistic Head Balancing (head_weights=[1.05, 1.0, 1.10, 1.0, 0.50])",
     )
     results.append(r3)
 
