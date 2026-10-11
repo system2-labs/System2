@@ -305,6 +305,7 @@ def main():
     ap.add_argument("--batch-size", type=int, default=None)
     ap.add_argument("--data", default=None)
     ap.add_argument("--max-len", type=int, default=None)
+    ap.add_argument("--dynamic-len", action="store_true", help="Enable dynamic sequence length up to architectural ceiling (8192)")
     ap.add_argument("--resume", action="store_true", help="Resume from most recent intermediate epoch checkpoint")
     args = ap.parse_args()
     if args.train_size is not None:
@@ -315,6 +316,9 @@ def main():
         HYPERPARAMS["batch_size"] = args.batch_size
     if args.max_len is not None:
         HYPERPARAMS["max_len"] = args.max_len
+    if args.dynamic_len:
+        HYPERPARAMS["dynamic_len"] = True
+        HYPERPARAMS["max_len"] = 8192
 
     data_dir = args.data or HYPERPARAMS.get("data_dir", "./data/arc")
     ds = load_from_disk(data_dir)
@@ -738,6 +742,7 @@ def main():
         "use_mote": False,
         "mote_mode": mote_mode if use_mote else "baseline",
         "max_len": save_max_len,
+        "dynamic_len": HYPERPARAMS.get("dynamic_len", False),
         "ensemble_heads": True,
         "centered_conf": False,
         "judge_cal_smoothing": 0.3,
