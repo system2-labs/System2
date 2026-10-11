@@ -130,6 +130,11 @@ HYPERPARAMS = {
 
 
 def mean_pool_texts(texts, max_len, device, with_grad=False):
+    ceiling = getattr(model.config, "max_position_embeddings", 8192)
+    if max_len > ceiling:
+        import sys
+        print(f"[train warning] Requested max_len={max_len} exceeds architectural ceiling ({ceiling}); clamped to {ceiling}.", file=sys.stderr)
+        max_len = ceiling
     inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(device)
     if with_grad:
         last_hidden = model(**inputs).last_hidden_state
@@ -144,6 +149,11 @@ def mean_pool_texts(texts, max_len, device, with_grad=False):
 
 def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False, sources=None, task_prefixes=False, span_pooling=False, span_weight=0.5, span_mode="mean", asym_spans=False, asym_span_mode="default"):
     b = len(questions)
+    ceiling = getattr(model.config, "max_position_embeddings", 8192)
+    if max_len > ceiling:
+        import sys
+        print(f"[train warning] Requested max_len={max_len} exceeds architectural ceiling ({ceiling}); clamped to {ceiling}.", file=sys.stderr)
+        max_len = ceiling
     if task_prefixes:
         flat_texts = [
             f"{'[Task: Scientific Facts] ' if (sources and sources[idx] == 'openbookqa') else '[Task: Causal Reasoning] '}Question: {questions[idx]} Answer: {choices_list[idx][c]}"
