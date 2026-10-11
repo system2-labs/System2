@@ -61,7 +61,7 @@ HYPERPARAMS = {
     "seed": 0,
     "label_smoothing": 0.15,
     "lambda_aux": 0.10,
-    "data_dir": "./data/arc",
+    "data_dir": "./data/code_traces",
     "pairwise": True,
     "diff_features": True,
     "task_prefixes": False,
