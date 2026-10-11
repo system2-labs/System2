@@ -130,6 +130,11 @@ HYPERPARAMS = {
 
 
 def mean_pool_texts(texts, max_len, device, with_grad=False):
+    ceiling = getattr(model.config, "max_position_embeddings", 8192)
+    if max_len > ceiling:
+        import sys
+        print(f"[train warning] Requested max_len={max_len} exceeds architectural ceiling ({ceiling}); clamped to {ceiling}.", file=sys.stderr)
+        max_len = ceiling
     inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(device)
     if with_grad:
         last_hidden = model(**inputs).last_hidden_state
@@ -144,6 +149,11 @@ def mean_pool_texts(texts, max_len, device, with_grad=False):
 
 def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False, sources=None, task_prefixes=False, span_pooling=False, span_weight=0.5, span_mode="mean", asym_spans=False, asym_span_mode="default"):
     b = len(questions)
+    ceiling = getattr(model.config, "max_position_embeddings", 8192)
+    if max_len > ceiling:
+        import sys
+        print(f"[train warning] Requested max_len={max_len} exceeds architectural ceiling ({ceiling}); clamped to {ceiling}.", file=sys.stderr)
+        max_len = ceiling
     if task_prefixes:
         flat_texts = [
             f"{'[Task: Scientific Facts] ' if (sources and sources[idx] == 'openbookqa') else '[Task: Causal Reasoning] '}Question: {questions[idx]} Answer: {choices_list[idx][c]}"
@@ -294,6 +304,8 @@ def main():
     ap.add_argument("--epochs", type=int, default=None)
     ap.add_argument("--batch-size", type=int, default=None)
     ap.add_argument("--data", default=None)
+    ap.add_argument("--max-len", type=int, default=None)
+    ap.add_argument("--resume", action="store_true", help="Resume from most recent intermediate epoch checkpoint")
     args = ap.parse_args()
     if args.train_size is not None:
         HYPERPARAMS["train_size"] = args.train_size
@@ -301,6 +313,8 @@ def main():
         HYPERPARAMS["epochs"] = args.epochs
     if args.batch_size is not None:
         HYPERPARAMS["batch_size"] = args.batch_size
+    if args.max_len is not None:
+        HYPERPARAMS["max_len"] = args.max_len
 
     data_dir = args.data or HYPERPARAMS.get("data_dir", "./data/arc")
     ds = load_from_disk(data_dir)
@@ -717,13 +731,13 @@ def main():
 
     import os
     os.makedirs(os.path.dirname(args.save) or ".", exist_ok=True)
-    save_max_len = HYPERPARAMS.get("max_len", 128)
+    save_max_len = min(HYPERPARAMS.get("max_len", 128), 8192)
     save_dict = {
         "sys2": sys2.state_dict(),
         "task_prefixes": False,
         "use_mote": False,
         "mote_mode": mote_mode if use_mote else "baseline",
-        "max_len": 128,
+        "max_len": save_max_len,
         "ensemble_heads": True,
         "centered_conf": False,
         "judge_cal_smoothing": 0.3,

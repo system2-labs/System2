@@ -39,6 +39,10 @@ def mean_pool_texts(texts, device, max_len=192):
 def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=None, task_prefixes=False, span_pooling=False, span_weight=0.5, span_mode="mean", asym_spans=False, asym_span_mode="default"):
     """Pairwise encoding: (b questions, 4 choices) -> (b, 4, 1024) or (b, 5, 4, 1024)."""
     b = len(questions)
+    ceiling = getattr(model.config, "max_position_embeddings", 8192)
+    if max_len > ceiling:
+        print(f"[eval warning] Requested max_len={max_len} exceeds architectural ceiling ({ceiling}); clamped to {ceiling}.", file=sys.stderr)
+        max_len = ceiling
     if task_prefixes:
         flat_texts = [
             f"{'[Task: Scientific Facts] ' if (sources and sources[idx] == 'openbookqa') else '[Task: Causal Reasoning] '}Question: {questions[idx]} Answer: {choices_list[idx][c]}"
@@ -165,7 +169,7 @@ def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=Non
     return pooled.view(b, 4, -1)
 
 
-def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir="./data/arc", ensemble=False, head_weights=None, ensemble_temp=None, head_norm_logits=None, veto_blend=None, margin_gamma=None, decision_conf=None, decision_conf_mode=None, decision_conf_tau=None, decision_conf_alpha=None):
+def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir="./data/arc", ensemble=False, head_weights=None, ensemble_temp=None, head_norm_logits=None, veto_blend=None, margin_gamma=None, decision_conf=None, decision_conf_mode=None, decision_conf_tau=None, decision_conf_alpha=None, max_len=None, dynamic_len=False):
     device = device or ("mps" if torch.backends.mps.is_available() else "cpu")
     state = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     bert_name = state.get("bert_model", "answerdotai/ModernBERT-large") if isinstance(state, dict) else "answerdotai/ModernBERT-large"
@@ -329,7 +333,13 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
     sys2.eval()
 
     task_prefixes = isinstance(state, dict) and state.get("task_prefixes", False)
-    eval_max_len = state.get("max_len", 128) if isinstance(state, dict) else 128
+    ceiling = getattr(model.config, "max_position_embeddings", 8192)
+    if max_len is not None:
+        eval_max_len = min(max_len, ceiling)
+    elif dynamic_len:
+        eval_max_len = ceiling
+    else:
+        eval_max_len = min(state.get("max_len", 128) if isinstance(state, dict) else 128, ceiling)
     ensemble_heads = (isinstance(state, dict) and state.get("ensemble_heads", False)) or ensemble
     span_pooling = state.get("span_pooling", False) if isinstance(state, dict) else False
     span_weight = state.get("span_weight", 0.5) if isinstance(state, dict) else 0.5
@@ -398,10 +408,12 @@ if __name__ == "__main__":
         ap.add_argument("--decision-conf-mode", default=None, help="Confidence mode: softmax, margin, hybrid")
         ap.add_argument("--decision-conf-tau", type=float, default=None, help="Decision confidence temperature")
         ap.add_argument("--decision-conf-alpha", type=float, default=None, help="Hybrid confidence alpha blend")
+        ap.add_argument("--max-len", type=int, default=None, help="Override evaluation max_len")
+        ap.add_argument("--dynamic-len", action="store_true", help="Dynamically scale context window up to architectural ceiling (8192)")
         args = ap.parse_args()
         ckpt = args.ckpt
         hw = [float(x) for x in args.head_weights.split(",")] if args.head_weights else None
-        m = evaluate(ckpt, max_samples=args.max_samples, data_dir=args.data, ensemble=args.ensemble, head_weights=hw, ensemble_temp=args.ensemble_temp, head_norm_logits=args.head_norm_logits, veto_blend=args.veto_blend, margin_gamma=args.margin_gamma, decision_conf=args.decision_conf, decision_conf_mode=args.decision_conf_mode, decision_conf_tau=args.decision_conf_tau, decision_conf_alpha=args.decision_conf_alpha)
+        m = evaluate(ckpt, max_samples=args.max_samples, data_dir=args.data, ensemble=args.ensemble, head_weights=hw, ensemble_temp=args.ensemble_temp, head_norm_logits=args.head_norm_logits, veto_blend=args.veto_blend, margin_gamma=args.margin_gamma, decision_conf=args.decision_conf, decision_conf_mode=args.decision_conf_mode, decision_conf_tau=args.decision_conf_tau, decision_conf_alpha=args.decision_conf_alpha, max_len=args.max_len, dynamic_len=args.dynamic_len)
         metric = 0.5 * m["accuracy"] + 0.5 * (1 - m["brier"])
         print(json.dumps({"metric": round(metric, 4), "accuracy": round(m["accuracy"], 4), "brier": round(m["brier"], 4)}))
     except Exception as e:
