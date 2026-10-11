@@ -10,8 +10,10 @@ BEST_FILE=".best_metric_code"
 CHECKPOINT="./models/system2_code.pt"
 CANDIDATE="./models/candidate_code.pt"
 
+MAX_LEN="${MAX_LEN:-256}"
+
 # Rebuild the model with current hyperparams on Track B data
-python3 train.py --save "$CANDIDATE" --data "./data/code_traces" --max-len 192
+python3 train.py --save "$CANDIDATE" --data "./data/code_traces" --max-len "$MAX_LEN"
 
 # Judge on held-out code execution test set (4,067 samples)
 if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/code_traces")"; then
