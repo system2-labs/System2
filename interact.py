@@ -107,13 +107,49 @@ def load_system2(checkpoint_path="./models/system2.pt", device=None):
     return sys2, meta
 
 
-def deliberate(sys2, meta, question, choices):
+def deliberate(sys2, meta, question, choices, max_len=None, dynamic_len=True, model_ceiling=None):
     """Executes feedforward parallel deliberation for a single question and 4 choices."""
     device = meta["device"]
     flat_texts = [f"Question: {question} Answer: {c}" for c in choices]
     
+    ceiling = model_ceiling or getattr(model.config, "max_position_embeddings", 8192)
+    
+    # Calculate exact un-truncated token counts per candidate sequence
+    raw_token_counts = [len(tokenizer.encode(t, truncation=False)) for t in flat_texts]
+    max_input_tokens = max(raw_token_counts)
+    
+    # Determine effective sequence length
+    if max_len is not None:
+        target_len = min(max_len, ceiling)
+    elif dynamic_len:
+        # Dynamically scale to the exact length of the input, capped at model ceiling
+        target_len = min(max(max_input_tokens, 1), ceiling)
+    else:
+        target_len = min(meta.get("max_len", 512), ceiling)
+    
+    warnings = []
+    if max_input_tokens >= ceiling:
+        warn_msg = (
+            f"⚠️  [CONTEXT CEILING REACHED] Input length ({max_input_tokens} tokens) meets or exceeds "
+            f"the architectural ceiling ({ceiling} tokens). Trailing context, return statements, or assertions were truncated!"
+        )
+        warnings.append(warn_msg)
+    elif max_input_tokens > 4096:
+        notice_msg = (
+            f"ℹ️  [HIGH CONTEXT NOTICE] Sequence length ({max_input_tokens} tokens) utilizes deep context (>4,096 tokens). "
+            f"Rotary Position Embeddings (RoPE) extrapolation active up to {ceiling} ceiling."
+        )
+        warnings.append(notice_msg)
+    elif max_input_tokens > target_len:
+        warn_msg = (
+            f"⚠️  [TRUNCATION WARNING] Input length ({max_input_tokens} tokens) exceeds active limit ({target_len}). "
+            f"Dynamic context expansion recommended to prevent clipping."
+        )
+        warnings.append(warn_msg)
+    
     t0 = time.time()
-    inputs = tokenizer(flat_texts, return_tensors="pt", padding=True, truncation=True, max_length=meta["max_len"]).to(device)
+    inputs = tokenizer(flat_texts, return_tensors="pt", padding=True, truncation=True, max_length=target_len).to(device)
+    actual_seq_len = inputs["input_ids"].shape[1]
     with torch.no_grad():
         last_hidden = model(**inputs).last_hidden_state
         if meta.get("asym_spans", False):
@@ -244,11 +280,17 @@ def deliberate(sys2, meta, question, choices):
         "head_predictions": head_predictions,
         "ens_logits": ens_logits[0].tolist(),
         "latency_ms": latency_ms,
+        "raw_token_counts": raw_token_counts,
+        "input_tokens": max_input_tokens,
+        "effective_len": actual_seq_len,
+        "model_ceiling": ceiling,
+        "warnings": warnings,
     }
 
 
 def print_deliberation(res, gold_char=None):
     chars = ["A", "B", "C", "D"]
+    raw_counts = res.get("raw_token_counts")
     print("\n" + "=" * 70)
     print(f"QUESTION: {res['question']}")
     print("-" * 70)
@@ -257,8 +299,14 @@ def print_deliberation(res, gold_char=None):
         if chars[idx] == res['winning_choice_char']:
             marker = "➤"
         gold_tag = " (CORRECT)" if (gold_char and chars[idx] == gold_char) else ""
-        print(f" {marker} [{chars[idx]}] {c}{gold_tag}")
+        tok_tag = f" [{raw_counts[idx]} tok]" if raw_counts else ""
+        print(f" {marker} [{chars[idx]}]{tok_tag} {c}{gold_tag}")
     print("=" * 70)
+
+    if res.get("warnings"):
+        print("\n--- ⚠️  CONTEXT & ARCHITECTURAL BOUNDARY ALERTS ---")
+        for w in res["warnings"]:
+            print(f"  {w}")
 
     print("\n--- 🧠 PARALLEL DELIBERATION (5 THOUGHTHEADS) ---")
     for hp in res['head_predictions']:
@@ -270,6 +318,10 @@ def print_deliberation(res, gold_char=None):
     print(f"  Ensemble Logits:     [{ens_logits_str}]")
     print(f"  Winning Prediction:  [{res['winning_choice_char']}] {res['winning_choice_text']}")
     print(f"  Calibrated Conf:     {res['winning_conf'] * 100:.1f}%")
+    eff_len = res.get('effective_len', 'N/A')
+    in_tok = res.get('input_tokens', eff_len)
+    ceil = res.get('model_ceiling', 8192)
+    print(f"  Sequence Context:    {eff_len} tokens (input: {in_tok} tok, arch ceiling: {ceil} tok)")
     print(f"  Inference Latency:   {res['latency_ms']:.1f} ms (feedforward non-autoregressive)")
 
     if gold_char:
@@ -278,10 +330,10 @@ def print_deliberation(res, gold_char=None):
     print("=" * 70 + "\n")
 
 
-def sample_test_set(sys2, meta, n=1):
+def sample_test_set(sys2, meta, n=1, data_dir="./data/arc", max_len=None, dynamic_len=True, model_ceiling=None):
     from datasets import load_from_disk
     import random
-    ds = load_from_disk("./data/arc")["test"]
+    ds = load_from_disk(data_dir)["test"]
     chars = ["A", "B", "C", "D"]
     
     indices = random.sample(range(len(ds)), n)
@@ -290,29 +342,59 @@ def sample_test_set(sys2, meta, n=1):
         q = item["question"]
         choices = item["choices"]
         gold_char = chars[item["label"]]
-        res = deliberate(sys2, meta, q, choices)
+        res = deliberate(sys2, meta, q, choices, max_len=max_len, dynamic_len=dynamic_len, model_ceiling=model_ceiling)
         print(f"[Test Sample #{idx + 1} of {len(ds)}]")
         print_deliberation(res, gold_char=gold_char)
 
 
 def main():
+    import os
     parser = argparse.ArgumentParser(description="Interact with System2 Deliberation Engine")
     parser.add_argument("args", nargs="*", help="Question followed by 4 choices")
-    parser.add_argument("--ckpt", default="./models/system2.pt", help="Path to checkpoint")
-    parser.add_argument("--sample", action="store_true", help="Sample random question(s) from held-out ARC test set")
+    parser.add_argument("--ckpt", default=None, help="Path to checkpoint (defaults to ./models/system2.pt or ./models/system2_code.pt)")
+    parser.add_argument("--code", action="store_true", help="Use Track B (System2-Code) checkpoint and dataset")
+    parser.add_argument("--data", default=None, help="Path to dataset for sampling")
+    parser.add_argument("--sample", action="store_true", help="Sample random question(s) from held-out test set")
     parser.add_argument("--n-samples", type=int, default=1, help="Number of test samples to evaluate")
+    parser.add_argument("--max-len", type=int, default=None, help="Explicit maximum sequence length (overrides dynamic context)")
+    parser.add_argument("--no-dynamic", action="store_true", help="Disable dynamic context sizing (fall back to checkpoint max_len)")
+    parser.add_argument("--ceiling", type=int, default=8192, help="Architectural ceiling token limit (default: 8192)")
     args = parser.parse_args()
 
-    sys2, meta = load_system2(args.ckpt)
+    # Determine default checkpoint and dataset paths
+    if args.ckpt is None:
+        if args.code:
+            ckpt_path = "./models/system2_code.pt"
+        elif os.path.exists("./models/system2_code.pt") and not os.path.exists("./models/system2.pt"):
+            ckpt_path = "./models/system2_code.pt"
+        else:
+            ckpt_path = "./models/system2.pt"
+    else:
+        ckpt_path = args.ckpt
+
+    is_code_track = args.code or ("code" in ckpt_path)
+    if args.data is None:
+        data_path = "./data/code_traces" if is_code_track else "./data/arc"
+    else:
+        data_path = args.data
+
+    sys2, meta = load_system2(ckpt_path)
+    dynamic_len = not args.no_dynamic
 
     if args.sample:
-        sample_test_set(sys2, meta, n=args.n_samples)
+        sample_test_set(
+            sys2, meta, n=args.n_samples, data_dir=data_path,
+            max_len=args.max_len, dynamic_len=dynamic_len, model_ceiling=args.ceiling,
+        )
         return
 
     if len(args.args) == 5:
         q = args.args[0]
         choices = args.args[1:5]
-        res = deliberate(sys2, meta, q, choices)
+        res = deliberate(
+            sys2, meta, q, choices,
+            max_len=args.max_len, dynamic_len=dynamic_len, model_ceiling=args.ceiling,
+        )
         print_deliberation(res)
         return
 
@@ -321,21 +403,29 @@ def main():
         sys.exit(1)
 
     print("\n" + "=" * 70)
-    print("WELCOME TO SYSTEM2 INTERACTIVE DELIBERATION REPL")
-    print("Type a scientific question and 4 candidate choices to observe feedforward parallel deliberation.")
-    print("Press Ctrl+C or type 'exit' to quit. Type 'sample' to draw from ARC test set.")
+    if is_code_track:
+        print("WELCOME TO SYSTEM2-CODE INTERACTIVE DELIBERATION REPL (TRACK B)")
+        print("Feedforward parallel deliberation over Python code execution traces.")
+    else:
+        print("WELCOME TO SYSTEM2 INTERACTIVE DELIBERATION REPL (TRACK A)")
+        print("Feedforward parallel deliberation over scientific causal reasoning.")
+    print(f"Dynamic Context: {'ENABLED (cap: ' + str(args.ceiling) + ' tokens)' if dynamic_len else 'DISABLED'}")
+    print("Press Ctrl+C or type 'exit' to quit. Type 'sample' to draw from held-out test set.")
     print("=" * 70 + "\n")
 
     chars = ["A", "B", "C", "D"]
     while True:
         try:
-            q = input("\nEnter Question (or 'sample' / 'exit'): ").strip()
+            q = input("\nEnter Question / Code Snippet (or 'sample' / 'exit'): ").strip()
             if not q:
                 continue
             if q.lower() in ["exit", "quit"]:
                 break
             if q.lower() == "sample":
-                sample_test_set(sys2, meta, n=1)
+                sample_test_set(
+                    sys2, meta, n=1, data_dir=data_path,
+                    max_len=args.max_len, dynamic_len=dynamic_len, model_ceiling=args.ceiling,
+                )
                 continue
 
             choices = []
@@ -343,7 +433,10 @@ def main():
                 c = input(f"  Choice [{c_char}]: ").strip()
                 choices.append(c)
 
-            res = deliberate(sys2, meta, q, choices)
+            res = deliberate(
+                sys2, meta, q, choices,
+                max_len=args.max_len, dynamic_len=dynamic_len, model_ceiling=args.ceiling,
+            )
             print_deliberation(res)
         except KeyboardInterrupt:
             print("\nExiting System2 REPL.")
