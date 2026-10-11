@@ -295,6 +295,8 @@ def main():
     ap.add_argument("--batch-size", type=int, default=None)
     ap.add_argument("--max-len", type=int, default=None)
     ap.add_argument("--data", default=None)
+    ap.add_argument("--resume", action="store_true", default=True, help="Auto-resume from intermediate epoch checkpoint if found")
+    ap.add_argument("--no-resume", dest="resume", action="store_false", help="Do not resume from intermediate checkpoint")
     args = ap.parse_args()
     if args.train_size is not None:
         HYPERPARAMS["train_size"] = args.train_size
@@ -477,8 +479,112 @@ def main():
     task_prefixes = HYPERPARAMS.get("task_prefixes", False)
     sources = cols.get("source") if "source" in cols else None
 
+    import os
+    os.makedirs(os.path.dirname(args.save) or ".", exist_ok=True)
+    save_max_len = HYPERPARAMS.get("max_len", 128)
+
+    def build_save_dict():
+        save_d = {
+            "sys2": sys2.state_dict(),
+            "task_prefixes": False,
+            "use_mote": False,
+            "mote_mode": mote_mode if use_mote else "baseline",
+            "max_len": save_max_len,
+            "ensemble_heads": True,
+            "centered_conf": False,
+            "judge_cal_smoothing": 0.3,
+            "lambda_ens_ce": 0.0,
+            "uniform_ensemble": False,
+            "ensemble_temp": HYPERPARAMS.get("ensemble_temp", 1.78),
+            "lambda_head_balance": 0.0,
+            "margin_features": True,
+            "span_pooling": False,
+            "span_weight": HYPERPARAMS.get("span_weight", 0.5),
+            "span_mode": HYPERPARAMS.get("span_mode", "mean"),
+            "lora_dropout": 0.0,
+            "head_dropout": 0.0,
+            "head_label_smoothing": HYPERPARAMS.get("head_label_smoothing", 0.08),
+            "margin_gamma": HYPERPARAMS.get("margin_gamma", 0.2),
+            "prob_ensemble": False,
+            "head_prob_temp": 1.0,
+            "head_norm_first": False,
+            "judger_residual": HYPERPARAMS.get("judger_residual", False),
+            "judger_mlp_dim": HYPERPARAMS.get("judger_mlp_dim", 64),
+            "judger_num_heads": HYPERPARAMS.get("judger_num_heads", 8),
+            "judger_dropout": HYPERPARAMS.get("judger_dropout", 0.0),
+            "head_mlp_dim": 256,
+            "head_norm_diff": False,
+            "veto_blend": HYPERPARAMS.get("veto_blend", 0.4),
+            "dual_stream_contest": HYPERPARAMS.get("dual_stream_contest", False),
+            "dual_stream_blend": HYPERPARAMS.get("dual_stream_blend", 0.0),
+            "dual_stream_alpha": HYPERPARAMS.get("dual_stream_alpha", 0.5),
+            "asym_spans": True,
+            "asym_span_mode": "choice_forward",
+            "head_weights": HYPERPARAMS.get("head_weights", [1.0, 1.0, 1.15, 1.0, 0.38]),
+            "prob_margin_gamma": 0.0,
+            "head_margin_weights": None,
+            "head_center_logits": False,
+            "head_norm_logits": HYPERPARAMS.get("head_norm_logits", False),
+            "head_input_norm": HYPERPARAMS.get("head_input_norm", False),
+            "norm_cand_margin": HYPERPARAMS.get("norm_cand_margin", False),
+            "consensus_features": False,
+            "judger_win_emb": False,
+            "judger_soft_emb": True,
+            "judger_soft_tau": 1.0,
+            "cand_margin_mode": "hard",
+            "cand_margin": HYPERPARAMS.get("cand_margin", 1.0),
+            "lambda_cand_margin": HYPERPARAMS.get("lambda_cand_margin", 0.03),
+            "decision_conf": HYPERPARAMS.get("decision_conf", False),
+            "decision_conf_mode": HYPERPARAMS.get("decision_conf_mode", "softmax"),
+            "decision_conf_tau": float(torch.exp(sys2.log_decision_tau).item()) if (HYPERPARAMS.get("decision_conf_learnable", False) and hasattr(sys2, "log_decision_tau")) else HYPERPARAMS.get("decision_conf_tau", 0.75),
+            "decision_conf_learnable": HYPERPARAMS.get("decision_conf_learnable", False),
+            "decision_conf_alpha": HYPERPARAMS.get("decision_conf_alpha", 0.3),
+            "lambda_ens_ce": HYPERPARAMS.get("lambda_ens_ce", 0.0),
+            "bert_model": bert_name,
+        }
+        if use_lora:
+            save_d["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
+            save_d["lora_config"] = {
+                "r": HYPERPARAMS.get("lora_r", 32),
+                "alpha": HYPERPARAMS.get("lora_alpha", 32),
+                "num_layers": HYPERPARAMS.get("lora_layers", 8),
+                "train_norms": train_norms,
+            }
+            if train_norms:
+                save_d["lora_norms"] = {
+                    k: v.cpu() for k, v in model.state_dict().items()
+                    if ("attn_norm" in k or "mlp_norm" in k or "final_norm" in k)
+                }
+        elif unfreeze_layers > 0:
+            top_keys = [f"layers.{28 - i - 1}" for i in range(unfreeze_layers)] + ["final_norm"]
+            save_d["encoder_top2"] = {
+                k: v.cpu() for k, v in model.state_dict().items()
+                if any(tk in k for tk in top_keys)
+            }
+        return save_d
+
+    start_epoch = 0
+    if getattr(args, "resume", False):
+        for ep in range(HYPERPARAMS["epochs"], 0, -1):
+            ep_file = f"{args.save}.ckpt_epoch_{ep}.pt"
+            if os.path.exists(ep_file):
+                try:
+                    print(f"[*] Resuming from intermediate checkpoint: {ep_file} (completed epoch {ep})", flush=True)
+                    ckpt = torch.load(ep_file, map_location=device, weights_only=False)
+                    sys2.load_state_dict(ckpt["sys2"])
+                    if use_lora and "lora" in ckpt:
+                        model.load_state_dict(ckpt["lora"], strict=False)
+                    if "optimizer" in ckpt:
+                        optimizer.load_state_dict(ckpt["optimizer"])
+                    if scheduler is not None and ckpt.get("scheduler") is not None:
+                        scheduler.load_state_dict(ckpt["scheduler"])
+                    start_epoch = ep
+                    break
+                except Exception as e:
+                    print(f"[!] Warning: failed to resume from {ep_file}: {e}", flush=True)
+
     bs = HYPERPARAMS["batch_size"]
-    for epoch in range(HYPERPARAMS["epochs"]):
+    for epoch in range(start_epoch, HYPERPARAMS["epochs"]):
         total_ce = total_cal = total_judge = total_div = 0.0
         n_batches = 0
         if HYPERPARAMS.get("shuffle_per_epoch", True):
@@ -718,88 +824,28 @@ def main():
             flush=True,
         )
 
-    import os
-    os.makedirs(os.path.dirname(args.save) or ".", exist_ok=True)
-    save_max_len = HYPERPARAMS.get("max_len", 128)
-    save_dict = {
-        "sys2": sys2.state_dict(),
-        "task_prefixes": False,
-        "use_mote": False,
-        "mote_mode": mote_mode if use_mote else "baseline",
-        "max_len": save_max_len,
-        "ensemble_heads": True,
-        "centered_conf": False,
-        "judge_cal_smoothing": 0.3,
-        "lambda_ens_ce": 0.0,
-        "uniform_ensemble": False,
-        "ensemble_temp": HYPERPARAMS.get("ensemble_temp", 1.78),
-        "lambda_head_balance": 0.0,
-        "margin_features": True,
-        "span_pooling": False,
-        "span_weight": HYPERPARAMS.get("span_weight", 0.5),
-        "span_mode": HYPERPARAMS.get("span_mode", "mean"),
-        "lora_dropout": 0.0,
-        "head_dropout": 0.0,
-        "head_label_smoothing": HYPERPARAMS.get("head_label_smoothing", 0.08),
-        "margin_gamma": HYPERPARAMS.get("margin_gamma", 0.2),
-        "prob_ensemble": False,
-        "head_prob_temp": 1.0,
-        "head_norm_first": False,
-        "judger_residual": HYPERPARAMS.get("judger_residual", False),
-        "judger_mlp_dim": HYPERPARAMS.get("judger_mlp_dim", 64),
-        "judger_num_heads": HYPERPARAMS.get("judger_num_heads", 8),
-        "judger_dropout": HYPERPARAMS.get("judger_dropout", 0.0),
-        "head_mlp_dim": 256,
-        "head_norm_diff": False,
-        "veto_blend": HYPERPARAMS.get("veto_blend", 0.4),
-        "dual_stream_contest": HYPERPARAMS.get("dual_stream_contest", False),
-        "dual_stream_blend": HYPERPARAMS.get("dual_stream_blend", 0.0),
-        "dual_stream_alpha": HYPERPARAMS.get("dual_stream_alpha", 0.5),
-        "asym_spans": True,
-        "asym_span_mode": "choice_forward",
-        "head_weights": HYPERPARAMS.get("head_weights", [1.0, 1.0, 1.15, 1.0, 0.38]),
-        "prob_margin_gamma": 0.0,
-        "head_margin_weights": None,
-        "head_center_logits": False,
-        "head_norm_logits": HYPERPARAMS.get("head_norm_logits", False),
-        "head_input_norm": HYPERPARAMS.get("head_input_norm", False),
-        "norm_cand_margin": HYPERPARAMS.get("norm_cand_margin", False),
-        "consensus_features": False,
-        "judger_win_emb": False,
-        "judger_soft_emb": True,
-        "judger_soft_tau": 1.0,
-        "cand_margin_mode": "hard",
-        "cand_margin": HYPERPARAMS.get("cand_margin", 1.0),
-        "lambda_cand_margin": HYPERPARAMS.get("lambda_cand_margin", 0.03),
-        "decision_conf": HYPERPARAMS.get("decision_conf", False),
-        "decision_conf_mode": HYPERPARAMS.get("decision_conf_mode", "softmax"),
-        "decision_conf_tau": float(torch.exp(sys2.log_decision_tau).item()) if (HYPERPARAMS.get("decision_conf_learnable", False) and hasattr(sys2, "log_decision_tau")) else HYPERPARAMS.get("decision_conf_tau", 0.75),
-        "decision_conf_learnable": HYPERPARAMS.get("decision_conf_learnable", False),
-        "decision_conf_alpha": HYPERPARAMS.get("decision_conf_alpha", 0.3),
-        "lambda_ens_ce": HYPERPARAMS.get("lambda_ens_ce", 0.0),
-        "bert_model": bert_name,
-    }
-    if use_lora:
-        save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
-        save_dict["lora_config"] = {
-            "r": HYPERPARAMS.get("lora_r", 32),
-            "alpha": HYPERPARAMS.get("lora_alpha", 32),
-            "num_layers": HYPERPARAMS.get("lora_layers", 8),
-            "train_norms": train_norms,
-        }
-        if train_norms:
-            save_dict["lora_norms"] = {
-                k: v.cpu() for k, v in model.state_dict().items()
-                if ("attn_norm" in k or "mlp_norm" in k or "final_norm" in k)
-            }
-    elif unfreeze_layers > 0:
-        top_keys = [f"layers.{28 - i - 1}" for i in range(unfreeze_layers)] + ["final_norm"]
-        save_dict["encoder_top2"] = {
-            k: v.cpu() for k, v in model.state_dict().items()
-            if any(tk in k for tk in top_keys)
-        }
+        # Checkpoint after each epoch
+        epoch_ckpt = f"{args.save}.ckpt_epoch_{epoch + 1}.pt"
+        ckpt_state = build_save_dict()
+        ckpt_state["epoch"] = epoch + 1
+        ckpt_state["optimizer"] = optimizer.state_dict()
+        if scheduler is not None:
+            ckpt_state["scheduler"] = scheduler.state_dict()
+        torch.save(ckpt_state, epoch_ckpt)
+        print(f"[*] Saved intermediate checkpoint: {epoch_ckpt}", flush=True)
+
+    save_dict = build_save_dict()
     torch.save(save_dict, args.save)
     print(f"saved {args.save}")
+
+    # Clean up intermediate epoch checkpoints
+    for ep in range(1, HYPERPARAMS["epochs"] + 1):
+        ep_file = f"{args.save}.ckpt_epoch_{ep}.pt"
+        if os.path.exists(ep_file):
+            try:
+                os.remove(ep_file)
+            except OSError:
+                pass
 
 
 if __name__ == "__main__":
