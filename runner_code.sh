@@ -10,13 +10,11 @@ BEST_FILE=".best_metric_code"
 CHECKPOINT="./models/system2_code.pt"
 CANDIDATE="./models/candidate_code.pt"
 
-MAX_LEN="${MAX_LEN:-256}"
-
 # Rebuild the model with current hyperparams on Track B data
-python3 train.py --save "$CANDIDATE" --data "./data/code_traces" --max-len "$MAX_LEN"
+python3 train.py --save "$CANDIDATE" --data "./data/code_traces" --dynamic-len
 
-# Judge on held-out code execution test set (4,067 samples)
-if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/code_traces")"; then
+# Judge on held-out multi-language code execution test set (6,321 samples)
+if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/code_traces" --dynamic-len)"; then
   echo "[runner_code] experiment INVALID (eval failed) -> revert"
   rm -f "$CANDIDATE"
   git reset --hard HEAD 2>/dev/null || true

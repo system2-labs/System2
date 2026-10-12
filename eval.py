@@ -336,11 +336,7 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
     ceiling = getattr(model.config, "max_position_embeddings", 8192)
     if max_len is not None:
         eval_max_len = min(max_len, ceiling)
-<<<<<<< HEAD
-    elif dynamic_len:
-=======
     elif dynamic_len or (isinstance(state, dict) and state.get("dynamic_len", False)):
->>>>>>> main
         eval_max_len = ceiling
     else:
         eval_max_len = min(state.get("max_len", 128) if isinstance(state, dict) else 128, ceiling)
