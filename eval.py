@@ -169,7 +169,7 @@ def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=Non
     return pooled.view(b, 4, -1)
 
 
-def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir="./data/arc", ensemble=False, head_weights=None, ensemble_temp=None, head_norm_logits=None, veto_blend=None, margin_gamma=None, decision_conf=None, decision_conf_mode=None, decision_conf_tau=None, decision_conf_alpha=None, max_len=None, dynamic_len=False):
+def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir="./data/arc", ensemble=False, head_weights=None, ensemble_temp=None, head_norm_logits=None, veto_blend=None, margin_gamma=None, decision_conf=None, decision_conf_mode=None, decision_conf_tau=None, decision_conf_alpha=None, max_len=None, dynamic_len=True):
     device = device or ("mps" if torch.backends.mps.is_available() else "cpu")
     state = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     bert_name = state.get("bert_model", "answerdotai/ModernBERT-large") if isinstance(state, dict) else "answerdotai/ModernBERT-large"
@@ -336,7 +336,11 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
     ceiling = getattr(model.config, "max_position_embeddings", 8192)
     if max_len is not None:
         eval_max_len = min(max_len, ceiling)
+<<<<<<< HEAD
     elif dynamic_len:
+=======
+    elif dynamic_len or (isinstance(state, dict) and state.get("dynamic_len", False)):
+>>>>>>> main
         eval_max_len = ceiling
     else:
         eval_max_len = min(state.get("max_len", 128) if isinstance(state, dict) else 128, ceiling)
@@ -409,7 +413,7 @@ if __name__ == "__main__":
         ap.add_argument("--decision-conf-tau", type=float, default=None, help="Decision confidence temperature")
         ap.add_argument("--decision-conf-alpha", type=float, default=None, help="Hybrid confidence alpha blend")
         ap.add_argument("--max-len", type=int, default=None, help="Override evaluation max_len")
-        ap.add_argument("--dynamic-len", action="store_true", help="Dynamically scale context window up to architectural ceiling (8192)")
+        ap.add_argument("--dynamic-len", action=argparse.BooleanOptionalAction, default=True, help="Dynamically scale context window up to architectural ceiling (8192)")
         args = ap.parse_args()
         ckpt = args.ckpt
         hw = [float(x) for x in args.head_weights.split(",")] if args.head_weights else None

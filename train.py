@@ -45,10 +45,11 @@ HYPERPARAMS = {
     "lora_layers": 8,  # adapt top 8 layers of ModernBERT via LoRA
     "lr_lora": 0.0002,
     "batch_size": 16,
-    "max_len": 128,
+    "max_len": 8192,
+    "dynamic_len": True,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
     "epochs": 5,
-    "train_size": 8000,
+    "train_size": 25000,
     "lambda_div": 0.01,
     "lambda_judge": 0.15,
     "lambda_cal": 0.5,
@@ -304,7 +305,7 @@ def main():
     ap.add_argument("--epochs", type=int, default=None)
     ap.add_argument("--batch-size", type=int, default=None)
     ap.add_argument("--max-len", type=int, default=None)
-    ap.add_argument("--data", default=None)
+    ap.add_argument("--dynamic-len", action=argparse.BooleanOptionalAction, default=True, help="Enable dynamic sequence length up to architectural ceiling (8192)")
     ap.add_argument("--resume", action="store_true", default=True, help="Auto-resume from intermediate epoch checkpoint if found")
     ap.add_argument("--no-resume", dest="resume", action="store_false", help="Do not resume from intermediate checkpoint")
     args = ap.parse_args()
@@ -316,6 +317,9 @@ def main():
         HYPERPARAMS["batch_size"] = args.batch_size
     if args.max_len is not None:
         HYPERPARAMS["max_len"] = args.max_len
+    if args.dynamic_len:
+        HYPERPARAMS["dynamic_len"] = True
+        HYPERPARAMS["max_len"] = 8192
 
     data_dir = args.data or HYPERPARAMS.get("data_dir", "./data/arc")
     ds = load_from_disk(data_dir)
@@ -500,6 +504,7 @@ def main():
             "use_mote": False,
             "mote_mode": mote_mode if use_mote else "baseline",
             "max_len": save_max_len,
+            "dynamic_len": HYPERPARAMS.get("dynamic_len", True),
             "ensemble_heads": True,
             "centered_conf": False,
             "judge_cal_smoothing": 0.3,
