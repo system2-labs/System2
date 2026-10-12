@@ -304,6 +304,7 @@ def main():
     ap.add_argument("--train-size", type=int, default=None)
     ap.add_argument("--epochs", type=int, default=None)
     ap.add_argument("--batch-size", type=int, default=None)
+    ap.add_argument("--data", default=None)
     ap.add_argument("--max-len", type=int, default=None)
     ap.add_argument("--dynamic-len", action=argparse.BooleanOptionalAction, default=True, help="Enable dynamic sequence length up to architectural ceiling (8192)")
     ap.add_argument("--resume", action="store_true", default=True, help="Auto-resume from intermediate epoch checkpoint if found")
