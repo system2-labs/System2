@@ -211,7 +211,7 @@ def parse_sql_traces(max_samples=5000):
     print("Loading b-mc2/sql-create-context...")
     ds = load_dataset("b-mc2/sql-create-context", split="train")
     
-    all_answers = [ex["answer"] for ex in ds[:max_samples * 2]]
+    all_answers = ds[:max_samples * 2]["answer"]
     
     indices = list(range(len(ds)))
     random.seed(42)
