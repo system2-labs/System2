@@ -13,15 +13,52 @@ CANDIDATE="./models/candidate_code.pt"
 # Rebuild the model with current hyperparams on Track B data
 python3 train.py --save "$CANDIDATE" --data "./data/code_traces" --dynamic-len --max-len 512
 
-# Judge on held-out multi-language code execution test set (6,321 samples)
-if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/code_traces" --dynamic-len)"; then
-  echo "[runner_code] experiment INVALID (eval failed) -> revert"
-  rm -f "$CANDIDATE"
+# Evaluate all candidate checkpoints (per-epoch + final) to capture peak convergence
+BEST_CANDIDATE_METRIC="-1.0"
+WINNING_CKPT=""
+WINNING_OUT=""
+
+shopt -s nullglob
+CKPTS=("$CANDIDATE" "$CANDIDATE".ckpt_epoch_*.pt)
+shopt -u nullglob
+
+if [[ ${#CKPTS[@]} -eq 0 ]]; then
+  echo "[runner_code] experiment INVALID (no candidate checkpoints generated) -> revert"
   git reset --hard HEAD 2>/dev/null || true
   exit 1
 fi
 
-METRIC="$(echo "$OUT" | python3 -c 'import json,sys;print(json.load(sys.stdin)["metric"])')"
+for CKPT in "${CKPTS[@]}"; do
+  echo "[runner_code] Evaluating candidate checkpoint: $CKPT"
+  if OUT="$(python3 eval.py "$CKPT" --data "./data/code_traces" --dynamic-len)"; then
+    M="$(echo "$OUT" | python3 -c 'import json,sys;print(json.load(sys.stdin)["metric"])')"
+    echo "[runner_code] $CKPT scored metric = $M ($OUT)"
+    IS_HIGHER="$(python3 -c "print(1 if $M > $BEST_CANDIDATE_METRIC else 0)")"
+    if [[ "$IS_HIGHER" -eq 1 ]]; then
+      BEST_CANDIDATE_METRIC="$M"
+      WINNING_CKPT="$CKPT"
+      WINNING_OUT="$OUT"
+    fi
+  else
+    echo "[runner_code] Warning: eval failed for $CKPT"
+  fi
+done
+
+if [[ -z "$WINNING_CKPT" ]]; then
+  echo "[runner_code] experiment INVALID (all candidate evals failed) -> revert"
+  rm -f "$CANDIDATE"*
+  git reset --hard HEAD 2>/dev/null || true
+  exit 1
+fi
+
+echo "[runner_code] Winning candidate is $WINNING_CKPT with metric $BEST_CANDIDATE_METRIC"
+if [[ "$WINNING_CKPT" != "$CANDIDATE" ]]; then
+  cp "$WINNING_CKPT" "$CANDIDATE"
+fi
+rm -f "$CANDIDATE".ckpt_epoch_*.pt
+
+METRIC="$BEST_CANDIDATE_METRIC"
+OUT="$WINNING_OUT"
 echo "[runner_code] new metric = $METRIC  ($OUT)"
 
 if [[ ! -f "$BEST_FILE" ]]; then

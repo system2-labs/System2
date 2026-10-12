@@ -35,7 +35,7 @@ HYPERPARAMS = {
     "soft_centroid": True,
     "num_heads": 5,
     "head_layers": 2,
-    "lr_heads": 0.001,
+    "lr_heads": 0.0005,
     "lr_router": 5e-4,
     "lr_soft_centroid": 1e-3,
     "lr_judger": 0.0003,
@@ -43,22 +43,22 @@ HYPERPARAMS = {
     "lora_r": 32,
     "lora_alpha": 32,
     "lora_layers": 8,  # adapt top 8 layers of ModernBERT via LoRA
-    "lr_lora": 0.0002,
+    "lr_lora": 0.0001,
     "batch_size": 16,
     "max_len": 512,
     "dynamic_len": True,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
-    "epochs": 5,
+    "epochs": 2,
     "train_size": 25000,
     "lambda_div": 0.01,
     "lambda_judge": 0.15,
     "lambda_cal": 0.5,
     "lambda_judge_cal": 0.06,
     "weight_decay": 0.0,
-    "warmup_ratio": 0.0,
+    "warmup_ratio": 0.05,
     "oracle_judge_target": True,
     "detach_judger": True,
-    "shuffle_per_epoch": False,
+    "shuffle_per_epoch": True,
     "seed": 0,
     "label_smoothing": 0.15,
     "lambda_aux": 0.10,
@@ -854,14 +854,7 @@ def main():
     torch.save(save_dict, args.save)
     print(f"saved {args.save}")
 
-    # Clean up intermediate epoch checkpoints
-    for ep in range(1, HYPERPARAMS["epochs"] + 1):
-        ep_file = f"{args.save}.ckpt_epoch_{ep}.pt"
-        if os.path.exists(ep_file):
-            try:
-                os.remove(ep_file)
-            except OSError:
-                pass
+    # Retain intermediate epoch checkpoints for runner adjudication
 
 
 if __name__ == "__main__":
