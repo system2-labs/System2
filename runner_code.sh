@@ -11,7 +11,7 @@ CHECKPOINT="./models/system2_code.pt"
 CANDIDATE="./models/candidate_code.pt"
 
 # Rebuild the model with current hyperparams on Track B data
-python3 train.py --save "$CANDIDATE" --data "./data/code_traces" --dynamic-len
+python3 train.py --save "$CANDIDATE" --data "./data/code_traces" --dynamic-len --max-len 512
 
 # Judge on held-out multi-language code execution test set (6,321 samples)
 if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/code_traces" --dynamic-len)"; then

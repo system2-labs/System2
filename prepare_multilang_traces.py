@@ -109,15 +109,15 @@ def synthesize_distractors(target, pool=None):
         distractors.add("''")
         distractors.add("None")
 
-    # Clean distractors to avoid matching target
-    distractors = {d for d in distractors if d != target_str and len(d.strip()) > 0}
+    # Clean distractors to avoid matching target and reject runaway outputs
+    distractors = {d for d in distractors if d != target_str and 0 < len(d.strip()) <= 1000}
 
     # Pool fallback
     if pool and len(distractors) < 3:
-        shuffled_pool = random.sample(pool, min(len(pool), 30))
+        shuffled_pool = random.sample(pool, min(len(pool), 50))
         for p in shuffled_pool:
             p_str = str(p).strip()
-            if p_str != target_str and p_str not in distractors:
+            if p_str != target_str and p_str not in distractors and 0 < len(p_str) <= 1000:
                 distractors.add(p_str)
                 if len(distractors) >= 6:
                     break
@@ -141,8 +141,12 @@ def synthesize_distractors(target, pool=None):
 
 def create_sample(question, target_answer, source, pool=None):
     """Formats question and target into System2 record dict."""
-    choices, label = synthesize_distractors(target_answer, pool=pool)
-    if choices is None:
+    target_str = str(target_answer).strip()
+    if len(target_str) == 0 or len(target_str) > 1000 or len(question.strip()) > 4000:
+        return None
+
+    choices, label = synthesize_distractors(target_str, pool=pool)
+    if choices is None or any(len(c) > 1000 for c in choices):
         return None
 
     formatted_text = (

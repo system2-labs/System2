@@ -45,7 +45,7 @@ HYPERPARAMS = {
     "lora_layers": 8,  # adapt top 8 layers of ModernBERT via LoRA
     "lr_lora": 0.0002,
     "batch_size": 16,
-    "max_len": 8192,
+    "max_len": 512,
     "dynamic_len": True,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
     "epochs": 5,
