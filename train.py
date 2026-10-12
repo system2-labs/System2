@@ -45,10 +45,11 @@ HYPERPARAMS = {
     "lora_layers": 8,  # adapt top 8 layers of ModernBERT via LoRA
     "lr_lora": 0.0002,
     "batch_size": 16,
-    "max_len": 128,
+    "max_len": 8192,
+    "dynamic_len": True,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
     "epochs": 5,
-    "train_size": 4300,
+    "train_size": 8440,
     "lambda_div": 0.01,
     "lambda_judge": 0.15,
     "lambda_cal": 0.5,
@@ -61,7 +62,7 @@ HYPERPARAMS = {
     "seed": 0,
     "label_smoothing": 0.15,
     "lambda_aux": 0.10,
-    "data_dir": "./data/arc",
+    "data_dir": "./data/arc_augmented",
     "pairwise": True,
     "diff_features": True,
     "task_prefixes": False,
@@ -305,7 +306,7 @@ def main():
     ap.add_argument("--batch-size", type=int, default=None)
     ap.add_argument("--data", default=None)
     ap.add_argument("--max-len", type=int, default=None)
-    ap.add_argument("--dynamic-len", action="store_true", help="Enable dynamic sequence length up to architectural ceiling (8192)")
+    ap.add_argument("--dynamic-len", action=argparse.BooleanOptionalAction, default=True, help="Enable dynamic sequence length up to architectural ceiling (8192)")
     ap.add_argument("--resume", action="store_true", help="Resume from most recent intermediate epoch checkpoint")
     args = ap.parse_args()
     if args.train_size is not None:
