@@ -72,6 +72,28 @@ TRACKS_CONFIG = [
         "dataset_scope": "Noru1/EEReasonBench + cais/mmlu Electrical Engineering (669 samples)",
         "held_out_eval": "134 held-out circuit & power problems",
     },
+    {
+        "id": "auto",
+        "name": "Track E: Automotive & HVAC Diagnostics",
+        "domain": "OBD-II DTCs, Fuel Trims, Sensor Fault Trees & Mechanical Systems",
+        "checkpoint": os.path.join(ROOT_DIR, "models", "system2_auto.pt"),
+        "guarded_metric": 0.9809,
+        "accuracy": 0.9950,
+        "brier": 0.0332,
+        "dataset_scope": "nemotron-car-diagnostics OBD-II & Fault Trees (7,993 samples)",
+        "held_out_eval": "1,999 held-out diagnostic cases",
+    },
+    {
+        "id": "culinary",
+        "name": "Track F: Culinary Chemistry & Food Science",
+        "domain": "Food Biochemistry, Reaction Mechanics, Leavening & Recipe Diagnostics",
+        "checkpoint": os.path.join(ROOT_DIR, "models", "system2_culinary.pt"),
+        "guarded_metric": 0.7475,
+        "accuracy": 0.6771,
+        "brier": 0.1822,
+        "dataset_scope": "cais/mmlu nutrition + RecipeQA (2,675 samples)",
+        "held_out_eval": "669 held-out culinary science questions",
+    },
 ]
 
 
