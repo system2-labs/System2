@@ -18,7 +18,8 @@ echo " Dataset: 7,993 train, 1,999 held-out test (OBD-II, STFT, fault trees)"
 echo " Worktree: $ROOT_DIR/scratch/worktrees/track-e"
 echo "========================================================================"
 cd "$ROOT_DIR/scratch/worktrees/track-e"
-mkdir -p models
+mkdir -p models data
+ln -sfn "$ROOT_DIR/data/auto" data/auto
 ./runner_auto.sh "baseline: automotive and HVAC diagnostic fault trees"
 
 echo ""
@@ -37,7 +38,8 @@ echo " Dataset: 2,675 train, 669 held-out test (MMLU nutrition + RecipeQA)"
 echo " Worktree: $ROOT_DIR/scratch/worktrees/track-f"
 echo "========================================================================"
 cd "$ROOT_DIR/scratch/worktrees/track-f"
-mkdir -p models
+mkdir -p models data
+ln -sfn "$ROOT_DIR/data/culinary" data/culinary
 ./runner_culinary.sh "baseline: culinary chemistry and reaction mechanics"
 
 echo ""
