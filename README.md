@@ -1,75 +1,106 @@
 # System2: Parallel Hypothesis Reasoning Architecture
 
-A from-scratch, non-autoregressive "System 2" decision architecture designed to run and train locally on Apple Silicon.
+A from-scratch, non-autoregressive "System 2" deliberation architecture designed to run and train locally on Apple Silicon.
 
-System2 generates parallel hypotheses, estimates calibrated confidence for each, attends across competing candidates, and prunes weak reasoning paths before outputting a decision.
+System2 generates parallel hypotheses, estimates calibrated confidence for each across asymmetric span formulations, attends across competing candidates with arithmetic centroid contrast, normalizes logit variances in equal standard-deviation currency, and prunes flawed reasoning branches in $<30\text{ ms}$.
 
 ---
 
 ## Architecture Overview
 
 ```
-                      [Input Text]
-                           │
-                           ▼
-          [ModernBERT-large Encoder (395M, Frozen)]
-                           │ (1024-dim context vector)
-        ┌──────────────────┼──────────────────┐
-        ▼                  ▼                  ▼
- [ThoughtHead 1]    [ThoughtHead 2]    [ThoughtHead N]
-   (2x Tx Layer)      (2x Tx Layer)      (2x Tx Layer)
-   1024 -> 512        1024 -> 512        1024 -> 512
-        │                  │                  │
-   (Emb 1, Conf 1)    (Emb 2, Conf 2)    (Emb N, Conf N)
-        └──────────────────┬──────────────────┘
-                           ▼
-             [Cross-Attending Judger]
-         - Multi-head self-attention over candidates
-         - Calibrated scoring & weak hypothesis pruning (<0.3)
-                           │
-                           ▼
-               [Selected Hypothesis & Decision]
+                      [Input Prompt / Context]
+                                 │
+                                 ▼
+           [ModernBERT-large-instruct Encoder (395M, Frozen)]
+             + LoRA Subspace Adapters (Layers 20–27, r=32, α=32)
+                                 │ (1024-dim dense representation)
+        ┌────────────────────────┼────────────────────────┐
+        ▼                        ▼                        ▼
+ [ThoughtHead 1]          [ThoughtHead 2]          [ThoughtHead 5]
+ (Asymmetric Span v0)     (Asymmetric Span v1)     (Asymmetric Span v4)
+  2x Transformer Layers    2x Transformer Layers    2x Transformer Layers
+  Arithmetic Centroid:     Arithmetic Centroid:     Arithmetic Centroid:
+    d_i = x_i - μ_arith      d_i = x_i - μ_arith      d_i = x_i - μ_arith
+  Logit z-score norm:      Logit z-score norm:      Logit z-score norm:
+    z_1 = (l - μ)/σ          z_2 = (l - μ)/σ          z_5 = (l - μ)/σ
+        │                        │                        │
+  (Emb 1, Conf 1)          (Emb 2, Conf 2)          (Emb 5, Conf 5)
+        └────────────────────────┼────────────────────────┘
+                                 ▼
+                  [Cross-Attending Judger & Calibrator]
+              - Multi-head cross-attention over 5 candidates
+              - Coupled decision-level calibration scale τ = exp(log_tau)
+              - Branch pruning & counterfactual elimination
+                                 │
+                                 ▼
+                 [Winning Hypothesis & Calibrated Verdict]
 ```
 
 ### Core Design Principles
-1. **Frozen Bidirectional Encoder**: Uses ModernBERT-large (395M) strictly as a feature extractor. It produces dense representations without autoregressive drift, sycophancy, or post-hoc RLHF alignment artifacts.
-2. **Parallel Thought Heads**: $N$ independent transformer heads generate candidate decision vectors and per-head calibrated confidence scores simultaneously.
-3. **Cross-Attending Judger**: Candidates attend to one another via multi-head attention. The Judger scores candidates relative to the full hypothesis space and prunes unviable paths.
-4. **Calibrated Confidence**: Confidence is trained using strictly proper scoring incentives (BCE against correctness / Brier score), penalizing overconfident errors.
-5. **No Autoregressive Generation**: Fast, single-pass decision making with transparent internal uncertainty.
+1. **Frozen Bidirectional Encoder**: ModernBERT-large / ModernBERT-Large-Instruct (395M) weights remain 100% frozen. Dense bidirectional embeddings eliminate autoregressive drift, sycophancy, and post-hoc RLHF alignment artifacts.
+2. **LoRA Subspace Rank Sweet Spot**: High-capacity low-rank adapters ($r=32, \alpha=32$, ~1.57M params) adapt the top 8 layers (20–27) per domain without warping lower-layer lexical syntax.
+3. **5-Head Deliberation Equilibrium**: 5 full dense parallel ThoughtHeads evaluate candidate choices simultaneously across asymmetric span perspectives (holistic, question-anchored, choice-forward, balanced, extreme-salience).
+4. **Arithmetic Centroid Contrast Invariance**: Candidate vectors are contrasted against the fixed arithmetic mean: $d_i = x_i - \frac{1}{4}\sum_{j=1}^4 x_j$, feeding $[x_i \,\|\, d_i]$ to the scoring MLP. Dynamic attention soft centroids are prohibited as they collapse contrast toward zero on salient options.
+5. **Scale-Invariant Logit Law**: All candidate choice logits are $z$-score standardized per head ($z_{b, h, c} = \frac{l_{b, h, c} - \mu_{b, h}}{\sigma_{b, h} + \epsilon}$) prior to weighted pooling, ensuring every cognitive perspective contributes in equal statistical currency.
+6. **Strictly Non-Autoregressive Feedforward**: Single-pass forward deliberation in $<30\text{ ms}$ on Apple Silicon GPU (`mps`) or $<250\text{ ms}$ on CPU.
 
 ---
 
-## Current Benchmark & Baseline
+## Early Stage vs. Architectural Evolution
 
-Phase 1 validation is benchmarked on **AG News** (4-class topic classification) as a canary pipeline on Apple Silicon (M-series GPU via Metal Performance Shaders / MPS).
+The table below contrasts the initial canary prototype with the mature System2 multi-track architecture:
 
-| Metric | Benchmark SOTA | Notes |
-| :--- | :---: | :--- |
-| **Composite Metric** | **0.8998** | $0.5 \times \text{Accuracy} + 0.5 \times (1 - \text{Brier})$ (Baseline was 0.8570) |
-| **Test Accuracy** | **88.55%** | 7,600 held-out test samples (+3.94% over baseline) |
-| **Brier Score** | **0.0860** | Direct Judger calibration loss (35% error reduction) |
-
-*Trained on 20,000 samples for 2 epochs on MPS (~18 minutes on Apple Silicon).*
+| Dimension | Early Stage Prototype (Phase 1) | Architectural Evolution (Current System2) |
+| :--- | :--- | :--- |
+| **Evaluation Scope** | AG News 4-class topic classification canary | Multi-step reasoning across Science, Code, Medical, Electrical, Auto, and Culinary |
+| **Encoder Strategy** | Completely frozen ModernBERT without adapters | Frozen ModernBERT + top-8 layer LoRA subspace adapters ($r=32, \alpha=32$) |
+| **ThoughtHead Structure** | Homogeneous generic pooling | 5 Asymmetric Span Formulations (Holistic, Question-anchored, Choice-forward, Balanced, Extreme-salience) |
+| **Candidate Contrast** | Uncontrasted raw candidate vectors | **Arithmetic Centroid Contrast**: $d_i = x_i - \frac{1}{4}\sum_{j=1}^4 x_j \implies [x_i \,\|\, d_i]$ |
+| **Inter-Head Arbitration** | Raw logit summation (drowned by high-variance heads) | **Scale-Invariant Logit Law**: per-head $z$-score normalization ($z = \frac{l - \mu}{\sigma + \epsilon}$) |
+| **Calibration Method** | Uncalibrated BCE loss | Coupled decision-level calibration gradient with learnable temperature $\tau = \exp(\text{log\_tau})$ |
+| **Domain Architecture** | Monolithic multi-class classifier | **In-Domain Causal Purity**: 6 domain-specialized LoRA + ThoughtHead checkpoints |
+| **Prompt Dispatch** | Manual dataset flag required | **Two-Stage Dynamic Domain Router** (Lexical Gate + Dense Centroid Projection in $<0.1\text{ ms}$) |
+| **Inference Integration** | Standalone classification script | **Path B Hybrid Deliberation**: Adjudicates 4 independent zero-knowledge LLM samples |
 
 ---
 
-## Repository Structure
+## Specialized Track Inventory & Guarded Metrics
 
-```
-├── bert.py            # ModernBERT-large encoder wrapper (frozen)
-├── heads.py           # ThoughtHead modules (1024->512, hypothesis & confidence heads)
-├── system.py          # System2 top-level module (N heads + cross-attending Judger)
-├── data.py            # Dataset loader and tokenization utilities
-├── train.py           # Supervised training harness (CE + calibration BCE + judger loss)
-├── train_smoke.py     # Fast canary smoke test (200 samples, 1 epoch)
-├── eval.py            # Read-only evaluation oracle (Accuracy + Brier score)
-├── runner.sh          # Karpathy-style AutoResearch loop runner
-├── 01-system-architecture.md  # Architectural design document
-├── 02-training-plan.md        # Staged training and milestone roadmap
-├── 03-implementation-spec.md  # Code-level implementation specification
-└── 04-handoff.md              # Project status, invariants, and handoff log
-```
+Every specialized track enforces the **Metric Invariant**: all commits must strictly exceed the guarded metric on the full held-out evaluation set via `runner.sh`.
+
+| Track ID | Domain Name | Guarded Metric | Held-Out Accuracy | Brier Score | Checkpoint | Status |
+| :--- | :--- | :---: | :---: | :---: | :--- | :--- |
+| `science` | **Track A: Science & Causal Reasoning** | **`0.7397`** | 73.97% | 0.1700 | [`models/system2.pt`](file:///Users/thomjames-worrall/System2/models/system2.pt) | Verified |
+| `code` | **Track B: Polyglot Code & Query Traces** | **`0.9010`** | 89.11% | 0.0891 | [`models/system2_code.pt`](file:///Users/thomjames-worrall/System2/models/system2_code.pt) | Verified |
+| `med` | **Track C: Clinical & Medical Diagnostics** | **`0.5397`** | 29.38% | 0.2145 | [`models/system2_med.pt`](file:///Users/thomjames-worrall/System2/models/system2_med.pt) | Verified |
+| `electrical` | **Track D: Electrical, Electronics & Power** | **`0.5496`** | 32.09% | 0.2217 | [`models/system2_electrical.pt`](file:///Users/thomjames-worrall/System2/models/system2_electrical.pt) | Verified |
+| `auto` | **Track E: Automotive & HVAC Diagnostics** | **`0.9809`** | 99.50% | 0.0332 | [`models/system2_auto.pt`](file:///Users/thomjames-worrall/System2/models/system2_auto.pt) | Verified |
+| `culinary` | **Track F: Culinary Chemistry & Food Science** | **`0.7487`** | 68.46% | 0.1872 | [`models/system2_culinary.pt`](file:///Users/thomjames-worrall/System2/models/system2_culinary.pt) | Verified |
+| `math` | **Track G: Mathematical & Quantitative Reasoning** | *In Training* | *In Training* | *In Training* | `models/system2_math.pt` | **Active Focus (Phase 3)** |
+
+---
+
+## Staged Roadmap & Milestone Tracking
+
+- [x] **Phase 1: Pipeline Canary**:
+  - End-to-end encoder $\to$ parallel heads $\to$ cross-attending judger on AG News (Metric: `0.8998`, Accuracy: `88.55%`).
+- [x] **Phase 2: Judger & Diversity Optimization**:
+  - Align Judger training target to select confident *and correct* heads.
+  - Implement arithmetic centroid contrast $[x_i \,\|\, d_i]$ and pairwise diversity penalties.
+  - Coupled decision-level calibration gradient with learnable $\tau$.
+  - Scale-invariant $z$-score logit pooling across asymmetric thought heads.
+- [x] **Phase 2.5: Path B Hybrid LLM Deliberation Benchmark**:
+  - Pair local generative models with System 2 feedforward deliberation.
+  - Validated across 4 tiers: Gemma-e4b (4B) $\to$ Gemma-12B (12B) $\to$ Qwen-27B $\to$ Qwen-35B.
+  - Proved that an ultra-lightweight 4B/12B model + System 2 achieves **100% accuracy parity** and higher calibrated confidence than a standalone 35B model.
+- [/] **Phase 3: Multi-Step Reasoning Benchmarks**:
+  - [x] **AI2 ARC (Science)**: Full integration of ARC-Challenge + ARC-Easy in-domain data (`0.7397`).
+  - [x] **Polyglot Code Execution (Code)**: Multi-language traces across Python, Rust, C++, C#, Java, SQL, Bash (`0.9010`).
+  - [ ] **GSM8K & MATH (Symbolic Reasoning)**: Multi-step mathematical word problems and competition math with type-aware distractors. *(Currently executing)*
+- [x] **Phase 4: Dynamic Domain Routing & Dispatch**:
+  - Two-stage hierarchical router (Lexical Gate + Dense ModernBERT Centroid Projection).
+  - Sub-millisecond dispatch ($<0.1\text{ ms}$) across specialized tracks with **100.0% accuracy** on 60-question test suite.
 
 ---
 
@@ -80,42 +111,26 @@ Phase 1 validation is benchmarked on **AG News** (4-class topic classification) 
 - PyTorch with Apple Silicon MPS support (`torch.backends.mps.is_available() == True`)
 - Hugging Face `transformers` and `datasets`
 
-### 2. Smoke Test (Canary)
-Run a quick 200-sample canary run (~30 seconds) to verify MPS pipeline and checkpointing:
+### 2. Interactive Prompt Routing
+Test the sub-millisecond dynamic domain router from the CLI:
 ```bash
-python3 train_smoke.py
+python3 scripts/route_prompt.py "Can authentic sourdough bread be baked using industrial glue and Portland cement?"
+# -> Dispatched Track: [CULINARY] (Confidence: 96.0%, Latency: 0.062 ms)
+
+python3 scripts/route_prompt.py "A vehicle triggers DTC code P0300 with active misfire counts across cylinders 1, 3, and 5."
+# -> Dispatched Track: [AUTO] (Confidence: 99.0%, Latency: 0.062 ms)
 ```
 
-### 3. Evaluate Checkpoint
-Run the read-only oracle on the test split:
+### 3. Deliberation Benchmark
+Run the 4-tier model scaling deliberation benchmark comparing independent zero-knowledge LLM samples adjudicated by System 2 on CPU:
 ```bash
-python3 eval.py ./models/system2.pt
-```
-Emits a single JSON metric line:
-```json
-{"metric": 0.857, "accuracy": 0.8461, "brier": 0.1321}
+python3 scripts/benchmark_four_model_scaling.py
 ```
 
 ### 4. AutoResearch Loop
-The project adheres to an autonomous iterative research loop (`runner.sh`):
-1. Modify hyperparameters or architectural knobs in `train.py`.
-2. Run `./runner.sh "<description of change>"`.
-3. The runner trains the model, runs `eval.py`, and:
-   - **Commits and records** the new metric if it improves upon `.best_metric`.
-   - **Reverts the working tree** if the metric is worse or equal.
-
+Run the autonomous metric-guarded training loop on any track worktree:
 ```bash
-./runner.sh "experiment: test 8 heads with cosine diversity penalty"
+cd scratch/worktrees/track-e
+./runner_auto.sh "experiment: sharpen calibration smoothing to 0.12"
 ```
-
----
-
-## Staged Roadmap
-
-- [x] **Phase 1: Pipeline Canary**: End-to-end encoder $\to$ parallel heads $\to$ cross-attending judger $\to$ eval loop on AG News (achieved baseline metric **0.8570**).
-- [ ] **Phase 2: Judger & Diversity Optimization**:
-  - Align Judger training target to select confident *and correct* heads.
-  - Implement pairwise orthogonality / cosine diversity loss across heads.
-  - Ablation: Single-head probe baseline comparison.
-- [ ] **Phase 3: Reasoning Benchmarks**: Transition from topic classification to multi-step reasoning tasks (GSM8K, AI2 ARC).
-- [ ] **Phase 4: Dynamic Head Allocation**: Dynamically scale active head count based on query complexity.
+The runner trains on Apple Silicon MPS, judges on the full held-out test split, and commits if improved or executes `git reset --hard HEAD` if regressed.
