@@ -1,6 +1,6 @@
 # System2 Specialized Weights Map & Subspace Topography
 
-> Generated: 2026-10-14 05:51:38  
+> Generated: 2026-10-14 08:43:20  
 > Base Model: `answerdotai/ModernBERT-Large-Instruct` (395,404,288 parameters, 100% frozen)
 
 ## 1. Executive Summary & Parameter Allocation
@@ -21,8 +21,8 @@ Each System2 domain track uses identical parameter partitioning:
 | `code` | **Track B: Polyglot Code & Query Traces** | **`0.901`** | 89.11% | 0.0891 | `0.6533` | `eeb5665d2924...` |
 | `med` | **Track C: Clinical & Medical Diagnostics** | **`0.5397`** | 29.38% | 0.2145 | `1.092` | `0f0f420da289...` |
 | `electrical` | **Track D: Electrical, Electronics & Power Systems** | **`0.5496`** | 32.09% | 0.2217 | `0.9558` | `4ca3edf8d4e6...` |
-| `auto` | **Track E: Automotive & HVAC Diagnostics** | **`0.9809`** | 99.50% | 0.0332 | `0.7384` | `04fca9e79bc7...` |
-| `culinary` | **Track F: Culinary Chemistry & Food Science** | **`0.7475`** | 67.71% | 0.1822 | `0.6988` | `9bc830af4ca6...` |
+| `auto` | **Track E: Automotive & HVAC Diagnostics** | **`0.9809`** | 99.50% | 0.0332 | `0.6411` | `00641bb63889...` |
+| `culinary` | **Track F: Culinary Chemistry & Food Science** | **`0.7475`** | 67.71% | 0.1822 | `0.6853` | `d092ce196947...` |
 
 ---
 
@@ -36,17 +36,17 @@ Measures the directional alignment of the low-rank update vectors ($\Delta W = B
 | **science** vs **med** | `0.4668` | `0.9839` | Strong Orthogonal Specialization (distinct cognitive representation) |
 | **science** vs **electrical** | `0.6016` | `0.9927` | Strong Orthogonal Specialization (distinct cognitive representation) |
 | **science** vs **auto** | `0.4277` | `0.9890` | Strong Orthogonal Specialization (distinct cognitive representation) |
-| **science** vs **culinary** | `0.4336` | `0.9917` | Strong Orthogonal Specialization (distinct cognitive representation) |
+| **science** vs **culinary** | `0.4336` | `0.9837` | Strong Orthogonal Specialization (distinct cognitive representation) |
 | **code** vs **med** | `0.3965` | `0.9771` | Strong Orthogonal Specialization (distinct cognitive representation) |
 | **code** vs **electrical** | `0.5039` | `0.9856` | Strong Orthogonal Specialization (distinct cognitive representation) |
 | **code** vs **auto** | `0.3438` | `0.9821` | Strong Orthogonal Specialization (distinct cognitive representation) |
-| **code** vs **culinary** | `0.3555` | `0.9838` | Strong Orthogonal Specialization (distinct cognitive representation) |
+| **code** vs **culinary** | `0.3574` | `0.9767` | Strong Orthogonal Specialization (distinct cognitive representation) |
 | **med** vs **electrical** | `0.6836` | `0.9876` | Strong Orthogonal Specialization (distinct cognitive representation) |
 | **med** vs **auto** | `0.4531` | `0.9832` | Strong Orthogonal Specialization (distinct cognitive representation) |
-| **med** vs **culinary** | `0.4766` | `0.9857` | Strong Orthogonal Specialization (distinct cognitive representation) |
+| **med** vs **culinary** | `0.4766` | `0.9779` | Strong Orthogonal Specialization (distinct cognitive representation) |
 | **electrical** vs **auto** | `0.5781` | `0.9925` | Strong Orthogonal Specialization (distinct cognitive representation) |
-| **electrical** vs **culinary** | `0.6055` | `0.9947` | Strong Orthogonal Specialization (distinct cognitive representation) |
-| **auto** vs **culinary** | `0.4199` | `0.9909` | Strong Orthogonal Specialization (distinct cognitive representation) |
+| **electrical** vs **culinary** | `0.6055` | `0.9867` | Strong Orthogonal Specialization (distinct cognitive representation) |
+| **auto** vs **culinary** | `0.4238` | `0.9833` | Strong Orthogonal Specialization (distinct cognitive representation) |
 
 > [!NOTE]
 > **Orthogonal Subspace Discovery**: Track B (Code) and Track C (Medicine) exhibit the lowest subspace similarity (`0.6211`), confirming that code trace syntax and clinical diagnostic reasoning inhabit near-orthogonal subspaces in ModernBERT's top layers. Conversely, Science and Electrical exhibit the highest alignment (`0.8477`), reflecting common physics and circuit mathematics.
@@ -76,8 +76,8 @@ The Judger features a coupled, learnable calibration scale $\tau = \exp(\text{lo
 - **Track B: Polyglot Code & Query Traces**: $\tau = 0.6533$ — *Sharp, highly discriminative decision margin (deterministic domain)*
 - **Track C: Clinical & Medical Diagnostics**: $\tau = 1.092$ — *Smoothed, epistemic-humility calibrated margin (vignette ambiguity tolerance)*
 - **Track D: Electrical, Electronics & Power Systems**: $\tau = 0.9558$ — *Smoothed, epistemic-humility calibrated margin (vignette ambiguity tolerance)*
-- **Track E: Automotive & HVAC Diagnostics**: $\tau = 0.7384$ — *Moderately sharp decision margin*
-- **Track F: Culinary Chemistry & Food Science**: $\tau = 0.6988$ — *Sharp, highly discriminative decision margin (deterministic domain)*
+- **Track E: Automotive & HVAC Diagnostics**: $\tau = 0.6411$ — *Sharp, highly discriminative decision margin (deterministic domain)*
+- **Track F: Culinary Chemistry & Food Science**: $\tau = 0.6853$ — *Sharp, highly discriminative decision margin (deterministic domain)*
 
 ---
 
