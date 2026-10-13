@@ -9,6 +9,11 @@ data/arc_mmlu_science/
 data/arc_augmented/
 data/arc_scienceqa/
 data/code_traces/
+data/med/
+data/trades/
+data/electrical/
+data/auto/
+data/culinary/
 __pycache__/
 *.pyc
 .DS_Store
