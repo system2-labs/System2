@@ -15,8 +15,8 @@ data/electrical/
 data/med/
 data/trades/
 data/math/
-data/legal/
-data/finance/
+data/legal
+data/finance
 __pycache__/
 *.pyc
 .DS_Store
