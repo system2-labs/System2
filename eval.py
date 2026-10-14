@@ -25,148 +25,23 @@ from datasets import load_from_disk
 
 from bert import tokenizer, model
 from system import System2
+from encoding import mean_pool_texts, mean_pool_pairwise
 
 
-def mean_pool_texts(texts, device, max_len=192):
-    """(N texts) -> (N, 1024) tensor via ModernBERT + attention-weighted mean."""
-    inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(device)
-    with torch.no_grad():
-        last_hidden = model(**inputs).last_hidden_state
-        mask = inputs["attention_mask"].unsqueeze(-1)
-        return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
-
-
-def mean_pool_pairwise(questions, choices_list, device, max_len=128, sources=None, task_prefixes=False, span_pooling=False, span_weight=0.5, span_mode="mean", asym_spans=False, asym_span_mode="default"):
-    """Pairwise encoding: (b questions, 4 choices) -> (b, 4, 1024) or (b, 5, 4, 1024)."""
-    b = len(questions)
-    ceiling = getattr(model.config, "max_position_embeddings", 8192)
-    if max_len > ceiling:
-        print(f"[eval warning] Requested max_len={max_len} exceeds architectural ceiling ({ceiling}); clamped to {ceiling}.", file=sys.stderr)
-        max_len = ceiling
-    if task_prefixes:
-        flat_texts = [
-            f"{'[Task: Scientific Facts] ' if (sources and sources[idx] == 'openbookqa') else '[Task: Causal Reasoning] '}Question: {questions[idx]} Answer: {choices_list[idx][c]}"
-            for idx in range(b)
-            for c in range(4)
-        ]
-    else:
-        flat_texts = [
-            f"Question: {questions[idx]} Answer: {choices_list[idx][c]}"
-            for idx in range(b)
-            for c in range(4)
-        ]
-    inputs = tokenizer(flat_texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(device)
-    with torch.no_grad():
-        last_hidden = model(**inputs).last_hidden_state
-        if asym_spans:
-            import torch.nn.functional as F
-            input_ids = inputs["input_ids"]
-            attn_mask = inputs["attention_mask"]
-            B, T = input_ids.shape
-            match = (input_ids[:, :-1] == 37741) & (input_ids[:, 1:] == 27)
-            has_match = match.any(dim=1)
-            ans_pos = match.int().argmax(dim=1)
-            cols = torch.arange(T, device=device).unsqueeze(0).expand(B, T)
-            valid_lens = attn_mask.sum(dim=1) - 1
-
-            q_mask = (cols < ans_pos.unsqueeze(1)) & (attn_mask.bool())
-            a_mask = (cols >= (ans_pos + 2).unsqueeze(1)) & (cols < valid_lens.unsqueeze(1)) & (attn_mask.bool())
-
-            no_match = ~has_match.unsqueeze(1)
-            q_mask = torch.where(no_match, attn_mask.bool(), q_mask)
-            a_mask = torch.where(no_match, attn_mask.bool(), a_mask)
-
-            q_mask_f = q_mask.unsqueeze(-1).float()
-            a_mask_f = a_mask.unsqueeze(-1).float()
-            q_vec = (last_hidden * q_mask_f).sum(dim=1) / q_mask_f.sum(dim=1).clamp(min=1.0)
-            a_vec = (last_hidden * a_mask_f).sum(dim=1) / a_mask_f.sum(dim=1).clamp(min=1.0)
-
-            mask = inputs["attention_mask"].unsqueeze(-1)
-            holistic = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
-
-            if asym_span_mode == "causal_attn":
-                H_norm = F.normalize(last_hidden, p=2, dim=-1)
-                q_norm = F.normalize(q_vec, p=2, dim=-1)
-                cos_sim = (H_norm * q_norm.unsqueeze(1)).sum(dim=-1)
-                scores = (cos_sim / 0.1).masked_fill(~a_mask, -1e9)
-                attn_weights = torch.softmax(scores, dim=-1).unsqueeze(-1)
-                a_attn = (last_hidden * attn_weights).sum(dim=1)
-
-                v0 = holistic
-                v1 = 0.35 * q_vec + 0.65 * a_vec
-                v2 = 0.15 * q_vec + 0.85 * a_vec
-                v3 = 0.50 * q_vec + 0.50 * a_vec
-                v4 = 0.35 * q_vec + 0.65 * a_attn
-            elif asym_span_mode == "choice_forward":
-                v0 = holistic
-                v1 = 0.40 * q_vec + 0.60 * a_vec
-                v2 = 0.20 * q_vec + 0.80 * a_vec
-                v3 = 0.50 * q_vec + 0.50 * a_vec
-                v4 = 0.05 * q_vec + 0.95 * a_vec
-            elif asym_span_mode == "choice_forward_v2":
-                v0 = holistic
-                v1 = 0.40 * q_vec + 0.60 * a_vec
-                v2 = 0.20 * q_vec + 0.80 * a_vec
-                v3 = 0.50 * q_vec + 0.50 * a_vec
-                v4 = 0.15 * q_vec + 0.85 * a_vec
-            elif asym_span_mode == "balanced_spectrum":
-                v0 = holistic
-                v1 = 0.40 * q_vec + 0.60 * a_vec
-                v2 = 0.20 * q_vec + 0.80 * a_vec
-                v3 = 0.50 * q_vec + 0.50 * a_vec
-                v4 = 0.35 * q_vec + 0.65 * a_vec
-            elif asym_span_mode == "constraint_spectrum":
-                v0 = holistic
-                v1 = 0.70 * q_vec + 0.30 * a_vec
-                v2 = 0.20 * q_vec + 0.80 * a_vec
-                v3 = 0.50 * q_vec + 0.50 * a_vec
-                v4 = 0.35 * q_vec + 0.65 * a_vec
-            else:
-                # 5 asymmetric ThoughtHead perspectives (default):
-                v0 = holistic
-                v1 = 0.75 * q_vec + 0.25 * a_vec
-                v2 = 0.25 * q_vec + 0.75 * a_vec
-                v3 = 0.50 * q_vec + 0.50 * a_vec
-                v4 = holistic
-
-            multi_head_vecs = torch.stack([v0, v1, v2, v3, v4], dim=1)  # (b*4, 5, 1024)
-            multi_head_vecs = multi_head_vecs.view(b, 4, 5, -1).permute(0, 2, 1, 3)  # (b, 5, 4, 1024)
-            return multi_head_vecs
-        elif span_pooling:
-            import torch.nn.functional as F
-            input_ids = inputs["input_ids"]
-            attn_mask = inputs["attention_mask"]
-            B, T = input_ids.shape
-            match = (input_ids[:, :-1] == 37741) & (input_ids[:, 1:] == 27)
-            has_match = match.any(dim=1)
-            ans_pos = match.int().argmax(dim=1)
-            cols = torch.arange(T, device=device).unsqueeze(0).expand(B, T)
-            valid_lens = attn_mask.sum(dim=1) - 1
-
-            q_mask = (cols < ans_pos.unsqueeze(1)) & (attn_mask.bool())
-            a_mask = (cols >= (ans_pos + 2).unsqueeze(1)) & (cols < valid_lens.unsqueeze(1)) & (attn_mask.bool())
-
-            no_match = ~has_match.unsqueeze(1)
-            q_mask = torch.where(no_match, attn_mask.bool(), q_mask)
-            a_mask = torch.where(no_match, attn_mask.bool(), a_mask)
-
-            q_mask_f = q_mask.unsqueeze(-1).float()
-            a_mask_f = a_mask.unsqueeze(-1).float()
-            q_vec = (last_hidden * q_mask_f).sum(dim=1) / q_mask_f.sum(dim=1).clamp(min=1.0)
-            if span_mode == "attn":
-                H_norm = F.normalize(last_hidden, p=2, dim=-1)
-                q_norm = F.normalize(q_vec, p=2, dim=-1)
-                cos_sim = (H_norm * q_norm.unsqueeze(1)).sum(dim=-1)
-                scores = (cos_sim / 0.1).masked_fill(~a_mask, -1e9)
-                attn_weights = torch.softmax(scores, dim=-1).unsqueeze(-1)
-                a_vec = (last_hidden * attn_weights).sum(dim=1)
-            else:
-                a_vec = (last_hidden * a_mask_f).sum(dim=1) / a_mask_f.sum(dim=1).clamp(min=1.0)
-            pooled = (1.0 - span_weight) * q_vec + span_weight * a_vec
-        else:
-            mask = inputs["attention_mask"].unsqueeze(-1)
-            pooled = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
-    return pooled.view(b, 4, -1)
+def compute_ece(probs: torch.Tensor, targets: torch.Tensor, n_bins: int = 10) -> float:
+    """Compute true Expected Calibration Error (ECE) across M confidence bins."""
+    bin_boundaries = torch.linspace(0, 1, n_bins + 1)
+    ece = 0.0
+    for i in range(n_bins):
+        bin_lower = bin_boundaries[i]
+        bin_upper = bin_boundaries[i + 1]
+        in_bin = (probs > bin_lower) & (probs <= bin_upper) if i > 0 else (probs >= bin_lower) & (probs <= bin_upper)
+        prop_in_bin = in_bin.float().mean().item()
+        if prop_in_bin > 0:
+            accuracy_in_bin = targets[in_bin].float().mean().item()
+            avg_conf_in_bin = probs[in_bin].mean().item()
+            ece += abs(accuracy_in_bin - avg_conf_in_bin) * prop_in_bin
+    return float(ece)
 
 
 def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir="./data/arc", ensemble=False, head_weights=None, ensemble_temp=None, head_norm_logits=None, veto_blend=None, margin_gamma=None, decision_conf=None, decision_conf_mode=None, decision_conf_tau=None, decision_conf_alpha=None, max_len=None, dynamic_len=True):
@@ -201,24 +76,31 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
     model.to(device)
     model.eval()
 
-    num_heads = len({k.split(".")[1] for k in sys2_state.keys() if k.startswith("heads.")})
-    has_diff = "heads.0.hypothesis_head.0.weight" in sys2_state
-    has_recurrence = "feedback_proj.weight" in sys2_state
-    if has_diff:
-        is_pairwise = True
-        num_classes = 1
-    else:
-        hypo_w = sys2_state.get("heads.0.hypothesis_head.weight")
-        is_pairwise = (hypo_w is not None and hypo_w.shape[0] == 1)
-        num_classes = 1 if is_pairwise else 4
-
     is_mote = "router.gate.weight" in sys2_state
-    mote_mode = state.get("mote_mode", "supervised") if isinstance(state, dict) else "supervised"
-    if is_mote:
+    has_diff = "heads.0.hypothesis_head.0.weight" in sys2_state
+    hypo_w = sys2_state.get("heads.0.hypothesis_head.weight")
+    is_pairwise = has_diff or (hypo_w is not None and hypo_w.shape[0] == 1) or has_choices
+
+    if isinstance(state, dict) and "config" in state:
+        sys2 = System2(**state["config"])
+    elif is_mote:
+        num_heads = len({k.split(".")[1] for k in sys2_state.keys() if k.startswith("heads.")})
+        mote_mode = state.get("mote_mode", "supervised") if isinstance(state, dict) else "supervised"
         from mote import MoTESystem2
         has_soft = any("soft_centroids" in k for k in sys2_state.keys())
         sys2 = MoTESystem2(num_experts=num_heads, diff_features=has_diff, soft_centroid=has_soft, mote_mode=mote_mode)
     else:
+        num_heads = len({k.split(".")[1] for k in sys2_state.keys() if k.startswith("heads.")})
+        has_diff = "heads.0.hypothesis_head.0.weight" in sys2_state
+        has_recurrence = "feedback_proj.weight" in sys2_state
+        if has_diff:
+            is_pairwise = True
+            num_classes = 1
+        else:
+            hypo_w = sys2_state.get("heads.0.hypothesis_head.weight")
+            is_pairwise = (hypo_w is not None and hypo_w.shape[0] == 1)
+            num_classes = 1 if is_pairwise else 4
+
         layer_indices = [int(k.split(".")[4]) for k in sys2_state.keys() if "layers.layers." in k]
         head_layers = max(layer_indices) + 1 if layer_indices else 2
         kwargs = {"num_heads": num_heads, "num_classes": num_classes, "pairwise": is_pairwise, "diff_features": has_diff, "head_layers": head_layers}
@@ -350,6 +232,8 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
 
     correct = 0
     ece_sum = 0.0
+    all_confs = []
+    all_targets = []
     with torch.no_grad():
         for i in range(0, n, batch):
             b = min(batch, n - i)
@@ -357,13 +241,14 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
                 src_slice = sources[i : i + b] if sources else None
                 vecs = mean_pool_pairwise(
                     cols["question"][i : i + b], cols["choices"][i : i + b],
-                    device, max_len=eval_max_len, sources=src_slice,
+                    max_len=eval_max_len, device=device, sources=src_slice,
                     task_prefixes=task_prefixes, span_pooling=span_pooling,
                     span_weight=span_weight, span_mode=span_mode,
                     asym_spans=asym_spans, asym_span_mode=asym_span_mode,
+                    model=model, tokenizer=tokenizer,
                 )
             else:
-                vecs = mean_pool_texts(cols["text"][i : i + b], device)
+                vecs = mean_pool_texts(cols["text"][i : i + b], max_len=eval_max_len, device=device, model=model, tokenizer=tokenizer)
 
             if is_mote:
                 domain_ids = torch.zeros(b, dtype=torch.long, device=device)
@@ -385,10 +270,17 @@ def evaluate(checkpoint_path, batch=32, max_samples=None, device=None, data_dir=
                     win_logits = logits[torch.arange(b), best]  # (b, 4)
 
             preds = win_logits.max(dim=1).indices
-            correct += (preds == labels[i : i + b]).sum().item()
-            ece_sum += ((conf - (preds == labels[i : i + b]).float()) ** 2).sum().item()
+            is_cor = (preds == labels[i : i + b]).float()
+            correct += is_cor.sum().item()
+            ece_sum += ((conf - is_cor) ** 2).sum().item()
+            all_confs.append(conf.detach().cpu())
+            all_targets.append(is_cor.detach().cpu())
 
-    return {"accuracy": correct / n, "brier": ece_sum / n}
+    all_confs_t = torch.cat(all_confs) if all_confs else torch.zeros(0)
+    all_targets_t = torch.cat(all_targets) if all_targets else torch.zeros(0)
+    true_ece = compute_ece(all_confs_t, all_targets_t, n_bins=10) if len(all_confs_t) > 0 else 0.0
+
+    return {"accuracy": correct / n, "brier": ece_sum / n, "ece": true_ece}
 
 
 if __name__ == "__main__":
@@ -415,7 +307,7 @@ if __name__ == "__main__":
         hw = [float(x) for x in args.head_weights.split(",")] if args.head_weights else None
         m = evaluate(ckpt, max_samples=args.max_samples, data_dir=args.data, ensemble=args.ensemble, head_weights=hw, ensemble_temp=args.ensemble_temp, head_norm_logits=args.head_norm_logits, veto_blend=args.veto_blend, margin_gamma=args.margin_gamma, decision_conf=args.decision_conf, decision_conf_mode=args.decision_conf_mode, decision_conf_tau=args.decision_conf_tau, decision_conf_alpha=args.decision_conf_alpha, max_len=args.max_len, dynamic_len=args.dynamic_len)
         metric = 0.5 * m["accuracy"] + 0.5 * (1 - m["brier"])
-        print(json.dumps({"metric": round(metric, 4), "accuracy": round(m["accuracy"], 4), "brier": round(m["brier"], 4)}))
+        print(json.dumps({"metric": round(metric, 4), "accuracy": round(m["accuracy"], 4), "brier": round(m["brier"], 4), "ece": round(m["ece"], 4)}))
     except Exception as e:
         print(f"eval failed: {e}", file=sys.stderr)
         sys.exit(1)

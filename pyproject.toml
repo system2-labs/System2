@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "system2"
+version = "0.2.0"
+description = "Non-Autoregressive Feedforward System 2 Deliberation Architecture on ModernBERT"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Antigravity Research Team"}
+]
+keywords = [
+    "deep-learning",
+    "modernbert",
+    "system-2",
+    "deliberation",
+    "reasoning",
+    "calibration",
+    "non-autoregressive"
+]
+dependencies = [
+    "torch>=2.2.0",
+    "transformers>=4.48.0",
+    "datasets>=2.18.0",
+    "accelerate>=0.27.0",
+    "requests>=2.31.0",
+    "tqdm>=4.66.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.3.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
