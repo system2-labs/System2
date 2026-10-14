@@ -29,7 +29,7 @@ PATTERNS = {
         re.compile(r"\b(?:three-phase|3-phase|line-to-line\s+voltage|phase\s+voltage|Y-connected|Wye-connected|Delta-connected)\b", re.IGNORECASE),
         re.compile(r"\b(?:phasor|impedance\s+triangle|apparent\s+power|reactive\s+power|power\s+factor|kVA|kVAR)\b", re.IGNORECASE),
         re.compile(r"\b(?:Kirchhoff|KVL|KCL|Thevenin|Norton|superposition\s+theorem|RLC\s+circuit|RLC\s+tank)\b", re.IGNORECASE),
-        re.compile(r"\b(?:transformer\s+turns\s+ratio|induction\s+motor\s+slip|synchronous\s+speed|skin\s+effect)\b", re.IGNORECASE),
+        re.compile(r"\b(?:transformer\s+turns\s+ratio|induction\s+motor|synchronous\s+speed|skin\s+effect|4-pole|stator|rotor)\b", re.IGNORECASE),
         re.compile(r"\b(?:V_ab|V_an|V_bc|V_cn|I_a|I_b|I_c)\b"),
         re.compile(r"(?:[0-9]+(?:\.[0-9]+)?\s*(?:k?Ω|uF|μF|mF|mH|uH|μH|kHz|MHz|VAC|VDC))"),
     ],
@@ -58,6 +58,12 @@ PATTERNS = {
         re.compile(r"\b(?:atomic\s+number|atomic\s+radius|covalent\s+bond|ionic\s+bond|electronegativity|periodic\s+table)\b", re.IGNORECASE),
         re.compile(r"\b(?:Charles'?s\s+Law|exothermic\s+reaction|enthalpy|oxidative\s+phosphorylation|Mendelian\s+genetics)\b", re.IGNORECASE),
     ],
+    "math": [
+        re.compile(r"\b(?:GSM8K|word\s+problem|arithmetic\s+sequence|algebraic\s+expression|solve\s+for\s+x)\b", re.IGNORECASE),
+        re.compile(r"\b(?:how\s+many\s+altogether|how\s+much\s+money|how\s+many\s+miles|how\s+many\s+hours|how\s+many\s+days|how\s+many\s+clips|how\s+many\s+apples)\b", re.IGNORECASE),
+        re.compile(r"\b(?:quadratic\s+equation|polynomial|Pythagorean\s+theorem|prime\s+factorization|factorial)\b", re.IGNORECASE),
+        re.compile(r"\b(?:percentage\s+increase|cost\s+per\s+item|discount\s+of|calculate\s+the\s+total)\b", re.IGNORECASE),
+    ],
 }
 
 
@@ -74,7 +80,7 @@ def scan_lexical_signatures(text: str) -> Optional[Tuple[str, float]]:
             matches = regex.findall(text)
             if matches:
                 # Decisive domain matches carry score 2
-                weight = 2 if (domain in ("code", "auto", "med", "culinary") and len(matches) >= 1) else 1
+                weight = 2
                 scores[domain] += len(matches) * weight
 
     best_domain = max(scores, key=lambda k: scores[k])

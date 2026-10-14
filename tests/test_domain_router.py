@@ -96,12 +96,24 @@ TEST_BATTERIES = [
     ("culinary", "What role do lactic acid bacteria (Lactobacillus) play in lowering dough pH and extending the shelf life of sourdough?"),
     ("culinary", "Why does egg white foam collapse if even a small trace of egg yolk fat is present in the bowl during whipping?"),
     ("culinary", "What is retrogradation of starch in baked bread, and how does it lead to staling?"),
+
+    # -------------------- MATH (Track G) --------------------
+    ("math", "Natalia sold clips to 48 of her friends in April, and then she sold half as many clips in May. How many clips did Natalia sell altogether in April and May?"),
+    ("math", "Weng earns $12 an hour for babysitting. Yesterday, she just did 50 minutes of babysitting. How much money did she earn?"),
+    ("math", "Betty picked 16 apples. A friend gave her 4 more apples. If she ate 2 apples, how many apples does she have left altogether?"),
+    ("math", "A train travels 120 miles in 2 hours. What is its average speed in miles per hour, and how many miles will it cover in 5 hours?"),
+    ("math", "Calculate the value of x that satisfies the quadratic equation x^2 - 5x + 6 = 0."),
+    ("math", "A store offers a 20% discount of a jacket priced at $80. What is the final sale price before tax?"),
+    ("math", "If 3 pencils cost 75 cents, what is the cost per item, and how much money will 12 pencils cost?"),
+    ("math", "What is the prime factorization of 360 expressed in exponential form?"),
+    ("math", "In a right triangle with legs of length 6 cm and 8 cm, calculate the length of the hypotenuse using the Pythagorean theorem."),
+    ("math", "How many days are in 6 weeks, and how many hours are in 3 days altogether?"),
 ]
 
 
 def run_benchmark():
     print("========================================================================")
-    print(" DYNAMIC DOMAIN ROUTER BENCHMARK & VERIFICATION (60 QUESTIONS)")
+    print(" DYNAMIC DOMAIN ROUTER BENCHMARK & VERIFICATION (70 QUESTIONS)")
     print("========================================================================")
 
     router = DomainRouter(device="cpu")

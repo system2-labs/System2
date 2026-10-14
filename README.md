@@ -75,9 +75,9 @@ Every specialized track enforces the **Metric Invariant**: all commits must stri
 | `code` | **Track B: Polyglot Code & Query Traces** | **`0.9010`** | 89.11% | 0.0891 | [`models/system2_code.pt`](file:///Users/thomjames-worrall/System2/models/system2_code.pt) | Verified |
 | `med` | **Track C: Clinical & Medical Diagnostics** | **`0.5397`** | 29.38% | 0.2145 | [`models/system2_med.pt`](file:///Users/thomjames-worrall/System2/models/system2_med.pt) | Verified |
 | `electrical` | **Track D: Electrical, Electronics & Power** | **`0.5496`** | 32.09% | 0.2217 | [`models/system2_electrical.pt`](file:///Users/thomjames-worrall/System2/models/system2_electrical.pt) | Verified |
-| `auto` | **Track E: Automotive & HVAC Diagnostics** | **`0.9809`** | 99.50% | 0.0332 | [`models/system2_auto.pt`](file:///Users/thomjames-worrall/System2/models/system2_auto.pt) | Verified |
+| `auto` | **Track E: Automotive & HVAC Diagnostics** | **`0.9881`** | 99.50% | 0.0188 | [`models/system2_auto.pt`](file:///Users/thomjames-worrall/System2/models/system2_auto.pt) | Verified |
 | `culinary` | **Track F: Culinary Chemistry & Food Science** | **`0.7487`** | 68.46% | 0.1872 | [`models/system2_culinary.pt`](file:///Users/thomjames-worrall/System2/models/system2_culinary.pt) | Verified |
-| `math` | **Track G: Mathematical & Quantitative Reasoning** | *In Training* | *In Training* | *In Training* | `models/system2_math.pt` | **Active Focus (Phase 3)** |
+| `math` | **Track G: Mathematical & Quantitative Reasoning** | **`0.9462`** | 95.60% | 0.0636 | [`models/system2_math.pt`](file:///Users/thomjames-worrall/System2/models/system2_math.pt) | Verified |
 
 ---
 
@@ -94,10 +94,10 @@ Every specialized track enforces the **Metric Invariant**: all commits must stri
   - Pair local generative models with System 2 feedforward deliberation.
   - Validated across 4 tiers: Gemma-e4b (4B) $\to$ Gemma-12B (12B) $\to$ Qwen-27B $\to$ Qwen-35B.
   - Proved that an ultra-lightweight 4B/12B model + System 2 achieves **100% accuracy parity** and higher calibrated confidence than a standalone 35B model.
-- [/] **Phase 3: Multi-Step Reasoning Benchmarks**:
+- [x] **Phase 3: Multi-Step Reasoning Benchmarks**:
   - [x] **AI2 ARC (Science)**: Full integration of ARC-Challenge + ARC-Easy in-domain data (`0.7397`).
   - [x] **Polyglot Code Execution (Code)**: Multi-language traces across Python, Rust, C++, C#, Java, SQL, Bash (`0.9010`).
-  - [ ] **GSM8K & MATH (Symbolic Reasoning)**: Multi-step mathematical word problems and competition math with type-aware distractors. *(Currently executing)*
+  - [x] **GSM8K & MATH (Symbolic Reasoning)**: Multi-step mathematical word problems with type-aware distractors (**`0.9462`** guarded metric, **`95.60%`** held-out accuracy).
 - [x] **Phase 4: Dynamic Domain Routing & Dispatch**:
   - Two-stage hierarchical router (Lexical Gate + Dense ModernBERT Centroid Projection).
   - Sub-millisecond dispatch ($<0.1\text{ ms}$) across specialized tracks with **100.0% accuracy** on 60-question test suite.
