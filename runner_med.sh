@@ -22,14 +22,18 @@ if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/medical" --dynamic-len)"
 fi
 
 METRIC="$(echo "$OUT" | python3 -c 'import json,sys;print(json.load(sys.stdin)["metric"])')"
-echo "[runner_med] new metric = $METRIC  ($OUT)"
+ACC="$(echo "$OUT" | python3 -c 'import json,sys;print(json.load(sys.stdin)["accuracy"])')"
+BRIER="$(echo "$OUT" | python3 -c 'import json,sys;print(json.load(sys.stdin)["brier"])')"
+ECE="$(echo "$OUT" | python3 -c 'import json,sys;d=json.load(sys.stdin);print(d.get("ece", 0.0))')"
+
+echo "[runner_med] Evaluation: Metric=$METRIC | Acc=$ACC | Brier=$BRIER | ECE=$ECE"
 
 if [[ ! -f "$BEST_FILE" ]]; then
   echo "$METRIC" > "$BEST_FILE"
   echo "[runner_med] Track C baseline recorded"
   cp "$CANDIDATE" "$CHECKPOINT"
   rm -f "$CANDIDATE"
-  git add -A && git commit -m "feat(system2-med): baseline, ${METRIC}" || true
+  git add -A && git commit -m "feat(system2-med): baseline, metric ${METRIC} (acc ${ACC}, brier ${BRIER})" || true
   git push origin track-c || echo "[runner_med] push failed (offline?)"
   exit 0
 fi
@@ -42,7 +46,7 @@ if [[ "$IS_BETTER" -eq 1 ]]; then
   echo "$METRIC" > "$BEST_FILE"
   cp "$CANDIDATE" "$CHECKPOINT"
   rm -f "$CANDIDATE"
-  git add -A && git commit -m "feat(system2-med): $SUMMARY, ${METRIC}"
+  git add -A && git commit -m "feat(system2-med): $SUMMARY, metric ${METRIC} (acc ${ACC}, brier ${BRIER})"
   git push origin track-c || echo "[runner_med] push failed (offline?)"
 else
   echo "[runner_med] WORSE or equal: $METRIC <= $BEST -> revert"

@@ -55,7 +55,7 @@ HYPERPARAMS = {
     "lambda_cal": 0.5,
     "lambda_judge_cal": 0.06,
     "weight_decay": 0.0,
-    "warmup_ratio": 0.0,
+    "warmup_ratio": 0.05,
     "oracle_judge_target": True,
     "detach_judger": True,
     "shuffle_per_epoch": False,
