@@ -5,37 +5,45 @@
     "tier": "4B",
     "samples": [
       {
-        "text": "This problem requires several steps: first, calculating how many eggs are used, then finding the remainder to be sold, and finally, calculating the total revenue from those remaining eggs.\n\n### Step 1: Calculate the total number of eggs used daily.\n*   Eggs eaten for breakfast: $3$\n*   Eggs used for muffins: $4$\n*   Total eggs used: $3 + 4 = 7$ eggs\n\n### Step 2: Calculate the number of remaining eggs to be sold.\n*   Total eggs laid per day: $16$\n*   Total eggs used daily: $7$\n*   Eggs sold: $16 - 7 = 9$ eggs\n\n### Step 3: Calculate the total money made at the farmers' market.\n*   Number of eggs sold: $9$\n*   Price per egg: $\\$2$\n*   Total earnings: $9 \\times \\$2 = \\$18$\n\n***\n\n**Final Numerical Answer:**\n\\$18",
-        "latency_sec": 13.78,
-        "total_tokens": 590,
-        "completion_tokens": 497
+        "text": "This is a step-by-step solution to determine Janet's daily earnings.\n\n### Step 1: Calculate the total number of eggs used (consumed) per day.\n*   Eggs eaten for breakfast: 3\n*   Eggs used for muffins: 4\n*   Total consumed eggs = $3 + 4 = 7$ eggs\n\n### Step 2: Calculate the number of remaining eggs available for sale.\n*   Total eggs laid per day: 16\n*   Total consumed eggs: 7\n*   Remaining eggs (eggs sold) = $16 - 7 = 9$ eggs\n\n### Step 3: Calculate the total money made from selling the remaining eggs.\n*   Eggs sold: 9\n*   Price per egg: $2\n*   Daily earnings = $9 \\times \\$2 = \\$18$\n\n***\n\n**Final numerical answer:** 18",
+        "reasoning": "\nHere's a thinking process to solve the problem:\n\n1.  **Understand the Goal:** The objective is to calculate the total money Janet makes daily from selling duck eggs at the farmers' market.\n\n2.  **Identify the Given Information:**\n    *   Total eggs laid per day: 16\n    *   Eggs eaten for breakfast (daily consumption): 3\n    *   Eggs used for baking muffins (daily consumption): 4\n    *   Selling price per egg: $2\n\n3.  **Calculate Daily Consumption (Eggs Used):**\n    *   Breakfast usage: 3 eggs\n    *   Muffin usage: 4 eggs\n    *   Total used = $3 + 4 = 7$ eggs\n\n4.  **Calculate Remaining Eggs (Eggs Sold):**\n    *   Total laid: 16 eggs\n    *   Total used: 7 eggs\n    *   Eggs remaining = $16 - 7 = 9$ eggs\n\n5.  **Calculate Daily Earnings (Revenue):**\n    *   Eggs sold: 9 eggs\n    *   Price per egg: $2\n    *   Daily earnings = $9 \\times \\$2$\n\n6.  **Perform the Final Calculation:**\n    *   $9 \\times 2 = 18$\n\n7.  **Formulate the Final Answer:** Janet makes $18 every day. (Ensure the steps are clearly presented as requested.)",
+        "used_thinking": true,
+        "latency_sec": 14.62,
+        "total_tokens": 598,
+        "completion_tokens": 505
       },
       {
-        "text": "This problem requires calculating the number of eggs remaining after use and then multiplying that remainder by the selling price.\n\nHere is the step-by-step solution:\n\n### Step 1: Calculate the total number of eggs used daily.\n*   Eggs eaten for breakfast: 3\n*   Eggs used for baking muffins: 4\n$$\\text{Total eggs used} = 3 + 4 = 7 \\text{ eggs}$$\n\n### Step 2: Calculate the number of eggs remaining for sale.\n*   Total eggs laid per day: 16\n*   Eggs used daily: 7\n$$\\text{Eggs for sale} = 16 - 7 = 9 \\text{ eggs}$$\n\n### Step 3: Calculate the total earnings from the farmers' market.\n*   Number of eggs sold: 9\n*   Price per egg: $2\n$$\\text{Total earnings} = 9 \\times \\$2 = \\$18$$\n\n***\n\n**Final Answer:** Janet makes **$18** every day at the farmers' market.",
-        "latency_sec": 8.68,
-        "total_tokens": 717,
-        "completion_tokens": 624
+        "text": "Here is the step-by-step solution:\n\n**1. Determine the total number of eggs laid per day:**\nJanet's ducks lay 16 eggs per day.\n\n**2. Calculate the number of eggs used for breakfast:**\nJanet eats 3 eggs for breakfast every morning.\n\n**3. Calculate the number of eggs used for baking:**\nJanet uses 4 eggs to bake muffins every day.\n\n**4. Calculate the total number of eggs used (consumed/used):**\nTotal used = Eggs for breakfast + Eggs for baking\nTotal used = $3 + 4$\nTotal used = $7$ eggs\n\n**5. Calculate the number of remaining eggs (eggs sold):**\nEggs sold = Total laid - Total used\nEggs sold = $16 - 7$\nEggs sold = $9$ eggs\n\n**6. Calculate the total money earned:**\nJanet sells the remaining 9 eggs for $2 per egg.\nEarnings = Number of eggs sold $\\times$ Price per egg\nEarnings = $9 \\times \\$2$\nEarnings = $\\$18$\n\n**Final Numerical Answer:** 18",
+        "reasoning": "",
+        "used_thinking": false,
+        "latency_sec": 3.4,
+        "total_tokens": 332,
+        "completion_tokens": 239
       },
       {
-        "text": "This problem requires a step-by-step calculation to determine the number of eggs remaining for sale and then calculating the income from those sales.\n\n### Step 1: Calculate the total number of eggs used by Janet each day.\n*   Eggs eaten for breakfast: 3\n*   Eggs baked for muffins: 4\n*   Total eggs used = $3 + 4 = 7$ eggs\n\n### Step 2: Calculate the number of remaining eggs available for sale.\n*   Total eggs laid per day: 16\n*   Eggs used daily: 7\n*   Remaining eggs = $16 - 7 = 9$ eggs\n\n### Step 3: Calculate the total amount of money Janet makes at the farmers' market.\n*   Remaining eggs for sale: 9\n*   Price per egg: $2\n*   Total daily income = $9 \\times \\$2 = \\$18$\n\n***\n**Final Numerical Answer:** 18",
-        "latency_sec": 6.88,
-        "total_tokens": 587,
-        "completion_tokens": 494
+        "text": "This problem requires calculating the number of eggs remaining after daily consumption and then multiplying that remainder by the selling price.\n\n### Step 1: Calculate the total number of eggs used daily.\nJanet uses some eggs for personal consumption (breakfast) and baking (muffins).\n\n*   Eggs eaten for breakfast: 3\n*   Eggs used for muffins: 4\n*   Total eggs used = $3 + 4 = 7$ eggs\n\n### Step 2: Calculate the number of eggs remaining for sale.\nSubtract the used eggs from the total number of eggs laid.\n\n*   Total eggs laid: 16\n*   Eggs used: 7\n*   Remaining eggs for sale = $16 - 7 = 9$ eggs\n\n### Step 3: Calculate the total daily earnings.\nMultiply the remaining eggs by the price per egg.\n\n*   Eggs for sale: 9\n*   Price per egg: \\$2\n*   Total earnings = $9 \\times \\$2 = \\$18$\n\n***\n\n**Final Numerical Answer:** 18",
+        "reasoning": "\nHere's a thinking process to solve the problem:\n\n1.  **Understand the Goal:** The objective is to find the total amount of money Janet earns daily from selling eggs at the farmers' market.\n\n2.  **Identify Key Information (Input Data):**\n    *   Total eggs laid per day: 16\n    *   Eggs eaten for breakfast: 3\n    *   Eggs used for muffins: 4\n    *   Selling price per egg: $2\n\n3.  **Calculate the Eggs Used (Consumption):**\n    *   Eggs used = (Eaten for breakfast) + (Used for muffins)\n    *   Eggs used = 3 + 4\n    *   Eggs used = 7\n\n4.  **Calculate the Eggs Remaining (Sales Stock):**\n    *   Eggs remaining = (Total eggs laid) - (Eggs used)\n    *   Eggs remaining = 16 - 7\n    *   Eggs remaining = 9\n\n5.  **Calculate the Daily Revenue (Earnings):**\n    *   Revenue = (Eggs remaining) $\\times$ (Price per egg)\n    *   Revenue = 9 $\\times$ $2\n    *   Revenue = $18\n\n6.  **Final Review and Formatting:** Ensure the steps are clear and the final answer is presented numerically as requested. (The final answer is 18).",
+        "used_thinking": true,
+        "latency_sec": 7.46,
+        "total_tokens": 618,
+        "completion_tokens": 525
       },
       {
-        "text": "This problem requires calculating the daily profit by first determining how many eggs are left to sell.\n\n### Step 1: Determine the total number of eggs laid per day.\nJanet's ducks lay **16** eggs per day.\n\n### Step 2: Calculate the total number of eggs used daily.\n*   Eggs eaten for breakfast: 3\n*   Eggs used for muffins: 4\n*   Total eggs used = $3 + 4 = 7$ eggs\n\n### Step 3: Calculate the remaining number of eggs for sale.\n*   Total eggs laid - Total eggs used = Eggs remaining\n*   $16 - 7 = 9$ eggs\n\n### Step 4: Calculate the total revenue from selling the remaining eggs.\n*   Eggs for sale $\\times$ Price per egg = Total earnings\n*   $9 \\times \\$2 = \\$18$\n\nJanet makes **$18** every day at the farmers' market.\n\n***\n**Final Numerical Answer:** 18",
-        "latency_sec": 7.78,
-        "total_tokens": 640,
-        "completion_tokens": 547
+        "text": "This problem requires calculating the number of eggs remaining after daily consumption and then multiplying that remainder by the selling price.\n\nHere is the step-by-step solution:\n\n### Step 1: Calculate the total number of eggs used daily.\nJanet uses eggs for breakfast and muffins.\n*   Eggs eaten (breakfast): 3\n*   Eggs used (muffins): 4\n*   Total eggs used: $3 + 4 = 7$ eggs\n\n### Step 2: Calculate the number of eggs remaining for sale.\nSubtract the used eggs from the total eggs laid.\n*   Total eggs laid: 16\n*   Eggs used: 7\n*   Eggs remaining for sale: $16 - 7 = 9$ eggs\n\n### Step 3: Calculate the total money made.\nMultiply the number of eggs sold by the price per egg.\n*   Eggs sold: 9\n*   Price per egg: $2\n*   Total earnings: $9 \\times \\$2 = \\$18$\n\n***\n\n**Final Numerical Answer:** 18",
+        "reasoning": "\nHere's a thinking process to solve the problem:\n\n1.  **Understand the Goal:** The objective is to calculate the total amount of money Janet makes daily from selling eggs at the farmers' market.\n\n2.  **Identify the Given Information:**\n    *   Total eggs laid per day: 16\n    *   Eggs eaten for breakfast (daily): 3\n    *   Eggs used for muffins (daily): 4\n    *   Selling price per egg: $2\n\n3.  **Determine the Number of Eggs Remaining for Sale (The Remainder):**\n    *   Total eggs - Eggs eaten - Eggs used = Eggs remaining\n    *   $16 - 3 - 4$\n\n4.  **Perform the Subtraction (Step-by-step):**\n    *   $16 - 3 = 13$ (Eggs left after breakfast)\n    *   $13 - 4 = 9$ (Eggs remaining for sale)\n\n5.  **Calculate the Total Revenue:**\n    *   Eggs sold $\\times$ Price per egg = Total earnings\n    *   $9 \\times \\$2$\n\n6.  **Perform the Multiplication:**\n    *   $9 \\times 2 = 18$\n\n7.  **Formulate the Final Answer:** State the steps clearly and provide the final numerical answer in dollars. (The result is $18).",
+        "used_thinking": true,
+        "latency_sec": 7.57,
+        "total_tokens": 627,
+        "completion_tokens": 534
       }
     ],
     "system2_deliberation": {
-      "latency_ms": 3408.03,
+      "latency_ms": 3912.02,
       "routing": {
         "track": "math",
         "confidence": 0.5352,
         "method": "centroid",
-        "latency_ms": 458.421,
+        "latency_ms": 541.757,
         "probabilities": {
           "science": 0.1973,
           "code": 0.0413,
@@ -46,39 +54,39 @@
           "math": 0.5352
         }
       },
-      "winning_index": 1,
-      "winning_text": "This problem requires calculating the number of eggs remaining after use and then multiplying that remainder by the selling price.\n\nHere is the step-by-step solution:\n\n### Step 1: Calculate the total number of eggs used daily.\n*   Eggs eaten for breakfast: 3\n*   Eggs used for baking muffins: 4\n$$\\text{Total eggs used} = 3 + 4 = 7 \\text{ eggs}$$\n\n### Step 2: Calculate the number of eggs remaining for sale.\n*   Total eggs laid per day: 16\n*   Eggs used daily: 7\n$$\\text{Eggs for sale} = 16 - 7 = 9 \\text{ eggs}$$\n\n### Step 3: Calculate the total earnings from the farmers' market.\n*   Number of eggs sold: 9\n*   Price per egg: $2\n$$\\text{Total earnings} = 9 \\times \\$2 = \\$18$$\n\n***\n\n**Final Answer:** Janet makes **$18** every day at the farmers' market.",
-      "calibrated_confidence_pct": 75.2,
-      "consensus_pct": 100.0,
-      "agreement_count": 5,
+      "winning_index": 3,
+      "winning_text": "This problem requires calculating the number of eggs remaining after daily consumption and then multiplying that remainder by the selling price.\n\nHere is the step-by-step solution:\n\n### Step 1: Calculate the total number of eggs used daily.\nJanet uses eggs for breakfast and muffins.\n*   Eggs eaten (breakfast): 3\n*   Eggs used (muffins): 4\n*   Total eggs used: $3 + 4 = 7$ eggs\n\n### Step 2: Calculate the number of eggs remaining for sale.\nSubtract the used eggs from the total eggs laid.\n*   Total eggs laid: 16\n*   Eggs used: 7\n*   Eggs remaining for sale: $16 - 7 = 9$ eggs\n\n### Step 3: Calculate the total money made.\nMultiply the number of eggs sold by the price per egg.\n*   Eggs sold: 9\n*   Price per egg: $2\n*   Total earnings: $9 \\times \\$2 = \\$18$\n\n***\n\n**Final Numerical Answer:** 18",
+      "calibrated_confidence_pct": 88.8,
+      "consensus_pct": 80.0,
+      "agreement_count": 4,
       "choice_probabilities": [
-        10.9,
-        41.7,
-        22.8,
-        24.7
+        13.3,
+        18.7,
+        20.5,
+        47.5
       ],
       "killed_branches": [
         {
-          "index": 3,
-          "text": "This problem requires calculating the daily profit by first determining how many eggs are left to sell.\n\n### Step 1: Determine the total number of eggs laid per day.\nJanet's ducks lay **16** eggs per day.\n\n### Step 2: Calculate the total number of eggs used daily.\n*   Eggs eaten for breakfast: 3\n*   Eggs used for muffins: 4\n*   Total eggs used = $3 + 4 = 7$ eggs\n\n### Step 3: Calculate the remaining number of eggs for sale.\n*   Total eggs laid - Total eggs used = Eggs remaining\n*   $16 - 7 = 9$ eggs\n\n### Step 4: Calculate the total revenue from selling the remaining eggs.\n*   Eggs for sale $\\times$ Price per egg = Total earnings\n*   $9 \\times \\$2 = \\$18$\n\nJanet makes **$18** every day at the farmers' market.\n\n***\n**Final Numerical Answer:** 18",
-          "probability_pct": 24.7,
-          "rejection_margin_sigma": -1.1,
+          "index": 2,
+          "text": "This problem requires calculating the number of eggs remaining after daily consumption and then multiplying that remainder by the selling price.\n\n### Step 1: Calculate the total number of eggs used daily.\nJanet uses some eggs for personal consumption (breakfast) and baking (muffins).\n\n*   Eggs eaten for breakfast: 3\n*   Eggs used for muffins: 4\n*   Total eggs used = $3 + 4 = 7$ eggs\n\n### Step 2: Calculate the number of eggs remaining for sale.\nSubtract the used eggs from the total number of eggs laid.\n\n*   Total eggs laid: 16\n*   Eggs used: 7\n*   Remaining eggs for sale = $16 - 7 = 9$ eggs\n\n### Step 3: Calculate the total daily earnings.\nMultiply the remaining eggs by the price per egg.\n\n*   Eggs for sale: 9\n*   Price per egg: \\$2\n*   Total earnings = $9 \\times \\$2 = \\$18$\n\n***\n\n**Final Numerical Answer:** 18",
+          "probability_pct": 20.5,
+          "rejection_margin_sigma": -1.34,
           "heads_refuting": "5/5 Heads",
           "status": "Killed by Deliberation"
         },
         {
-          "index": 2,
-          "text": "This problem requires a step-by-step calculation to determine the number of eggs remaining for sale and then calculating the income from those sales.\n\n### Step 1: Calculate the total number of eggs used by Janet each day.\n*   Eggs eaten for breakfast: 3\n*   Eggs baked for muffins: 4\n*   Total eggs used = $3 + 4 = 7$ eggs\n\n### Step 2: Calculate the number of remaining eggs available for sale.\n*   Total eggs laid per day: 16\n*   Eggs used daily: 7\n*   Remaining eggs = $16 - 7 = 9$ eggs\n\n### Step 3: Calculate the total amount of money Janet makes at the farmers' market.\n*   Remaining eggs for sale: 9\n*   Price per egg: $2\n*   Total daily income = $9 \\times \\$2 = \\$18$\n\n***\n**Final Numerical Answer:** 18",
-          "probability_pct": 22.8,
-          "rejection_margin_sigma": -1.31,
-          "heads_refuting": "5/5 Heads",
+          "index": 1,
+          "text": "Here is the step-by-step solution:\n\n**1. Determine the total number of eggs laid per day:**\nJanet's ducks lay 16 eggs per day.\n\n**2. Calculate the number of eggs used for breakfast:**\nJanet eats 3 eggs for breakfast every morning.\n\n**3. Calculate the number of eggs used for baking:**\nJanet uses 4 eggs to bake muffins every day.\n\n**4. Calculate the total number of eggs used (consumed/used):**\nTotal used = Eggs for breakfast + Eggs for baking\nTotal used = $3 + 4$\nTotal used = $7$ eggs\n\n**5. Calculate the number of remaining eggs (eggs sold):**\nEggs sold = Total laid - Total used\nEggs sold = $16 - 7$\nEggs sold = $9$ eggs\n\n**6. Calculate the total money earned:**\nJanet sells the remaining 9 eggs for $2 per egg.\nEarnings = Number of eggs sold $\\times$ Price per egg\nEarnings = $9 \\times \\$2$\nEarnings = $\\$18$\n\n**Final Numerical Answer:** 18",
+          "probability_pct": 18.7,
+          "rejection_margin_sigma": -1.08,
+          "heads_refuting": "4/5 Heads",
           "status": "Killed by Deliberation"
         },
         {
           "index": 0,
-          "text": "This problem requires several steps: first, calculating how many eggs are used, then finding the remainder to be sold, and finally, calculating the total revenue from those remaining eggs.\n\n### Step 1: Calculate the total number of eggs used daily.\n*   Eggs eaten for breakfast: $3$\n*   Eggs used for muffins: $4$\n*   Total eggs used: $3 + 4 = 7$ eggs\n\n### Step 2: Calculate the number of remaining eggs to be sold.\n*   Total eggs laid per day: $16$\n*   Total eggs used daily: $7$\n*   Eggs sold: $16 - 7 = 9$ eggs\n\n### Step 3: Calculate the total money made at the farmers' market.\n*   Number of eggs sold: $9$\n*   Price per egg: $\\$2$\n*   Total earnings: $9 \\times \\$2 = \\$18$\n\n***\n\n**Final Numerical Answer:**\n\\$18",
-          "probability_pct": 10.9,
-          "rejection_margin_sigma": -2.37,
+          "text": "This is a step-by-step solution to determine Janet's daily earnings.\n\n### Step 1: Calculate the total number of eggs used (consumed) per day.\n*   Eggs eaten for breakfast: 3\n*   Eggs used for muffins: 4\n*   Total consumed eggs = $3 + 4 = 7$ eggs\n\n### Step 2: Calculate the number of remaining eggs available for sale.\n*   Total eggs laid per day: 16\n*   Total consumed eggs: 7\n*   Remaining eggs (eggs sold) = $16 - 7 = 9$ eggs\n\n### Step 3: Calculate the total money made from selling the remaining eggs.\n*   Eggs sold: 9\n*   Price per egg: $2\n*   Daily earnings = $9 \\times \\$2 = \\$18$\n\n***\n\n**Final numerical answer:** 18",
+          "probability_pct": 13.3,
+          "rejection_margin_sigma": -2.07,
           "heads_refuting": "5/5 Heads",
           "status": "Killed by Deliberation"
         }
@@ -91,37 +99,45 @@
     "tier": "12B",
     "samples": [
       {
-        "text": "To find out how much Janet makes at the farmers' market every day, we can follow these steps:\n\n1.  **Determine the total number of eggs laid daily:**\n    Janet's ducks lay 16 eggs per day.\n\n2.  **Calculate the number of eggs used/eaten:**\n    - Eggs eaten for breakfast: 3\n    - Eggs used for muffins: 4\n    - Total used = $3 + 4 = 7$ eggs.\n\n3.  **Calculate the number of remaining eggs to be sold:**\n    - Total eggs - Total used = Remaining eggs\n    - $16 - 7 = 9$ eggs.\n\n4.  **Calculate the total money earned from selling the remaining eggs:**\n    - Number of eggs sold: 9\n    - Price per egg: $2\n    - Total earnings = $9 \\times \\$2 = \\$18$.\n\n**Final Answer:**\nJanet makes **$18** every day at the farmers' market.",
-        "latency_sec": 27.79,
-        "total_tokens": 702,
-        "completion_tokens": 609
+        "text": "To find out how much money Janet makes at the farmers' market each day, follow these steps:\n\n1.  **Determine the total number of eggs used:**\n    Janet uses 3 eggs for breakfast and 4 eggs for muffins.\n    $3 + 4 = 7 \\text{ eggs used}$\n\n2.  **Calculate the number of eggs remaining for sale:**\n    Subtract the eggs used from the total number of eggs laid.\n    $16 \\text{ (total eggs)} - 7 \\text{ (eggs used)} = 9 \\text{ eggs remaining}$\n\n3.  **Calculate the total money earned:**\n    Multiply the number of remaining eggs by the price per egg.\n    $9 \\text{ eggs} \\times \\$2 \\text{ per egg} = \\$18$\n\n**Final Answer:**\nJanet makes $18 every day at the farmers' market.",
+        "reasoning": "\n*   Total eggs laid per day: 16.\n    *   Eggs eaten for breakfast: 3.\n    *   Eggs used for muffins: 4.\n    *   Price per egg sold: $2.\n\n    *   Step 1: Find the total number of eggs used (eaten and for muffins).\n    *   Step 2: Find the number of eggs remaining to be sold.\n    *   Step 3: Calculate the total money earned from selling those eggs.\n\n    *   Total eggs used = Eggs eaten + Eggs for muffins\n    *   Total eggs used = 3 + 4 = 7.\n\n    *   Remaining eggs = Total eggs laid - Total eggs used\n    *   Remaining eggs = 16 - 7 = 9.\n\n    *   Money earned = Remaining eggs \u00d7 Price per egg\n    *   Money earned = 9 * $2 = $18.\n\n    *   Total eggs: 16\n    *   Subtract eaten: 16 - 3 = 13.\n    *   Subtract muffins: 13 - 4 = 9.\n    *   Remaining eggs: 9.\n    *   Price per egg: $2.\n    *   Total money: 9 * 2 = 18.\n\n    *   Is the math correct? Yes (3+4=7, 16-7=9, 9*2=18).\n    *   Did I answer the specific question? (How much in dollars does Janet make every day?) Yes.",
+        "used_thinking": true,
+        "latency_sec": 10.08,
+        "total_tokens": 628,
+        "completion_tokens": 535
       },
       {
-        "text": "To find out how much Janet makes at the farmers' market each day, we can follow these steps:\n\n1.  **Determine the total number of eggs used:**\n    Janet eats 3 eggs for breakfast and uses 4 eggs for baking muffins.\n    Total used = $3 + 4 = 7$ eggs per day.\n\n2.  **Calculate the number of eggs remaining to be sold:**\n    Janet's ducks lay 16 eggs per day. Subtract the eggs used from the total production.\n    Remaining eggs = $16 - 7 = 9$ eggs.\n\n3.  **Calculate the total earnings from the sales:**\n    Janet sells each of the remaining eggs for $2.\n    Total earnings = $9 \\text{ eggs} \\times \\$2/\\text{egg} = \\$18$.\n\n**Final Answer:**\nJanet makes $18.",
-        "latency_sec": 10.02,
-        "total_tokens": 623,
-        "completion_tokens": 530
+        "text": "To find out how much money Janet makes at the farmers' market each day, we can follow these steps:\n\n1.  **Calculate the total number of eggs used daily:**\n    Janet uses some eggs for herself and for baking.\n    Eggs eaten: 3\n    Eggs used for muffins: 4\n    Total eggs used = $3 + 4 = 7$ eggs.\n\n2.  **Calculate the number of eggs remaining for sale:**\n    Janet starts with 16 eggs each day.\n    Total eggs laid: 16\n    Total eggs used: 7\n    Remaining eggs = $16 - 7 = 9$ eggs.\n\n3.  **Calculate the total money made from selling the remaining eggs:**\n    She sells each of the remaining eggs for $2.\n    Number of eggs sold: 9\n    Price per egg: $2\n    Total money earned = $9 \\times \\$2 = \\$18$.\n\n**Final Answer:**\nJanet makes **$18** every day at the farmers' market.",
+        "reasoning": "\n*   Number of eggs laid per day: 16.\n    *   Eggs eaten for breakfast: 3.\n    *   Eggs used for muffins: 4.\n    *   Price per egg sold at the market: $2.\n\n    *   Step 1: Calculate the total number of eggs used/eaten per day.\n    *   Step 2: Calculate the remaining number of eggs available for sale.\n    *   Step 3: Calculate the total revenue from selling those remaining eggs.\n\n    *   Number of eggs eaten for breakfast: 3\n    *   Number of eggs used for muffins: 4\n    *   Total used = 3 + 4 = 7 eggs.\n\n    *   Total eggs laid: 16\n    *   Total used/eaten: 7\n    *   Remaining eggs = 16 - 7 = 9 eggs.\n\n    *   Number of eggs sold: 9\n    *   Price per egg: $2\n    *   Total money made = 9 eggs * $2/egg = $18.\n\n    *   Check the math: 16 - (3 + 4) = 16 - 7 = 9.\n    *   9 * 2 = 18.\n    *   Everything seems correct.",
+        "used_thinking": true,
+        "latency_sec": 9.66,
+        "total_tokens": 608,
+        "completion_tokens": 515
       },
       {
-        "text": "To find out how much Janet makes at the farmers' market, we can follow these steps:\n\n1.  **Identify the total number of eggs produced daily:**\n    Janet's ducks lay 16 eggs per day.\n\n2.  **Calculate the total number of eggs used by Janet:**\n    She eats 3 eggs for breakfast and uses 4 eggs for muffins.\n    $3 + 4 = 7$ eggs used.\n\n3.  **Calculate the number of eggs remaining to be sold:**\n    Subtract the used eggs from the total daily production.\n    $16 - 7 = 9$ eggs remaining.\n\n4.  **Calculate the total amount earned from selling the eggs:**\n    She sells each of the remaining 9 eggs for $2.\n    $9 \\times \\$2 = \\$18$.\n\n**Final Answer:**\nJanet makes $18 every day at the farmers' market.",
-        "latency_sec": 11.62,
-        "total_tokens": 714,
-        "completion_tokens": 621
+        "text": "To find out how much Janet makes at the farmers' market every day, we can follow these steps:\n\n1.  **Determine the total number of eggs used:**\n    Janet uses some eggs for her own breakfast and some for muffins.\n    Eggs eaten + Eggs used for muffins = 3 + 4 = 7 eggs.\n\n2.  **Calculate the number of eggs remaining to be sold:**\n    Subtract the used eggs from the total number of eggs laid per day.\n    Total eggs - Eggs used = 16 - 7 = 9 eggs.\n\n3.  **Calculate the total amount earned from selling the remaining eggs:**\n    Multiply the number of remaining eggs by the price per egg.\n    9 eggs \u00d7 $2 per egg = $18.\n\n**Final Answer:**\nJanet makes **$18** every day at the farmers' market.",
+        "reasoning": "\n*   Total eggs laid per day: 16.\n    *   Eggs eaten for breakfast: 3.\n    *   Eggs used for muffins: 4.\n    *   Price per egg sold at the market: $2.\n\n    *   Find out how many eggs are left after breakfast and muffins.\n    *   Calculate the revenue from selling those remaining eggs at $2 each.\n\n    *   Total eggs = 16\n    *   Eggs used (eaten + muffins) = 3 + 4 = 7\n    *   Remaining eggs = 16 - 7 = 9\n\n    *   Price per egg = $2\n    *   Revenue = Number of remaining eggs \u00d7 Price per egg\n    *   Revenue = 9 * 2 = 18\n\n    *   Total eggs: 16\n    *   Eggs consumed/used: 3 + 4 = 7\n    *   Remaining eggs for sale: 16 - 7 = 9. (Correct)\n    *   Selling price per egg: $2\n    *   Total money made: 9 * $2 = $18. (Correct)\n\n    *   Step 1: Total eggs laid per day = 16.\n    *   Step 2: Eggs consumed or used for muffins = 3 + 4 = 7.\n    *   Step 3: Eggs left to sell = 16 - 7 = 9.\n    *   Step 4: Earnings from selling the eggs = 9 * $2 = $18.",
+        "used_thinking": true,
+        "latency_sec": 10.05,
+        "total_tokens": 622,
+        "completion_tokens": 529
       },
       {
-        "text": "To find out how much Janet makes at the farmers' market each day, we can follow these steps:\n\n1.  **Determine the total number of eggs consumed:**\n    Janet eats 3 eggs for breakfast and uses 4 eggs for muffins.\n    Total consumed = $3 + 4 = 7$ eggs.\n\n2.  **Calculate the number of remaining eggs:**\n    Subtract the eggs consumed from the total number of eggs laid.\n    Remaining eggs = $16 - 7 = 9$ eggs.\n\n3.  **Calculate the total earnings:**\n    Multiply the number of remaining eggs by the price per egg.\n    Earnings = $9 \\text{ eggs} \\times \\$2/\\text{egg} = \\$18$.\n\n**Final Answer:**\nJanet makes $18 every day at the farmers' market.",
-        "latency_sec": 14.53,
-        "total_tokens": 856,
-        "completion_tokens": 763
+        "text": "To find out how much Janet makes at the farmers' market, we can follow these steps:\n\n1.  **Calculate the total number of eggs used:**\n    Janet uses 3 eggs for breakfast and 4 eggs for muffins.\n    $3 + 4 = 7 \\text{ eggs}$\n\n2.  **Calculate the number of eggs remaining for sale:**\n    Subtract the used eggs from the total daily production.\n    $16 - 7 = 9 \\text{ eggs}$\n\n3.  **Calculate the total earnings:**\n    Multiply the number of remaining eggs by the price per egg.\n    $9 \\text{ eggs} \\times \\$2 \\text{ per egg} = \\$18$\n\n**Final Answer:**\nJanet makes $18 every day at the farmers' market.",
+        "reasoning": "\n*   Number of eggs per day: 16.\n    *   Eggs eaten for breakfast: 3.\n    *   Eggs used for muffins: 4.\n    *   Price per egg sold at the market: $2.\n\n    *   Calculate how many eggs are left after breakfast and muffins.\n    *   Determine the total earnings from selling those remaining eggs at $2 each.\n\n    *   Step 1: Subtract the eggs eaten and used from the total number of eggs.\n        *   Total eggs = 16\n        *   Eggs eaten/used = 3 (breakfast) + 4 (muffins)\n        *   Remaining eggs = 16 - (3 + 4)\n\n    *   Step 2: Calculate the earnings from the remaining eggs.\n        *   Earnings = Remaining eggs * $2 per egg.\n\n    *   Step 1:\n        *   3 + 4 = 7 eggs used.\n        *   16 - 7 = 9 eggs remaining.\n    *   Step 2:\n        *   9 eggs * $2/egg = $18.\n\n    *   Daily production: 16 eggs\n    *   Minus breakfast: 16 - 3 = 13 eggs\n    *   Minus muffins: 13 - 4 = 9 eggs\n    *   Earnings: 9 * $2 = $18.\n\n    (Self-check: 16 - 3 - 4 = 9. 9 * 2 = 18.)\n\n    *   The result is $18.",
+        "used_thinking": true,
+        "latency_sec": 10.0,
+        "total_tokens": 618,
+        "completion_tokens": 525
       }
     ],
     "system2_deliberation": {
-      "latency_ms": 4727.03,
+      "latency_ms": 4709.59,
       "routing": {
         "track": "math",
         "confidence": 0.4531,
         "method": "centroid",
-        "latency_ms": 243.28,
+        "latency_ms": 211.763,
         "probabilities": {
           "science": 0.167,
           "code": 0.0894,
@@ -133,38 +149,38 @@
         }
       },
       "winning_index": 2,
-      "winning_text": "To find out how much Janet makes at the farmers' market, we can follow these steps:\n\n1.  **Identify the total number of eggs produced daily:**\n    Janet's ducks lay 16 eggs per day.\n\n2.  **Calculate the total number of eggs used by Janet:**\n    She eats 3 eggs for breakfast and uses 4 eggs for muffins.\n    $3 + 4 = 7$ eggs used.\n\n3.  **Calculate the number of eggs remaining to be sold:**\n    Subtract the used eggs from the total daily production.\n    $16 - 7 = 9$ eggs remaining.\n\n4.  **Calculate the total amount earned from selling the eggs:**\n    She sells each of the remaining 9 eggs for $2.\n    $9 \\times \\$2 = \\$18$.\n\n**Final Answer:**\nJanet makes $18 every day at the farmers' market.",
-      "calibrated_confidence_pct": 90.5,
-      "consensus_pct": 100.0,
-      "agreement_count": 5,
+      "winning_text": "To find out how much Janet makes at the farmers' market every day, we can follow these steps:\n\n1.  **Determine the total number of eggs used:**\n    Janet uses some eggs for her own breakfast and some for muffins.\n    Eggs eaten + Eggs used for muffins = 3 + 4 = 7 eggs.\n\n2.  **Calculate the number of eggs remaining to be sold:**\n    Subtract the used eggs from the total number of eggs laid per day.\n    Total eggs - Eggs used = 16 - 7 = 9 eggs.\n\n3.  **Calculate the total amount earned from selling the remaining eggs:**\n    Multiply the number of remaining eggs by the price per egg.\n    9 eggs \u00d7 $2 per egg = $18.\n\n**Final Answer:**\nJanet makes **$18** every day at the farmers' market.",
+      "calibrated_confidence_pct": 78.5,
+      "consensus_pct": 80.0,
+      "agreement_count": 4,
       "choice_probabilities": [
-        15.0,
-        20.2,
-        48.6,
-        16.2
+        22.3,
+        11.2,
+        42.8,
+        23.7
       ],
       "killed_branches": [
         {
-          "index": 1,
-          "text": "To find out how much Janet makes at the farmers' market each day, we can follow these steps:\n\n1.  **Determine the total number of eggs used:**\n    Janet eats 3 eggs for breakfast and uses 4 eggs for baking muffins.\n    Total used = $3 + 4 = 7$ eggs per day.\n\n2.  **Calculate the number of eggs remaining to be sold:**\n    Janet's ducks lay 16 eggs per day. Subtract the eggs used from the total production.\n    Remaining eggs = $16 - 7 = 9$ eggs.\n\n3.  **Calculate the total earnings from the sales:**\n    Janet sells each of the remaining eggs for $2.\n    Total earnings = $9 \\text{ eggs} \\times \\$2/\\text{egg} = \\$18$.\n\n**Final Answer:**\nJanet makes $18.",
-          "probability_pct": 20.2,
-          "rejection_margin_sigma": -1.68,
-          "heads_refuting": "5/5 Heads",
-          "status": "Killed by Deliberation"
-        },
-        {
           "index": 3,
-          "text": "To find out how much Janet makes at the farmers' market each day, we can follow these steps:\n\n1.  **Determine the total number of eggs consumed:**\n    Janet eats 3 eggs for breakfast and uses 4 eggs for muffins.\n    Total consumed = $3 + 4 = 7$ eggs.\n\n2.  **Calculate the number of remaining eggs:**\n    Subtract the eggs consumed from the total number of eggs laid.\n    Remaining eggs = $16 - 7 = 9$ eggs.\n\n3.  **Calculate the total earnings:**\n    Multiply the number of remaining eggs by the price per egg.\n    Earnings = $9 \\text{ eggs} \\times \\$2/\\text{egg} = \\$18$.\n\n**Final Answer:**\nJanet makes $18 every day at the farmers' market.",
-          "probability_pct": 16.2,
-          "rejection_margin_sigma": -2.08,
+          "text": "To find out how much Janet makes at the farmers' market, we can follow these steps:\n\n1.  **Calculate the total number of eggs used:**\n    Janet uses 3 eggs for breakfast and 4 eggs for muffins.\n    $3 + 4 = 7 \\text{ eggs}$\n\n2.  **Calculate the number of eggs remaining for sale:**\n    Subtract the used eggs from the total daily production.\n    $16 - 7 = 9 \\text{ eggs}$\n\n3.  **Calculate the total earnings:**\n    Multiply the number of remaining eggs by the price per egg.\n    $9 \\text{ eggs} \\times \\$2 \\text{ per egg} = \\$18$\n\n**Final Answer:**\nJanet makes $18 every day at the farmers' market.",
+          "probability_pct": 23.7,
+          "rejection_margin_sigma": -0.92,
           "heads_refuting": "5/5 Heads",
           "status": "Killed by Deliberation"
         },
         {
           "index": 0,
-          "text": "To find out how much Janet makes at the farmers' market every day, we can follow these steps:\n\n1.  **Determine the total number of eggs laid daily:**\n    Janet's ducks lay 16 eggs per day.\n\n2.  **Calculate the number of eggs used/eaten:**\n    - Eggs eaten for breakfast: 3\n    - Eggs used for muffins: 4\n    - Total used = $3 + 4 = 7$ eggs.\n\n3.  **Calculate the number of remaining eggs to be sold:**\n    - Total eggs - Total used = Remaining eggs\n    - $16 - 7 = 9$ eggs.\n\n4.  **Calculate the total money earned from selling the remaining eggs:**\n    - Number of eggs sold: 9\n    - Price per egg: $2\n    - Total earnings = $9 \\times \\$2 = \\$18$.\n\n**Final Answer:**\nJanet makes **$18** every day at the farmers' market.",
-          "probability_pct": 15.0,
-          "rejection_margin_sigma": -1.95,
+          "text": "To find out how much money Janet makes at the farmers' market each day, follow these steps:\n\n1.  **Determine the total number of eggs used:**\n    Janet uses 3 eggs for breakfast and 4 eggs for muffins.\n    $3 + 4 = 7 \\text{ eggs used}$\n\n2.  **Calculate the number of eggs remaining for sale:**\n    Subtract the eggs used from the total number of eggs laid.\n    $16 \\text{ (total eggs)} - 7 \\text{ (eggs used)} = 9 \\text{ eggs remaining}$\n\n3.  **Calculate the total money earned:**\n    Multiply the number of remaining eggs by the price per egg.\n    $9 \\text{ eggs} \\times \\$2 \\text{ per egg} = \\$18$\n\n**Final Answer:**\nJanet makes $18 every day at the farmers' market.",
+          "probability_pct": 22.3,
+          "rejection_margin_sigma": -0.85,
+          "heads_refuting": "4/5 Heads",
+          "status": "Killed by Deliberation"
+        },
+        {
+          "index": 1,
+          "text": "To find out how much money Janet makes at the farmers' market each day, we can follow these steps:\n\n1.  **Calculate the total number of eggs used daily:**\n    Janet uses some eggs for herself and for baking.\n    Eggs eaten: 3\n    Eggs used for muffins: 4\n    Total eggs used = $3 + 4 = 7$ eggs.\n\n2.  **Calculate the number of eggs remaining for sale:**\n    Janet starts with 16 eggs each day.\n    Total eggs laid: 16\n    Total eggs used: 7\n    Remaining eggs = $16 - 7 = 9$ eggs.\n\n3.  **Calculate the total money made from selling the remaining eggs:**\n    She sells each of the remaining eggs for $2.\n    Number of eggs sold: 9\n    Price per egg: $2\n    Total money earned = $9 \\times \\$2 = \\$18$.\n\n**Final Answer:**\nJanet makes **$18** every day at the farmers' market.",
+          "probability_pct": 11.2,
+          "rejection_margin_sigma": -2.29,
           "heads_refuting": "5/5 Heads",
           "status": "Killed by Deliberation"
         }
@@ -177,37 +193,45 @@
     "tier": "27B",
     "samples": [
       {
-        "text": "# Solving Step-by-Step\n\n**Step 1:** Janet's ducks lay **16 eggs** per day.\n\n**Step 2:** She eats **3 eggs** for breakfast.\nRemaining: 16 \u2212 3 = 13 eggs\n\n**Step 3:** She uses **4 eggs** to bake muffins.\nRemaining: 13 \u2212 4 = 9 eggs\n\n**Step 4:** She sells the remaining 9 eggs at **$2 per egg**.\nRevenue: 9 \u00d7 $2 = **$18**\n\n## Final Answer: **18**",
-        "latency_sec": 24.67,
-        "total_tokens": 342,
-        "completion_tokens": 255
+        "text": "# Solving Janet's Egg Sales\n\n**Step 1: Determine total eggs available per day.**\nJanet's ducks lay **16 eggs** per day.\n\n**Step 2: Subtract eggs used for breakfast.**\n16 \u2212 3 = **13 eggs** remaining\n\n**Step 3: Subtract eggs used for muffins.**\n13 \u2212 4 = **9 eggs** remaining\n\n**Step 4: Calculate revenue from selling the remaining eggs.**\n9 eggs \u00d7 $2/egg = **$18**\n\n## Final Answer: **18**",
+        "reasoning": "Let me solve this step-by-step.\n\nJanet's ducks lay 16 eggs per day.\n- She eats 3 eggs for breakfast\n- She uses 4 eggs to bake muffins\n- She sells the remainder at $2 per egg\n\nEggs remaining for sale: 16 - 3 - 4 = 9 eggs\n\nMoney made: 9 \u00d7 $2 = $18\n\nSo Janet makes $18 every day at the farmers' market.\n",
+        "used_thinking": true,
+        "latency_sec": 24.82,
+        "total_tokens": 313,
+        "completion_tokens": 226
       },
       {
-        "text": "# Step-by-Step Solution\n\n**Step 1: Determine total eggs produced per day.**\nJanet's ducks lay **16 eggs** per day.\n\n**Step 2: Subtract eggs eaten for breakfast.**\n16 \u2212 3 = **13 eggs** remaining\n\n**Step 3: Subtract eggs used for muffins.**\n13 \u2212 4 = **9 eggs** remaining\n\n**Step 4: Calculate daily revenue at the farmers' market.**\n9 eggs \u00d7 $2 per egg = **$18**\n\n## Final Answer: **18**",
-        "latency_sec": 2.46,
+        "text": "# Janet's Daily Egg Sales\n\n**Step 1: Total eggs laid per day**\nJanet's ducks lay **16 eggs** per day.\n\n**Step 2: Subtract eggs eaten for breakfast**\n16 \u2212 3 = **13 eggs** remaining\n\n**Step 3: Subtract eggs used for muffins**\n13 \u2212 4 = **9 eggs** remaining\n\n**Step 4: Calculate daily revenue**\n9 eggs \u00d7 $2/egg = **$18**\n\n$$\\boxed{18}$$",
+        "reasoning": "Let me work through this step-by-step.\n\n1. Janet's ducks lay 16 eggs per day.\n2. She eats 3 eggs for breakfast every morning.\n3. She bakes muffins with 4 eggs every day.\n4. She sells the remainder at the farmers' market for $2 per egg.\n\nSo the eggs available to sell = 16 - 3 - 4 = 9 eggs\n\nRevenue per day = 9 \u00d7 $2 = $18\n\nThe answer is $18.\n",
+        "used_thinking": true,
+        "latency_sec": 2.57,
+        "total_tokens": 318,
+        "completion_tokens": 231
+      },
+      {
+        "text": "# Janet's Daily Egg Sales\n\n**Step 1: Total eggs laid per day**\nJanet's ducks lay **16 eggs** per day.\n\n**Step 2: Subtract eggs eaten for breakfast**\n16 \u2212 3 = **13 eggs** remaining\n\n**Step 3: Subtract eggs used for muffins**\n13 \u2212 4 = **9 eggs** remaining\n\n**Step 4: Calculate revenue from selling the remainder**\n9 eggs \u00d7 $2/egg = **$18**\n\n## Final Answer: **18**",
+        "reasoning": "Let me work through this step-by-step.\n\nJanet's ducks lay 16 eggs per day.\n- She eats 3 eggs for breakfast\n- She bakes muffins with 4 eggs\n- She sells the remainder at the farmers' market for $2 per egg\n\nEggs remaining to sell = 16 - 3 - 4 = 9 eggs\n\nMoney made per day = 9 \u00d7 $2 = $18\n\nThe answer is $18.\n",
+        "used_thinking": true,
+        "latency_sec": 2.62,
         "total_tokens": 311,
         "completion_tokens": 224
       },
       {
-        "text": "# Janet's Daily Egg Sales\n\n**Step 1: Total eggs laid per day**\nJanet's ducks lay **16 eggs** per day.\n\n**Step 2: Eggs used for breakfast**\nShe eats **3 eggs** every morning.\nRemaining: 16 \u2212 3 = **13 eggs**\n\n**Step 3: Eggs used for muffins**\nShe bakes muffins with **4 eggs** every day.\nRemaining: 13 \u2212 4 = **9 eggs**\n\n**Step 4: Calculate daily revenue**\nShe sells the remaining 9 eggs at **$2 per egg**:\n9 \u00d7 $2 = **$18**\n\n## Final Answer: **$18**",
-        "latency_sec": 2.64,
-        "total_tokens": 346,
-        "completion_tokens": 259
-      },
-      {
-        "text": "# Step-by-Step Solution\n\n**Step 1: Identify total eggs laid per day**\nJanet's ducks lay **16 eggs** per day.\n\n**Step 2: Subtract eggs eaten for breakfast**\n16 \u2212 3 = **13 eggs** remaining\n\n**Step 3: Subtract eggs used for muffins**\n13 \u2212 4 = **9 eggs** remaining\n\n**Step 4: Calculate daily revenue**\n9 eggs \u00d7 $2/egg = **$18**\n\n## Final Answer\n\nJanet makes **$18** every day at the farmers' market.",
-        "latency_sec": 2.58,
-        "total_tokens": 331,
-        "completion_tokens": 244
+        "text": "## Step-by-Step Solution\n\n**Step 1: Total eggs laid per day**\nJanet's ducks lay **16 eggs** per day.\n\n**Step 2: Eggs used for breakfast**\nShe eats **3 eggs** for breakfast.\n\n**Step 3: Eggs used for muffins**\nShe bakes muffins with **4 eggs**.\n\n**Step 4: Eggs remaining to sell**\n16 \u2212 3 \u2212 4 = **9 eggs**\n\n**Step 5: Revenue from selling eggs**\n9 eggs \u00d7 $2/egg = **$18**\n\n## Final Answer\n\n**18**",
+        "reasoning": "Let me solve this step-by-step.\n\nJanet's ducks lay 16 eggs per day.\n- She eats 3 eggs for breakfast\n- She bakes muffins with 4 eggs\n- She sells the remainder at the farmers' market for $2 per egg\n\nEggs remaining after personal use: 16 - 3 - 4 = 9 eggs\n\nMoney made: 9 \u00d7 $2 = $18\n\nSo Janet makes $18 every day at the farmers' market.\n",
+        "used_thinking": true,
+        "latency_sec": 2.86,
+        "total_tokens": 333,
+        "completion_tokens": 246
       }
     ],
     "system2_deliberation": {
-      "latency_ms": 3040.43,
+      "latency_ms": 3124.79,
       "routing": {
         "track": "math",
         "confidence": 0.4531,
         "method": "centroid",
-        "latency_ms": 250.704,
+        "latency_ms": 238.24,
         "probabilities": {
           "science": 0.167,
           "code": 0.0894,
@@ -218,39 +242,39 @@
           "math": 0.4531
         }
       },
-      "winning_index": 0,
-      "winning_text": "# Solving Step-by-Step\n\n**Step 1:** Janet's ducks lay **16 eggs** per day.\n\n**Step 2:** She eats **3 eggs** for breakfast.\nRemaining: 16 \u2212 3 = 13 eggs\n\n**Step 3:** She uses **4 eggs** to bake muffins.\nRemaining: 13 \u2212 4 = 9 eggs\n\n**Step 4:** She sells the remaining 9 eggs at **$2 per egg**.\nRevenue: 9 \u00d7 $2 = **$18**\n\n## Final Answer: **18**",
-      "calibrated_confidence_pct": 68.0,
-      "consensus_pct": 40.0,
-      "agreement_count": 2,
+      "winning_index": 3,
+      "winning_text": "## Step-by-Step Solution\n\n**Step 1: Total eggs laid per day**\nJanet's ducks lay **16 eggs** per day.\n\n**Step 2: Eggs used for breakfast**\nShe eats **3 eggs** for breakfast.\n\n**Step 3: Eggs used for muffins**\nShe bakes muffins with **4 eggs**.\n\n**Step 4: Eggs remaining to sell**\n16 \u2212 3 \u2212 4 = **9 eggs**\n\n**Step 5: Revenue from selling eggs**\n9 eggs \u00d7 $2/egg = **$18**\n\n## Final Answer\n\n**18**",
+      "calibrated_confidence_pct": 67.4,
+      "consensus_pct": 80.0,
+      "agreement_count": 4,
       "choice_probabilities": [
-        37.3,
-        19.6,
-        24.2,
-        18.9
+        30.4,
+        12.0,
+        17.4,
+        40.2
       ],
       "killed_branches": [
         {
-          "index": 2,
-          "text": "# Janet's Daily Egg Sales\n\n**Step 1: Total eggs laid per day**\nJanet's ducks lay **16 eggs** per day.\n\n**Step 2: Eggs used for breakfast**\nShe eats **3 eggs** every morning.\nRemaining: 16 \u2212 3 = **13 eggs**\n\n**Step 3: Eggs used for muffins**\nShe bakes muffins with **4 eggs** every day.\nRemaining: 13 \u2212 4 = **9 eggs**\n\n**Step 4: Calculate daily revenue**\nShe sells the remaining 9 eggs at **$2 per egg**:\n9 \u00d7 $2 = **$18**\n\n## Final Answer: **$18**",
-          "probability_pct": 24.2,
-          "rejection_margin_sigma": 0.15,
-          "heads_refuting": "2/5 Heads",
+          "index": 0,
+          "text": "# Solving Janet's Egg Sales\n\n**Step 1: Determine total eggs available per day.**\nJanet's ducks lay **16 eggs** per day.\n\n**Step 2: Subtract eggs used for breakfast.**\n16 \u2212 3 = **13 eggs** remaining\n\n**Step 3: Subtract eggs used for muffins.**\n13 \u2212 4 = **9 eggs** remaining\n\n**Step 4: Calculate revenue from selling the remaining eggs.**\n9 eggs \u00d7 $2/egg = **$18**\n\n## Final Answer: **18**",
+          "probability_pct": 30.4,
+          "rejection_margin_sigma": -0.87,
+          "heads_refuting": "4/5 Heads",
           "status": "Killed by Deliberation"
         },
         {
-          "index": 1,
-          "text": "# Step-by-Step Solution\n\n**Step 1: Determine total eggs produced per day.**\nJanet's ducks lay **16 eggs** per day.\n\n**Step 2: Subtract eggs eaten for breakfast.**\n16 \u2212 3 = **13 eggs** remaining\n\n**Step 3: Subtract eggs used for muffins.**\n13 \u2212 4 = **9 eggs** remaining\n\n**Step 4: Calculate daily revenue at the farmers' market.**\n9 eggs \u00d7 $2 per egg = **$18**\n\n## Final Answer: **18**",
-          "probability_pct": 19.6,
-          "rejection_margin_sigma": -0.75,
+          "index": 2,
+          "text": "# Janet's Daily Egg Sales\n\n**Step 1: Total eggs laid per day**\nJanet's ducks lay **16 eggs** per day.\n\n**Step 2: Subtract eggs eaten for breakfast**\n16 \u2212 3 = **13 eggs** remaining\n\n**Step 3: Subtract eggs used for muffins**\n13 \u2212 4 = **9 eggs** remaining\n\n**Step 4: Calculate revenue from selling the remainder**\n9 eggs \u00d7 $2/egg = **$18**\n\n## Final Answer: **18**",
+          "probability_pct": 17.4,
+          "rejection_margin_sigma": -1.47,
           "heads_refuting": "5/5 Heads",
           "status": "Killed by Deliberation"
         },
         {
-          "index": 3,
-          "text": "# Step-by-Step Solution\n\n**Step 1: Identify total eggs laid per day**\nJanet's ducks lay **16 eggs** per day.\n\n**Step 2: Subtract eggs eaten for breakfast**\n16 \u2212 3 = **13 eggs** remaining\n\n**Step 3: Subtract eggs used for muffins**\n13 \u2212 4 = **9 eggs** remaining\n\n**Step 4: Calculate daily revenue**\n9 eggs \u00d7 $2/egg = **$18**\n\n## Final Answer\n\nJanet makes **$18** every day at the farmers' market.",
-          "probability_pct": 18.9,
-          "rejection_margin_sigma": -1.08,
+          "index": 1,
+          "text": "# Janet's Daily Egg Sales\n\n**Step 1: Total eggs laid per day**\nJanet's ducks lay **16 eggs** per day.\n\n**Step 2: Subtract eggs eaten for breakfast**\n16 \u2212 3 = **13 eggs** remaining\n\n**Step 3: Subtract eggs used for muffins**\n13 \u2212 4 = **9 eggs** remaining\n\n**Step 4: Calculate daily revenue**\n9 eggs \u00d7 $2/egg = **$18**\n\n$$\\boxed{18}$$",
+          "probability_pct": 12.0,
+          "rejection_margin_sigma": -2.27,
           "heads_refuting": "5/5 Heads",
           "status": "Killed by Deliberation"
         }
@@ -263,37 +287,45 @@
     "tier": "35B",
     "samples": [
       {
-        "text": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - **Given:**\n     - Ducks lay 16 eggs per day.\n     - Janet eats 3 eggs for breakfast.\n     - Janet bakes muffins using 4 eggs.\n     - She sells the remainder at $2 per egg.\n   - **Question:** How much in dollars does Janet make every day at the farmers' market?\n\n2.  **Identify Key Variables & Operations:**\n   - Total eggs per day = 16\n   - Eggs used for breakfast = 3\n   - Eggs used for muffins = 4\n   - Eggs remaining for sale = Total - (breakfast + muffins)\n   - Price per egg = $2\n   - Daily revenue = Remaining eggs \u00d7 Price per egg\n\n3.  **Step-by-Step Calculation:**\n   - Step 1: Calculate total eggs used daily.\n     - Used = 3 (breakfast) + 4 (muffins) = 7 eggs\n   - Step 2: Calculate remaining eggs for sale.\n     - Remaining = 16 (total) - 7 (used) = 9 eggs\n   - Step 3: Calculate daily revenue from selling eggs.\n     - Revenue = 9 (eggs) \u00d7 $2 (per egg) = $18\n\n4.  **Verify Logic & Math:**\n   - 16 - 3 - 4 = 9\n   - 9 \u00d7 2 = 18\n   - Units: dollars\n   - Matches question: \"How much in dollars does Janet make every day at the farmers' market?\" -> $18\n\n5.  **Format Output:**\n   - Provide step-by-step reasoning as requested.\n   - State final numerical answer clearly.\n\n   Structure:\n   - Start with total eggs.\n   - Subtract eggs eaten and used for baking.\n   - Multiply remaining eggs by price.\n   - State final answer.\n\n   Draft:\n   Janet\u2019s ducks lay 16 eggs per day.\n   She uses 3 eggs for breakfast and 4 eggs for muffins, totaling 3 + 4 = 7 eggs used daily.\n   The number of eggs left to sell is 16 - 7 = 9 eggs.\n   She sells these 9 eggs at $2 per egg, so her daily earnings are 9 \u00d7 $2 = $18.\n   Final answer: 18\n\n6.  **Self-Correction/Refinement:**\n   - Check for any trick wording: \"She eats three for breakfast every morning and bakes muffins for her friends every day with four.\" -> Clear.\n   - \"She sells the remainder at the farmers' market daily for $2 per egg.\" -> Clear.\n   - \"How much in dollars does Janet make every day at the farmers' market?\" -> Clear.\n   - Math is straightforward. No hidden complexities.\n   - Output matches request.\n\n   All good. Proceed. \n   Output matches the draft.\u2705\n   Final Answer: 18 (with step-by-step explanation) -> \"18\" or \"$18\". The prompt asks for \"numerical answer\", so I'll provide just the number or clearly state it. I'll follow standard format: step-by-step then final numerical answer.\u2705\n   Structure:\n   Step 1: ...\n   Step 2: ...\n   Step 3: ...\n   Final Answer: 18\n   Ready. \n   Output Generation. \n   [Self-Correction/Verification during thought]\n   Wait, let's double check the exact wording: \"How much in dollars does Janet make every day at the farmers' market?\"\n   Calculation: 16 - 3 - 4 = 9. 9 * 2 = 18.\n   All correct.\n   I will produce the response now. \n   Output matches response.\u2705\n   [Done.] \n   *Self-Correction/Note during generation prep*: The prompt says \"provide the final numerical answer\". I'll make sure it's explicitly stated at the end. I'll keep it concise.\n   Steps:\n   1. Total eggs laid: 16\n   2. Eggs used by Janet: 3 (breakfast) + 4 (muffins) = 7\n   3. Eggs remaining to sell: 16 - 7 = 9\n   4. Daily earnings: 9 eggs \u00d7 $2/egg = $18\n   Final Answer: 18\n   Matches perfectly.\u2705\n   Proceeds. \n   [Output Generation] -> *See response.* \n   *(Note: I'll make sure the formatting strictly follows \"step-by-step and provide",
-        "latency_sec": 12.35,
-        "total_tokens": 1111,
-        "completion_tokens": 1024
+        "text": "Here is the step-by-step solution:\n\n1. **Find the total number of eggs used daily:**  \n   Janet eats 3 eggs for breakfast and uses 4 eggs for muffins.  \n   Total used = 3 + 4 = 7 eggs.\n\n2. **Calculate the number of eggs remaining for sale:**  \n   Her ducks lay 16 eggs per day. Subtract the eggs she uses:  \n   Remaining eggs = 16 - 7 = 9 eggs.\n\n3. **Calculate her daily earnings from the farmers' market:**  \n   She sells the 9 remaining eggs at $2 per egg.  \n   Daily earnings = 9 \u00d7 $2 = $18.\n\n**Final numerical answer:** 18",
+        "reasoning": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - **Given:** Janet's ducks lay 16 eggs per day.\n   - **Usage:** She eats 3 eggs for breakfast daily.\n   - **Usage:** She bakes muffins for friends daily with 4 eggs.\n   - **Sales:** She sells the remainder at the farmers' market daily.\n   - **Price:** $2 per egg.\n   - **Question:** How much in dollars does Janet make every day at the farmers' market?\n\n2.  **Identify Key Variables & Operations:**\n   - Total eggs per day = 16\n   - Eggs eaten = 3\n   - Eggs used for muffins = 4\n   - Eggs remaining for sale = Total - (eaten + muffin)\n   - Price per egg = $2\n   - Daily revenue = Remaining eggs \u00d7 Price per egg\n\n3.  **Perform Calculations Step-by-Step:**\n   - Total eggs = 16\n   - Eggs used = 3 (breakfast) + 4 (muffins) = 7\n   - Eggs remaining = 16 - 7 = 9\n   - Revenue = 9 eggs \u00d7 $2/egg = $18\n\n4.  **Verify Logic:**\n   - 16 laid\n   - 3 eaten -> 13 left\n   - 4 used for muffins -> 9 left\n   - 9 sold at $2 each -> 9 * 2 = 18\n   - Matches question requirements.\n   - Step-by-step explanation requested.\n   - Final numerical answer required.\n\n5.  **Draft Response (Mental Refinement):**\n   Step 1: Calculate the total number of eggs Janet uses daily. She eats 3 eggs for breakfast and uses 4 eggs for muffins. Total used = 3 + 4 = 7 eggs.\n   Step 2: Calculate the number of eggs remaining for sale. She starts with 16 eggs per day. Remaining eggs = 16 - 7 = 9 eggs.\n   Step 3: Calculate her daily earnings from selling the remaining eggs. She sells 9 eggs at $2 each. Daily earnings = 9 \u00d7 $2 = $18.\n   Final Answer: 18\n\n   Check for pitfalls: \"bakes muffins for her friends every day with four\" -> clearly means 4 eggs. \"eats three\" -> 3 eggs. All straightforward. No trick wording detected. Math is simple arithmetic.\n\n   Format: Provide step-by-step reasoning, then state the final numerical answer clearly.\n\n   Structure:\n   - Start with total eggs.\n   - Subtract eggs used for breakfast.\n   - Subtract eggs used for muffins.\n   - Multiply remaining eggs by price.\n   - State final answer.\n\n   All steps verified. Ready.\u2705\n   Output matches response.\u2705\n   Proceed. \n   Self-Correction/Verification during thought: \n   Wait, is there any ambiguity? \"bakes muffins for her friends every day with four\" -> definitely 4 eggs. \n   \"eats three for breakfast\" -> 3 eggs.\n   16 - 3 - 4 = 9.\n   9 * 2 = 18.\n   Everything is solid.\n   I will write it out clearly. \n   Final Answer: 18.\u2705\n   Output Generation. \n   [Done] \n   *Self-Correction/Note during generation prep*: I should make sure the prompt says \"provide the final numerical answer\". I will explicitly state it at the end. All good. \n   Output matches the refined response. \n   Proceeds. \n   [Output Generation] -> *See response.* \n   [Check] Step-by-step: \n   1. Total eggs laid: 16\n   2. Eggs used daily: 3 (breakfast) + 4 (muffins) = 7\n   3. Eggs remaining for sale: 16 - 7 = 9\n   4. Daily revenue: 9 eggs \u00d7 $2/egg = $18\n   Final numerical answer: 18. \n   Perfect. \n   [Output Generation] -> *Proceeds.* \n   *(Done.)*\n",
+        "used_thinking": true,
+        "latency_sec": 10.79,
+        "total_tokens": 1174,
+        "completion_tokens": 1087
       },
       {
-        "text": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - **Given:**\n     - Janet's ducks lay 16 eggs per day.\n     - She eats 3 eggs for breakfast daily.\n     - She bakes muffins for friends using 4 eggs daily.\n     - She sells the remainder at the farmers' market.\n     - Selling price: $2 per egg.\n   - **Question:** How much in dollars does Janet make every day at the farmers's market?\n   - **Requirement:** Solve step-by-step and provide the final numerical answer.\n\n2.  **Identify Key Variables & Steps:**\n   - Total eggs laid per day: 16\n   - Eggs used for breakfast: 3\n   - Eggs used for muffins: 4\n   - Eggs remaining for sale: Total - (Breakfast + Muffins)\n   - Price per egg: $2\n   - Daily revenue: Remaining eggs \u00d7 Price per egg\n\n3.  **Perform Calculations:**\n   - Total eggs = 16\n   - Used eggs = 3 + 4 = 7\n   - Remaining eggs = 16 - 7 = 9\n   - Daily revenue = 9 \u00d7 $2 = $18\n\n4.  **Structure the Response:**\n   - Start with a clear step-by-step breakdown.\n   - Show the subtraction for used eggs.\n   - Show the calculation for remaining eggs.\n   - Show the multiplication for revenue.\n   - State the final numerical answer clearly.\n\n   Draft:\n   Step 1: Calculate the total number of eggs Janet uses daily.\n   She eats 3 eggs for breakfast and uses 4 eggs for muffins.\n   3 + 4 = 7 eggs used per day.\n\n   Step 2: Calculate the number of eggs remaining to sell.\n   Her ducks lay 16 eggs per day.\n   16 (total) - 7 (used) = 9 eggs remaining.\n\n   Step 3: Calculate her daily earnings from selling the remaining eggs.\n   She sells 9 eggs at $2 each.\n   9 \u00d7 $2 = $18.\n\n   Final Answer: 18\n\n5.  **Self-Correction/Verification:**\n   - Check numbers: 16 laid, 3 eaten, 4 baked = 7 used. 16-7=9 left. 9*2=18.\n   - Units: dollars.\n   - Question asks for \"final numerical answer\".\n   - Format matches request.\n   - All steps are clear and logical.\n   - No hidden tricks detected.\n\n   Everything looks solid. I will produce the final response.\u2705\n   Structure:\n   - Step 1: Find total eggs used.\n   - Step 2: Find eggs available for sale.\n   - Step 3: Calculate daily earnings.\n   - Final numerical answer: 18.\u2705\n   Proceed. \n   Output matches the response. \n   [Done] \n   Output Generation. \n   \"Step 1: Calculate the total number of eggs Janet uses each day.\n   She eats 3 eggs for breakfast and uses 4 eggs for muffins.\n   3 + 4 = 7 eggs used per day.\n\n   Step 2: Determine how many eggs are left to sell.\n   Her ducks lay 16 eggs per day, and she uses 7 of them.\n   16 - 7 = 9 eggs remaining.\n\n   Step 3: Calculate her daily earnings from the farmers' market.\n   She sells the 9 remaining eggs at $2 each.\n   9 \u00d7 $2 = $18.\n\n   Final numerical answer: 18\" -> matches request.\u2705\n   All good. \n   Proceeds. \n   [Output Generation] -> *Self-Correction/Refinement during thought*: \n   The prompt says \"provide the final numerical answer\". I'll make sure it's explicitly stated as requested. I'll keep it concise.\n   The steps are clear. I will output exactly that.\u2705\n   Final Check of the prompt: \"Solve this step-by-step and provide the final numerical answer:\"\n   All constraints met. \n   Output matches response. \n   [Done] \n   *Self-Correction/Note during generation prep*: I'll make sure the formatting is clean.\n   \"Step 1: ... Step 2: ... Step 3: ... Final Answer: 18\"\n   Perfect. \n   Proceeds. \n   [Output Generation] (matches the final response)\n   \"Step 1: Calculate the total number of eggs Janet uses daily.\n   She eats 3 eggs for breakfast and",
-        "latency_sec": 4.26,
-        "total_tokens": 1111,
-        "completion_tokens": 1024
+        "text": "Here is the step-by-step solution:\n\n**Step 1:** Find the total number of eggs laid per day.\nJanet's ducks lay 16 eggs daily.\n\n**Step 2:** Calculate the number of eggs Janet uses herself each day.\nShe eats 3 eggs for breakfast and uses 4 eggs for muffins: 3 + 4 = 7 eggs used.\n\n**Step 3:** Determine how many eggs are left to sell.\nSubtract the used eggs from the total: 16 - 7 = 9 eggs remaining.\n\n**Step 4:** Calculate her daily earnings from selling the remaining eggs.\nShe sells 9 eggs at $2 per egg: 9 \u00d7 $2 = $18.\n\n**Final numerical answer:** 18",
+        "reasoning": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - **Given:** Janet's ducks lay 16 eggs per day.\n   - **Usage:** \n     - Eats 3 eggs for breakfast every morning.\n     - Bakes muffins for friends using 4 eggs every day.\n   - **Selling:** Sells the remainder at the farmers' market daily.\n   - **Price:** $2 per egg.\n   - **Question:** How much in dollars does Janet make every day at the farmers' market?\n\n2.  **Identify Key Steps:**\n   - Calculate total eggs laid per day: 16\n   - Calculate eggs used by Janet (breakfast + muffins): 3 + 4 = 7\n   - Calculate remaining eggs for sale: 16 - 7 = 9\n   - Calculate revenue from selling remaining eggs: 9 eggs * $2/egg = $18\n\n3.  **Verify Calculations:**\n   - Total: 16\n   - Used: 3 (breakfast) + 4 (muffins) = 7\n   - Remaining: 16 - 7 = 9\n   - Revenue: 9 * 2 = 18\n   - All steps are straightforward arithmetic. No tricks or hidden variables.\n\n   Check wording: \"She eats three for breakfast every morning and bakes muffins for her friends every day with four.\" -> This means 3 + 4 = 7 eggs used daily.\n   \"She sells the remainder at the farmers' market daily for $2 per egg.\" -> Remainder = 16 - 7 = 9.\n   \"How much in dollars does Janet make every day at the farmers' market?\" -> 9 * 2 = 18.\n\n4.  **Formulate Response:**\n   - State the steps clearly.\n   - Show the math.\n   - Provide the final numerical answer as requested.\n   - Structure: Step-by-step explanation -> Final answer.\n\n   Draft:\n   Step 1: Find the total number of eggs laid per day: 16 eggs.\n   Step 2: Calculate the number of eggs Janet uses daily: 3 for breakfast + 4 for muffins = 7 eggs.\n   Step 3: Determine the number of eggs left to sell: 16 total - 7 used = 9 eggs.\n   Step 4: Calculate the daily earnings from selling the remaining eggs: 9 eggs \u00d7 $2 per egg = $18.\n   Final Answer: 18\n\n5.  **Self-Correction/Refinement:**\n   - Check for any misinterpretation: \"bakes muffins for her friends every day with four\" -> clearly means 4 eggs per day for muffins.\n   - \"every day\" and \"daily\" all align.\n   - Math is correct.\n   - Format matches request: \"Solve this step-by-step and provide the final numerical answer:\"\n   - I will present it clearly.\n\n   All good. Proceed. \n   Output matches the draft.\u2705\n   Final Answer: 18.\u2705\n   Structure: \n   Step 1: ...\n   Step 2: ...\n   Step 3: ...\n   Step 4: ...\n   Final numerical answer: 18.\u2705\n   Ready. \n   Output Generation. \n   [Self-Correction/Verification during thought]\n   Wait, is there any trick? \"bakes muffins for her friends every day with four.\" Could it mean 4 muffins? No, \"with four\" in context of eggs usually means 4 eggs. Standard math problem phrasing. I'll stick with 4 eggs.\n   Total eggs: 16\n   Used: 3 + 4 = 7\n   Left: 9\n   Revenue: 9 * 2 = 18.\n   Matches standard elementary word problem. No tricks detected.\n   Proceed. \n   Output matches response.\u2705\n   [Final Check of the Prompt] \"Solve this step-by-step and provide the final numerical answer:\" -> I will follow exactly.\n   All steps clear. Result: 18.\u2705\n   Output Generation. \n   [Done.] \n   *Self-Correction/Note during generation prep*: I'll make sure the formatting explicitly shows the step-by-step reasoning and ends with the number.\n   Text: \n   Step 1: Determine the total number of eggs Janet gets per day: 16 eggs.\n   Step 2: Calculate the number of eggs she uses daily: 3 for breakfast + 4 for muffins = 7 eggs.\n   Step 3: Find the number of eggs left to sell: 16 - 7 = 9 eggs.\n   Step 4: Calculate her daily earnings from the farmers' market: 9 eggs \u00d7 $2 per egg = $18.\n   Final numerical answer: 18\n   Perfect.\u2705\n   Output matches. \n   [Proceeds]\n",
+        "used_thinking": true,
+        "latency_sec": 5.38,
+        "total_tokens": 1344,
+        "completion_tokens": 1257
       },
       {
-        "text": "Here is the step-by-step solution:\n\n**Step 1: Determine the total number of eggs Janet gets each day.**\nHer ducks lay 16 eggs per day.\n\n**Step 2: Subtract the eggs she uses daily.**\nShe eats 3 eggs for breakfast and uses 4 eggs to bake muffins.\nTotal eggs used = 3 + 4 = 7 eggs.\n\n**Step 3: Calculate the number of eggs remaining to sell.**\nRemaining eggs = Total eggs - Eggs used\nRemaining eggs = 16 - 7",
-        "latency_sec": 4.59,
-        "total_tokens": 1111,
-        "completion_tokens": 1024
+        "text": "Here is the step-by-step solution:\n\n**Step 1: Determine how many eggs are left for sale each day.**\n- Total eggs laid per day: 16\n- Eggs used for breakfast: 3\n- Eggs used for baking muffins: 4\n- Remaining eggs = 16 - 3 - 4 = **9 eggs**\n\n**Step 2: Calculate her daily earnings from selling the remaining eggs.**\n- Selling price per egg: $2\n- Daily earnings = 9 eggs \u00d7 $2 = **$18**\n\n**Final numerical answer: 18**",
+        "reasoning": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - **Given:**\n     - Janet's ducks lay 16 eggs per day.\n     - She eats 3 eggs for breakfast daily.\n     - She bakes muffins using 4 eggs daily.\n     - She sells the remainder at $2 per egg.\n   - **Question:** How much in dollars does Janet make every day at the farmers' market?\n\n2.  **Identify Key Variables & Steps:**\n   - Total eggs per day = 16\n   - Eggs eaten = 3\n   - Eggs used for muffins = 4\n   - Eggs remaining for sale = Total - Eaten - Used for muffins\n   - Price per egg = $2\n   - Daily revenue = Eggs remaining \u00d7 Price per egg\n\n3.  **Perform Calculations:**\n   - Remaining eggs = 16 - 3 - 4 = 9 eggs\n   - Daily revenue = 9 \u00d7 $2 = $18\n\n4.  **Verify Logic:**\n   - Starts with 16.\n   - Uses 3 for breakfast \u2192 16 - 3 = 13.\n   - Uses 4 for muffins \u2192 13 - 4 = 9.\n   - Sells 9 at $2 each \u2192 9 * 2 = 18.\n   - All steps are straightforward arithmetic. No hidden tricks.\n\n5.  **Format Output:**\n   - Provide step-by-step reasoning as requested.\n   - State final numerical answer clearly.\n\n   Structure:\n   - Step 1: Calculate total eggs laid.\n   - Step 2: Subtract eggs used for breakfast and muffins.\n   - Step 3: Calculate revenue from selling remaining eggs.\n   - Final answer: $18.\n\n6.  **Draft Response (Mental):**\n   Janet\u2019s ducks lay 16 eggs each day.\n   First, subtract the eggs she uses for herself: 16 - 3 (breakfast) = 13 eggs.\n   Next, subtract the eggs she uses for baking: 13 - 4 (muffins) = 9 eggs remaining.\n   She sells these 9 eggs at $2 each: 9 \u00d7 $2 = $18.\n   Therefore, Janet makes $18 every day at the farmers' market.\n\n   Check against constraints: \"Solve this step-by-step and provide the final numerical answer\". Matches perfectly.\n\n7.  **Final Output Generation:** (matches the drafted response)\u2705\n   - Clear steps\n   - Correct arithmetic\n   - Final answer explicitly stated.\u2705\n   All good. Proceed. \n   Output matches the response. \n   Self-Correction/Refinement during thought: \n   Is there any ambiguity? \"bakes muffins for her friends every day with four\" clearly means 4 eggs per day. \"eats three for breakfast every morning\" clearly means 3 eggs per day. All daily rates. No trick. \n   Final answer: 18. \n   Format: Step-by-step then final answer. \n   Ready. \n   [Output Generation] -> *Proceeds*\n   \"Step 1: Determine the total number of eggs laid per day: 16 eggs.\n   Step 2: Subtract the eggs Janet uses for breakfast: 16 - 3 = 13 eggs.\n   Step 3: Subtract the eggs she uses to bake muffins: 13 - 4 = 9 eggs remaining for sale.\n   Step 4: Calculate her daily earnings from selling the remaining eggs: 9 eggs \u00d7 $2/egg = $18.\n   Final numerical answer: 18\" \n   Matches perfectly.\u2705\n   Output matches response. \n   [Done.] \n   *Self-Correction/Verification during generation prep*: \n   Wait, let's double check the exact wording: \"bakes muffins for her friends every day with four.\" -> 4 eggs. \n   \"eats three for breakfast every morning\" -> 3 eggs. \n   \"lay 16 eggs per day\" -> 16. \n   16 - 3 - 4 = 9. \n   9 * 2 = 18. \n   All correct. \n   Output matches. \n   Proceeds. \n   [Final Check of the Prompt]: \"Solve this step-by-step and provide the final numerical answer:\" -> I will follow exactly. \n   Ready. \n   [Output Generation] -> *Proceeds* (matches the final response)\n   [Done.] \n   *(Note: I'll make sure the formatting is clean and directly answers the prompt.)*\n   \"Step 1: Calculate the number of eggs remaining after Janet uses them for herself and baking.\n   Total eggs per day = 16\n   Eggs eaten for breakfast = 3\n   Eggs used for muffins = 4\n   Remaining eggs = 16 - 3 - 4 = 9 eggs\n\n   Step 2: Calculate her daily earnings from selling the remaining eggs.\n   Selling price per egg = $2\n   Daily earnings = 9 eggs \u00d7 $2 = $18\n\n   Final numerical answer: 18\" \n   Perfect.\u2705\n   Output matches. \n   [Proceeds]\n",
+        "used_thinking": true,
+        "latency_sec": 5.52,
+        "total_tokens": 1366,
+        "completion_tokens": 1279
       },
       {
-        "text": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - **Given:**\n     - Janet's ducks lay 16 eggs per day.\n     - She eats 3 eggs for breakfast every morning.\n     - She bakes muffins for friends every day with 4 eggs.\n     - She sells the remainder at the farmers' market daily.\n     - Selling price: $2 per egg.\n   - **Question:** How much in dollars does Janet make every day at the farmers's market?\n\n2.  **Identify Key Variables & Operations:**\n   - Total eggs per day: 16\n   - Eggs eaten: 3\n   - Eggs used for muffins: 4\n   - Eggs remaining for sale: Total - Eaten - Muffins\n   - Price per egg: $2\n   - Daily revenue: Remaining eggs \u00d7 Price per egg\n\n3.  **Step-by-Step Calculation:**\n   - Step 1: Calculate total eggs used by Janet (eaten + muffins)\n     - 3 (breakfast) + 4 (muffins) = 7 eggs used\n   - Step 2: Calculate remaining eggs for sale\n     - 16 (total) - 7 (used) = 9 eggs remaining\n   - Step 3: Calculate daily revenue\n     - 9 eggs \u00d7 $2/egg = $18\n\n4.  **Verify Logic & Arithmetic:**\n   - 16 - 3 - 4 = 9\n   - 9 * 2 = 18\n   - Units: dollars per day\n   - Matches question: \"How much in dollars does Janet make every day at the farmers' market?\" -> $18\n\n5.  **Format Output:**\n   - Provide step-by-step reasoning as requested.\n   - State final numerical answer clearly.\n\n   Structure:\n   - Start with total eggs.\n   - Subtract eggs used for breakfast.\n   - Subtract eggs used for muffins.\n   - Multiply remaining eggs by price per egg.\n   - State final answer.\n\n   Draft:\n   1. Janet's ducks lay 16 eggs per day.\n   2. She uses 3 eggs for breakfast and 4 eggs for muffins, totaling 3 + 4 = 7 eggs used daily.\n   3. The number of eggs remaining to sell is 16 - 7 = 9 eggs.\n   4. She sells these 9 eggs at $2 per egg, so her daily earnings are 9 \u00d7 $2 = $18.\n   Final answer: 18\n\n6.  **Self-Correction/Refinement:**\n   - Check for any trick wording: \"bakes muffins for her friends every day with four.\" -> clearly means 4 eggs.\n   - \"sells the remainder at the farmers' market daily for $2 per egg.\" -> straightforward.\n   - All steps are solid. No hidden tricks.\n   - Output matches request.\n\n   Proceed. \n   Output matches the drafted response.\u2705\n   Final Answer: 18 (or $18, but prompt asks for numerical answer, so just 18 is fine, but I'll state it clearly). I'll follow the exact format requested. \"provide the final numerical answer\". I'll output 18.\u2705\n   All good. \n   Generate response. \n   [Output Generation] -> \"Step 1: Calculate total eggs used... Step 2: Calculate remaining... Step 3: Calculate earnings... Final answer: 18\" matches perfectly. \n   I will write it out clearly. \n   *Self-Correction/Verification during thought*: \n   Wait, is there any ambiguity in \"bakes muffins for her friends every day with four\"? It could mean 4 muffins, but it says \"with four\" right after \"eggs\" in context, or maybe it's a typo for \"with 4 eggs\". Standard math puzzle phrasing implies 4 eggs. I'll assume 4 eggs. Even if it meant 4 muffins, we don't know eggs per muffin, so it must mean 4 eggs. The phrasing \"with four\" is slightly awkward but clearly refers to 4 eggs in standard puzzle contexts. I'll proceed with 4 eggs.\n\n   Calculation: 16 - 3 - 4 = 9. 9 * 2 = 18.\n   Final: 18.\n   Ready. \n   Output matches. \n   [Done] \n   *Output Generation* (matches the response)\n   \"Step 1: Determine the total number of eggs Janet uses each day.\n   She eats 3 eggs for breakfast and uses 4 eggs for muffins.",
-        "latency_sec": 4.49,
-        "total_tokens": 1111,
-        "completion_tokens": 1024
+        "text": "**Step 1: Calculate the total number of eggs Janet uses daily.**\nShe eats 3 eggs for breakfast and uses 4 eggs for baking muffins.\n3 + 4 = 7 eggs used per day.\n\n**Step 2: Determine how many eggs are left to sell.**\nHer ducks lay 16 eggs per day, and she uses 7 of them.\n16 - 7 = 9 eggs remaining to sell.\n\n**Step 3: Calculate her daily earnings from selling the remaining eggs.**\nShe sells the 9 remaining eggs at $2 per egg.\n9 \u00d7 $2 = $18.\n\nFinal numerical answer: 18",
+        "reasoning": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - **Given:**\n     - Janet's ducks lay 16 eggs per day.\n     - She eats 3 eggs for breakfast every morning.\n     - She bakes muffins using 4 eggs every day.\n     - She sells the remainder at the farmers' market daily for $2 per egg.\n   - **Question:** How much in dollars does Janet make every day at the farmers' market?\n   - **Instruction:** Solve step-by-step and provide the final numerical answer.\n\n2.  **Identify Key Variables & Operations:**\n   - Total eggs laid per day = 16\n   - Eggs eaten per day = 3\n   - Eggs used for muffins per day = 4\n   - Remaining eggs = Total - Eaten - Used for muffins\n   - Price per remaining egg = $2\n   - Daily earnings = Remaining eggs \u00d7 Price per egg\n\n3.  **Step-by-Step Calculation:**\n   - Step 1: Calculate total eggs used by Janet daily.\n     - Eaten: 3\n     - For muffins: 4\n     - Total used = 3 + 4 = 7 eggs\n   - Step 2: Calculate remaining eggs to sell.\n     - Total laid: 16\n     - Remaining = 16 - 7 = 9 eggs\n   - Step 3: Calculate daily earnings from selling remaining eggs.\n     - Price per egg: $2\n     - Earnings = 9 \u00d7 $2 = $18\n\n4.  **Verify/Double-Check:**\n   - 16 laid - 3 eaten - 4 baked = 9 sold.\n   - 9 sold \u00d7 $2/egg = $18.\n   - Matches the question's parameters. No hidden tricks.\n   - The question asks for \"How much in dollars does Janet make every day at the farmers' market?\" -> $18.\n   - Format: Step-by-step explanation followed by the final numerical answer.\n\n5.  **Draft Response:**\n   Step 1: Determine the total number of eggs Janet uses each day. She eats 3 eggs for breakfast and uses 4 eggs for muffins. So, 3 + 4 = 7 eggs are used daily.\n   Step 2: Calculate how many eggs are left to sell. The ducks lay 16 eggs per day, and she uses 7. Therefore, 16 - 7 = 9 eggs remain.\n   Step 3: Calculate her daily earnings from selling the remaining eggs. She sells 9 eggs at $2 each, so 9 \u00d7 $2 = $18.\n   Final Answer: 18\n\n   Check against constraints: \"Solve this step-by-step and provide the final numerical answer\". All good.\n\n   I will structure it clearly. Ensure the final answer is explicitly stated as requested. Possibly just \"18\" or \"$18\" but the prompt says \"final numerical answer\", so I'll output 18. I'll make sure the steps are explicit.\n\n   All steps verified. Ready.\u2705\n   Output matches response.\u2705\n   Proceed. \n   Self-Correction/Refinement during thought: \n   The prompt says \"provide the final numerical answer\". I will just output the number at the end, clearly labeled.\n   Structure:\n   Step 1: ...\n   Step 2: ...\n   Step 3: ...\n   Final numerical answer: 18\n   Matches perfectly.\u2705\n   Output generation. \n   [Done] \n   *Self-Correction/Verification during drafting*: \n   Let's re-read carefully: \"Janet\u2019s ducks lay 16 eggs per day. She eats three for breakfast every morning and bakes muffins for her friends every day with four. She sells the remainder at the farmers' market daily for $2 per egg. How much in dollars does Janet make every day at the farmers' market?\"\n   Math: 16 - 3 - 4 = 9. 9 * 2 = 18.\n   All correct. No trick. Straightforward arithmetic word problem.\n   I will produce the response now. \n   Output matches the final drafted response.\u2705\n   [Final Check of the Prompt]: \"Solve this step-by-step and provide the final numerical answer:\"\n   I'll follow exactly. \n   Proceeds. \n   [Output Generation] -> *See response.* \n   *(Note: I'll make sure the formatting is clean and directly answers the prompt.)* \n   All good. \n   [Output] -> \"Step 1: Calculate the total number of eggs Janet uses each day... Step 2: Calculate the remaining eggs... Step 3: Calculate daily earnings... Final numerical answer: 18\" -> matches.\u2705\n   Done. \n   [Output Generation] (proceeds)\n",
+        "used_thinking": true,
+        "latency_sec": 5.07,
+        "total_tokens": 1288,
+        "completion_tokens": 1201
       }
     ],
     "system2_deliberation": {
-      "latency_ms": 8726.6,
+      "latency_ms": 3757.25,
       "routing": {
         "track": "math",
         "confidence": 0.4531,
         "method": "centroid",
-        "latency_ms": 235.639,
+        "latency_ms": 240.994,
         "probabilities": {
           "science": 0.167,
           "code": 0.0894,
@@ -304,39 +336,39 @@
           "math": 0.4531
         }
       },
-      "winning_index": 2,
-      "winning_text": "Here is the step-by-step solution:\n\n**Step 1: Determine the total number of eggs Janet gets each day.**\nHer ducks lay 16 eggs per day.\n\n**Step 2: Subtract the eggs she uses daily.**\nShe eats 3 eggs for breakfast and uses 4 eggs to bake muffins.\nTotal eggs used = 3 + 4 = 7 eggs.\n\n**Step 3: Calculate the number of eggs remaining to sell.**\nRemaining eggs = Total eggs - Eggs used\nRemaining eggs = 16 - 7",
-      "calibrated_confidence_pct": 89.5,
-      "consensus_pct": 100.0,
-      "agreement_count": 5,
+      "winning_index": 0,
+      "winning_text": "Here is the step-by-step solution:\n\n1. **Find the total number of eggs used daily:**  \n   Janet eats 3 eggs for breakfast and uses 4 eggs for muffins.  \n   Total used = 3 + 4 = 7 eggs.\n\n2. **Calculate the number of eggs remaining for sale:**  \n   Her ducks lay 16 eggs per day. Subtract the eggs she uses:  \n   Remaining eggs = 16 - 7 = 9 eggs.\n\n3. **Calculate her daily earnings from the farmers' market:**  \n   She sells the 9 remaining eggs at $2 per egg.  \n   Daily earnings = 9 \u00d7 $2 = $18.\n\n**Final numerical answer:** 18",
+      "calibrated_confidence_pct": 89.1,
+      "consensus_pct": 80.0,
+      "agreement_count": 4,
       "choice_probabilities": [
-        15.6,
-        22.0,
-        48.3,
-        14.1
+        47.8,
+        19.8,
+        19.5,
+        12.9
       ],
       "killed_branches": [
         {
           "index": 1,
-          "text": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - **Given:**\n     - Janet's ducks lay 16 eggs per day.\n     - She eats 3 eggs for breakfast daily.\n     - She bakes muffins for friends using 4 eggs daily.\n     - She sells the remainder at the farmers' market.\n     - Selling price: $2 per egg.\n   - **Question:** How much in dollars does Janet make every day at the farmers's market?\n   - **Requirement:** Solve step-by-step and provide the final numerical answer.\n\n2.  **Identify Key Variables & Steps:**\n   - Total eggs laid per day: 16\n   - Eggs used for breakfast: 3\n   - Eggs used for muffins: 4\n   - Eggs remaining for sale: Total - (Breakfast + Muffins)\n   - Price per egg: $2\n   - Daily revenue: Remaining eggs \u00d7 Price per egg\n\n3.  **Perform Calculations:**\n   - Total eggs = 16\n   - Used eggs = 3 + 4 = 7\n   - Remaining eggs = 16 - 7 = 9\n   - Daily revenue = 9 \u00d7 $2 = $18\n\n4.  **Structure the Response:**\n   - Start with a clear step-by-step breakdown.\n   - Show the subtraction for used eggs.\n   - Show the calculation for remaining eggs.\n   - Show the multiplication for revenue.\n   - State the final numerical answer clearly.\n\n   Draft:\n   Step 1: Calculate the total number of eggs Janet uses daily.\n   She eats 3 eggs for breakfast and uses 4 eggs for muffins.\n   3 + 4 = 7 eggs used per day.\n\n   Step 2: Calculate the number of eggs remaining to sell.\n   Her ducks lay 16 eggs per day.\n   16 (total) - 7 (used) = 9 eggs remaining.\n\n   Step 3: Calculate her daily earnings from selling the remaining eggs.\n   She sells 9 eggs at $2 each.\n   9 \u00d7 $2 = $18.\n\n   Final Answer: 18\n\n5.  **Self-Correction/Verification:**\n   - Check numbers: 16 laid, 3 eaten, 4 baked = 7 used. 16-7=9 left. 9*2=18.\n   - Units: dollars.\n   - Question asks for \"final numerical answer\".\n   - Format matches request.\n   - All steps are clear and logical.\n   - No hidden tricks detected.\n\n   Everything looks solid. I will produce the final response.\u2705\n   Structure:\n   - Step 1: Find total eggs used.\n   - Step 2: Find eggs available for sale.\n   - Step 3: Calculate daily earnings.\n   - Final numerical answer: 18.\u2705\n   Proceed. \n   Output matches the response. \n   [Done] \n   Output Generation. \n   \"Step 1: Calculate the total number of eggs Janet uses each day.\n   She eats 3 eggs for breakfast and uses 4 eggs for muffins.\n   3 + 4 = 7 eggs used per day.\n\n   Step 2: Determine how many eggs are left to sell.\n   Her ducks lay 16 eggs per day, and she uses 7 of them.\n   16 - 7 = 9 eggs remaining.\n\n   Step 3: Calculate her daily earnings from the farmers' market.\n   She sells the 9 remaining eggs at $2 each.\n   9 \u00d7 $2 = $18.\n\n   Final numerical answer: 18\" -> matches request.\u2705\n   All good. \n   Proceeds. \n   [Output Generation] -> *Self-Correction/Refinement during thought*: \n   The prompt says \"provide the final numerical answer\". I'll make sure it's explicitly stated as requested. I'll keep it concise.\n   The steps are clear. I will output exactly that.\u2705\n   Final Check of the prompt: \"Solve this step-by-step and provide the final numerical answer:\"\n   All constraints met. \n   Output matches response. \n   [Done] \n   *Self-Correction/Note during generation prep*: I'll make sure the formatting is clean.\n   \"Step 1: ... Step 2: ... Step 3: ... Final Answer: 18\"\n   Perfect. \n   Proceeds. \n   [Output Generation] (matches the final response)\n   \"Step 1: Calculate the total number of eggs Janet uses daily.\n   She eats 3 eggs for breakfast and",
-          "probability_pct": 22.0,
-          "rejection_margin_sigma": -1.37,
-          "heads_refuting": "5/5 Heads",
+          "text": "Here is the step-by-step solution:\n\n**Step 1:** Find the total number of eggs laid per day.\nJanet's ducks lay 16 eggs daily.\n\n**Step 2:** Calculate the number of eggs Janet uses herself each day.\nShe eats 3 eggs for breakfast and uses 4 eggs for muffins: 3 + 4 = 7 eggs used.\n\n**Step 3:** Determine how many eggs are left to sell.\nSubtract the used eggs from the total: 16 - 7 = 9 eggs remaining.\n\n**Step 4:** Calculate her daily earnings from selling the remaining eggs.\nShe sells 9 eggs at $2 per egg: 9 \u00d7 $2 = $18.\n\n**Final numerical answer:** 18",
+          "probability_pct": 19.8,
+          "rejection_margin_sigma": -1.03,
+          "heads_refuting": "4/5 Heads",
           "status": "Killed by Deliberation"
         },
         {
-          "index": 0,
-          "text": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - **Given:**\n     - Ducks lay 16 eggs per day.\n     - Janet eats 3 eggs for breakfast.\n     - Janet bakes muffins using 4 eggs.\n     - She sells the remainder at $2 per egg.\n   - **Question:** How much in dollars does Janet make every day at the farmers' market?\n\n2.  **Identify Key Variables & Operations:**\n   - Total eggs per day = 16\n   - Eggs used for breakfast = 3\n   - Eggs used for muffins = 4\n   - Eggs remaining for sale = Total - (breakfast + muffins)\n   - Price per egg = $2\n   - Daily revenue = Remaining eggs \u00d7 Price per egg\n\n3.  **Step-by-Step Calculation:**\n   - Step 1: Calculate total eggs used daily.\n     - Used = 3 (breakfast) + 4 (muffins) = 7 eggs\n   - Step 2: Calculate remaining eggs for sale.\n     - Remaining = 16 (total) - 7 (used) = 9 eggs\n   - Step 3: Calculate daily revenue from selling eggs.\n     - Revenue = 9 (eggs) \u00d7 $2 (per egg) = $18\n\n4.  **Verify Logic & Math:**\n   - 16 - 3 - 4 = 9\n   - 9 \u00d7 2 = 18\n   - Units: dollars\n   - Matches question: \"How much in dollars does Janet make every day at the farmers' market?\" -> $18\n\n5.  **Format Output:**\n   - Provide step-by-step reasoning as requested.\n   - State final numerical answer clearly.\n\n   Structure:\n   - Start with total eggs.\n   - Subtract eggs eaten and used for baking.\n   - Multiply remaining eggs by price.\n   - State final answer.\n\n   Draft:\n   Janet\u2019s ducks lay 16 eggs per day.\n   She uses 3 eggs for breakfast and 4 eggs for muffins, totaling 3 + 4 = 7 eggs used daily.\n   The number of eggs left to sell is 16 - 7 = 9 eggs.\n   She sells these 9 eggs at $2 per egg, so her daily earnings are 9 \u00d7 $2 = $18.\n   Final answer: 18\n\n6.  **Self-Correction/Refinement:**\n   - Check for any trick wording: \"She eats three for breakfast every morning and bakes muffins for her friends every day with four.\" -> Clear.\n   - \"She sells the remainder at the farmers' market daily for $2 per egg.\" -> Clear.\n   - \"How much in dollars does Janet make every day at the farmers' market?\" -> Clear.\n   - Math is straightforward. No hidden complexities.\n   - Output matches request.\n\n   All good. Proceed. \n   Output matches the draft.\u2705\n   Final Answer: 18 (with step-by-step explanation) -> \"18\" or \"$18\". The prompt asks for \"numerical answer\", so I'll provide just the number or clearly state it. I'll follow standard format: step-by-step then final numerical answer.\u2705\n   Structure:\n   Step 1: ...\n   Step 2: ...\n   Step 3: ...\n   Final Answer: 18\n   Ready. \n   Output Generation. \n   [Self-Correction/Verification during thought]\n   Wait, let's double check the exact wording: \"How much in dollars does Janet make every day at the farmers' market?\"\n   Calculation: 16 - 3 - 4 = 9. 9 * 2 = 18.\n   All correct.\n   I will produce the response now. \n   Output matches response.\u2705\n   [Done.] \n   *Self-Correction/Note during generation prep*: The prompt says \"provide the final numerical answer\". I'll make sure it's explicitly stated at the end. I'll keep it concise.\n   Steps:\n   1. Total eggs laid: 16\n   2. Eggs used by Janet: 3 (breakfast) + 4 (muffins) = 7\n   3. Eggs remaining to sell: 16 - 7 = 9\n   4. Daily earnings: 9 eggs \u00d7 $2/egg = $18\n   Final Answer: 18\n   Matches perfectly.\u2705\n   Proceeds. \n   [Output Generation] -> *See response.* \n   *(Note: I'll make sure the formatting strictly follows \"step-by-step and provide",
-          "probability_pct": 15.6,
-          "rejection_margin_sigma": -2.09,
+          "index": 2,
+          "text": "Here is the step-by-step solution:\n\n**Step 1: Determine how many eggs are left for sale each day.**\n- Total eggs laid per day: 16\n- Eggs used for breakfast: 3\n- Eggs used for baking muffins: 4\n- Remaining eggs = 16 - 3 - 4 = **9 eggs**\n\n**Step 2: Calculate her daily earnings from selling the remaining eggs.**\n- Selling price per egg: $2\n- Daily earnings = 9 eggs \u00d7 $2 = **$18**\n\n**Final numerical answer: 18**",
+          "probability_pct": 19.5,
+          "rejection_margin_sigma": -1.23,
           "heads_refuting": "5/5 Heads",
           "status": "Killed by Deliberation"
         },
         {
           "index": 3,
-          "text": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - **Given:**\n     - Janet's ducks lay 16 eggs per day.\n     - She eats 3 eggs for breakfast every morning.\n     - She bakes muffins for friends every day with 4 eggs.\n     - She sells the remainder at the farmers' market daily.\n     - Selling price: $2 per egg.\n   - **Question:** How much in dollars does Janet make every day at the farmers's market?\n\n2.  **Identify Key Variables & Operations:**\n   - Total eggs per day: 16\n   - Eggs eaten: 3\n   - Eggs used for muffins: 4\n   - Eggs remaining for sale: Total - Eaten - Muffins\n   - Price per egg: $2\n   - Daily revenue: Remaining eggs \u00d7 Price per egg\n\n3.  **Step-by-Step Calculation:**\n   - Step 1: Calculate total eggs used by Janet (eaten + muffins)\n     - 3 (breakfast) + 4 (muffins) = 7 eggs used\n   - Step 2: Calculate remaining eggs for sale\n     - 16 (total) - 7 (used) = 9 eggs remaining\n   - Step 3: Calculate daily revenue\n     - 9 eggs \u00d7 $2/egg = $18\n\n4.  **Verify Logic & Arithmetic:**\n   - 16 - 3 - 4 = 9\n   - 9 * 2 = 18\n   - Units: dollars per day\n   - Matches question: \"How much in dollars does Janet make every day at the farmers' market?\" -> $18\n\n5.  **Format Output:**\n   - Provide step-by-step reasoning as requested.\n   - State final numerical answer clearly.\n\n   Structure:\n   - Start with total eggs.\n   - Subtract eggs used for breakfast.\n   - Subtract eggs used for muffins.\n   - Multiply remaining eggs by price per egg.\n   - State final answer.\n\n   Draft:\n   1. Janet's ducks lay 16 eggs per day.\n   2. She uses 3 eggs for breakfast and 4 eggs for muffins, totaling 3 + 4 = 7 eggs used daily.\n   3. The number of eggs remaining to sell is 16 - 7 = 9 eggs.\n   4. She sells these 9 eggs at $2 per egg, so her daily earnings are 9 \u00d7 $2 = $18.\n   Final answer: 18\n\n6.  **Self-Correction/Refinement:**\n   - Check for any trick wording: \"bakes muffins for her friends every day with four.\" -> clearly means 4 eggs.\n   - \"sells the remainder at the farmers' market daily for $2 per egg.\" -> straightforward.\n   - All steps are solid. No hidden tricks.\n   - Output matches request.\n\n   Proceed. \n   Output matches the drafted response.\u2705\n   Final Answer: 18 (or $18, but prompt asks for numerical answer, so just 18 is fine, but I'll state it clearly). I'll follow the exact format requested. \"provide the final numerical answer\". I'll output 18.\u2705\n   All good. \n   Generate response. \n   [Output Generation] -> \"Step 1: Calculate total eggs used... Step 2: Calculate remaining... Step 3: Calculate earnings... Final answer: 18\" matches perfectly. \n   I will write it out clearly. \n   *Self-Correction/Verification during thought*: \n   Wait, is there any ambiguity in \"bakes muffins for her friends every day with four\"? It could mean 4 muffins, but it says \"with four\" right after \"eggs\" in context, or maybe it's a typo for \"with 4 eggs\". Standard math puzzle phrasing implies 4 eggs. I'll assume 4 eggs. Even if it meant 4 muffins, we don't know eggs per muffin, so it must mean 4 eggs. The phrasing \"with four\" is slightly awkward but clearly refers to 4 eggs in standard puzzle contexts. I'll proceed with 4 eggs.\n\n   Calculation: 16 - 3 - 4 = 9. 9 * 2 = 18.\n   Final: 18.\n   Ready. \n   Output matches. \n   [Done] \n   *Output Generation* (matches the response)\n   \"Step 1: Determine the total number of eggs Janet uses each day.\n   She eats 3 eggs for breakfast and uses 4 eggs for muffins.",
-          "probability_pct": 14.1,
-          "rejection_margin_sigma": -2.13,
+          "text": "**Step 1: Calculate the total number of eggs Janet uses daily.**\nShe eats 3 eggs for breakfast and uses 4 eggs for baking muffins.\n3 + 4 = 7 eggs used per day.\n\n**Step 2: Determine how many eggs are left to sell.**\nHer ducks lay 16 eggs per day, and she uses 7 of them.\n16 - 7 = 9 eggs remaining to sell.\n\n**Step 3: Calculate her daily earnings from selling the remaining eggs.**\nShe sells the 9 remaining eggs at $2 per egg.\n9 \u00d7 $2 = $18.\n\nFinal numerical answer: 18",
+          "probability_pct": 12.9,
+          "rejection_margin_sigma": -2.23,
           "heads_refuting": "5/5 Heads",
           "status": "Killed by Deliberation"
         }

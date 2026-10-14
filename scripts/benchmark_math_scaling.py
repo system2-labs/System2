@@ -69,14 +69,19 @@ MATH_PROBLEM = {
 }
 
 
-def query_llm_single_call(model_id: str, prompt: str, timeout: int = 150) -> Dict[str, Any]:
-    """Execute a single, isolated LLM call with a clean context window."""
+def query_llm_single_call(model_id: str, prompt: str, timeout: int = 150, max_tokens: int = 4096) -> Dict[str, Any]:
+    """Execute a single, isolated LLM call with a clean context window.
+
+    Dynamically separates reasoning_content from final content to prevent
+    truncation and withhold scratchpad thoughts from System 2 deliberation.
+    """
+    import re
     t0 = time.perf_counter()
     payload = {
         "model": model_id,
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7,
-        "max_tokens": 1024,
+        "max_tokens": max_tokens,
     }
     resp = requests.post(LM_STUDIO_URL, json=payload, timeout=timeout)
     elapsed = time.perf_counter() - t0
@@ -86,14 +91,35 @@ def query_llm_single_call(model_id: str, prompt: str, timeout: int = 150) -> Dic
 
     data = resp.json()
     msg = data["choices"][0]["message"]
-    text = msg.get("content", "") or ""
-    reasoning = msg.get("reasoning_content", "") or ""
+    raw_content = msg.get("content", "") or ""
+    reasoning_content = msg.get("reasoning_content", "") or ""
 
-    raw_text = text if text.strip() else reasoning
-    raw_text = raw_text.strip()
+    # Check for embedded <think>...</think> tags in content
+    had_thinking_tags = False
+    if "<think>" in raw_content:
+        had_thinking_tags = True
+        parts = re.split(r"</think>", raw_content, maxsplit=1)
+        if len(parts) == 2:
+            extracted_think = re.sub(r"^<think>", "", parts[0]).strip()
+            clean_answer = parts[1].strip()
+            if not reasoning_content:
+                reasoning_content = extracted_think
+            final_text = clean_answer
+        else:
+            final_text = re.sub(r"<think>.*?</think>", "", raw_content, flags=re.DOTALL).strip()
+    else:
+        final_text = raw_content.strip()
+
+    # If content was empty and only reasoning was returned, fallback
+    if not final_text and reasoning_content:
+        final_text = reasoning_content.strip()
+
+    used_thinking = bool(reasoning_content) or had_thinking_tags
 
     return {
-        "text": raw_text,
+        "text": final_text,
+        "reasoning": reasoning_content,
+        "used_thinking": used_thinking,
         "latency_sec": round(elapsed, 2),
         "total_tokens": data.get("usage", {}).get("total_tokens", 0),
         "completion_tokens": data.get("usage", {}).get("completion_tokens", 0),
