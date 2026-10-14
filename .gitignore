@@ -1,14 +1,23 @@
 # trained checkpoints (~144MB); regenerate with train.py
 models/
 # ~31MB HF dataset; source is the HF cache (see 04-handoff.md)
-data/ag_news/
-data/arc/
-data/science_mix/
-data/arc_obqa/
-data/arc_mmlu_science/
-data/arc_augmented/
-data/arc_scienceqa/
-data/code_traces/
+data/ag_news
+data/arc
+data/science_mix
+data/arc_obqa
+data/arc_mmlu_science
+data/arc_augmented
+data/arc_scienceqa
+data/code_traces
+data/auto
+data/culinary
+data/electrical
+data/medical
+data/med
+data/trades
+data/math
+data/legal
+data/finance
 __pycache__/
 *.pyc
 .DS_Store
