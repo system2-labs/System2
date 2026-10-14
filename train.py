@@ -130,159 +130,8 @@ HYPERPARAMS = {
 }
 
 
-def mean_pool_texts(texts, max_len, device, with_grad=False):
-    ceiling = getattr(model.config, "max_position_embeddings", 8192)
-    if max_len > ceiling:
-        import sys
-        print(f"[train warning] Requested max_len={max_len} exceeds architectural ceiling ({ceiling}); clamped to {ceiling}.", file=sys.stderr)
-        max_len = ceiling
-    inputs = tokenizer(texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(device)
-    if with_grad:
-        last_hidden = model(**inputs).last_hidden_state
-        mask = inputs["attention_mask"].unsqueeze(-1)
-        return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
-    else:
-        with torch.no_grad():
-            last_hidden = model(**inputs).last_hidden_state
-            mask = inputs["attention_mask"].unsqueeze(-1)
-            return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
+from encoding import mean_pool_texts, mean_pool_pairwise
 
-
-def mean_pool_pairwise(questions, choices_list, max_len, device, with_grad=False, sources=None, task_prefixes=False, span_pooling=False, span_weight=0.5, span_mode="mean", asym_spans=False, asym_span_mode="default"):
-    b = len(questions)
-    ceiling = getattr(model.config, "max_position_embeddings", 8192)
-    if max_len > ceiling:
-        import sys
-        print(f"[train warning] Requested max_len={max_len} exceeds architectural ceiling ({ceiling}); clamped to {ceiling}.", file=sys.stderr)
-        max_len = ceiling
-    if task_prefixes:
-        flat_texts = [
-            f"{'[Task: Scientific Facts] ' if (sources and sources[idx] == 'openbookqa') else '[Task: Causal Reasoning] '}Question: {questions[idx]} Answer: {choices_list[idx][c]}"
-            for idx in range(b)
-            for c in range(4)
-        ]
-    else:
-        flat_texts = [
-            f"Question: {questions[idx]} Answer: {choices_list[idx][c]}"
-            for idx in range(b)
-            for c in range(4)
-        ]
-    inputs = tokenizer(flat_texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(device)
-    if with_grad:
-        last_hidden = model(**inputs).last_hidden_state
-    else:
-        with torch.no_grad():
-            last_hidden = model(**inputs).last_hidden_state
-
-    if asym_spans:
-        import torch.nn.functional as F
-        input_ids = inputs["input_ids"]
-        attn_mask = inputs["attention_mask"]
-        B, T = input_ids.shape
-        match = (input_ids[:, :-1] == 37741) & (input_ids[:, 1:] == 27)
-        has_match = match.any(dim=1)
-        ans_pos = match.int().argmax(dim=1)
-        cols = torch.arange(T, device=device).unsqueeze(0).expand(B, T)
-        valid_lens = attn_mask.sum(dim=1) - 1
-
-        q_mask = (cols < ans_pos.unsqueeze(1)) & (attn_mask.bool())
-        a_mask = (cols >= (ans_pos + 2).unsqueeze(1)) & (cols < valid_lens.unsqueeze(1)) & (attn_mask.bool())
-
-        no_match = ~has_match.unsqueeze(1)
-        q_mask = torch.where(no_match, attn_mask.bool(), q_mask)
-        a_mask = torch.where(no_match, attn_mask.bool(), a_mask)
-
-        q_mask_f = q_mask.unsqueeze(-1).float()
-        a_mask_f = a_mask.unsqueeze(-1).float()
-        q_vec = (last_hidden * q_mask_f).sum(dim=1) / q_mask_f.sum(dim=1).clamp(min=1.0)
-        a_vec = (last_hidden * a_mask_f).sum(dim=1) / a_mask_f.sum(dim=1).clamp(min=1.0)
-
-        mask = inputs["attention_mask"].unsqueeze(-1)
-        holistic = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
-
-        if asym_span_mode == "causal_attn":
-            H_norm = F.normalize(last_hidden, p=2, dim=-1)
-            q_norm = F.normalize(q_vec, p=2, dim=-1)
-            cos_sim = (H_norm * q_norm.unsqueeze(1)).sum(dim=-1)
-            scores = (cos_sim / 0.1).masked_fill(~a_mask, -1e9)
-            attn_weights = torch.softmax(scores, dim=-1).unsqueeze(-1)
-            a_attn = (last_hidden * attn_weights).sum(dim=1)
-
-            v0 = holistic
-            v1 = 0.35 * q_vec + 0.65 * a_vec
-            v2 = 0.15 * q_vec + 0.85 * a_vec
-            v3 = 0.50 * q_vec + 0.50 * a_vec
-            v4 = 0.35 * q_vec + 0.65 * a_attn
-        elif asym_span_mode == "choice_forward":
-            v0 = holistic
-            v1 = 0.40 * q_vec + 0.60 * a_vec
-            v2 = 0.20 * q_vec + 0.80 * a_vec
-            v3 = 0.50 * q_vec + 0.50 * a_vec
-            v4 = 0.05 * q_vec + 0.95 * a_vec
-        elif asym_span_mode == "choice_forward_v2":
-            v0 = holistic
-            v1 = 0.40 * q_vec + 0.60 * a_vec
-            v2 = 0.20 * q_vec + 0.80 * a_vec
-            v3 = 0.50 * q_vec + 0.50 * a_vec
-            v4 = 0.15 * q_vec + 0.85 * a_vec
-        elif asym_span_mode == "balanced_spectrum":
-            v0 = holistic
-            v1 = 0.40 * q_vec + 0.60 * a_vec
-            v2 = 0.20 * q_vec + 0.80 * a_vec
-            v3 = 0.50 * q_vec + 0.50 * a_vec
-            v4 = 0.35 * q_vec + 0.65 * a_vec
-        elif asym_span_mode == "constraint_spectrum":
-            v0 = holistic
-            v1 = 0.70 * q_vec + 0.30 * a_vec
-            v2 = 0.20 * q_vec + 0.80 * a_vec
-            v3 = 0.50 * q_vec + 0.50 * a_vec
-            v4 = 0.35 * q_vec + 0.65 * a_vec
-        else:
-            # 5 asymmetric ThoughtHead perspectives (default):
-            v0 = holistic
-            v1 = 0.75 * q_vec + 0.25 * a_vec
-            v2 = 0.25 * q_vec + 0.75 * a_vec
-            v3 = 0.50 * q_vec + 0.50 * a_vec
-            v4 = holistic
-
-        multi_head_vecs = torch.stack([v0, v1, v2, v3, v4], dim=1)  # (b*4, 5, 1024)
-        multi_head_vecs = multi_head_vecs.view(b, 4, 5, -1).permute(0, 2, 1, 3)  # (b, 5, 4, 1024)
-        return multi_head_vecs
-    elif span_pooling:
-        import torch.nn.functional as F
-        input_ids = inputs["input_ids"]
-        attn_mask = inputs["attention_mask"]
-        B, T = input_ids.shape
-        match = (input_ids[:, :-1] == 37741) & (input_ids[:, 1:] == 27)
-        has_match = match.any(dim=1)
-        ans_pos = match.int().argmax(dim=1)
-        cols = torch.arange(T, device=device).unsqueeze(0).expand(B, T)
-        valid_lens = attn_mask.sum(dim=1) - 1
-
-        q_mask = (cols < ans_pos.unsqueeze(1)) & (attn_mask.bool())
-        a_mask = (cols >= (ans_pos + 2).unsqueeze(1)) & (cols < valid_lens.unsqueeze(1)) & (attn_mask.bool())
-
-        no_match = ~has_match.unsqueeze(1)
-        q_mask = torch.where(no_match, attn_mask.bool(), q_mask)
-        a_mask = torch.where(no_match, attn_mask.bool(), a_mask)
-
-        q_mask_f = q_mask.unsqueeze(-1).float()
-        a_mask_f = a_mask.unsqueeze(-1).float()
-        q_vec = (last_hidden * q_mask_f).sum(dim=1) / q_mask_f.sum(dim=1).clamp(min=1.0)
-        if span_mode == "attn":
-            H_norm = F.normalize(last_hidden, p=2, dim=-1)
-            q_norm = F.normalize(q_vec, p=2, dim=-1)
-            cos_sim = (H_norm * q_norm.unsqueeze(1)).sum(dim=-1)
-            scores = (cos_sim / 0.1).masked_fill(~a_mask, -1e9)
-            attn_weights = torch.softmax(scores, dim=-1).unsqueeze(-1)
-            a_vec = (last_hidden * attn_weights).sum(dim=1)
-        else:
-            a_vec = (last_hidden * a_mask_f).sum(dim=1) / a_mask_f.sum(dim=1).clamp(min=1.0)
-        pooled = (1.0 - span_weight) * q_vec + span_weight * a_vec
-    else:
-        mask = inputs["attention_mask"].unsqueeze(-1)
-        pooled = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
-    return pooled.view(b, 4, -1)
 
 
 def set_seed(seed=42):
@@ -534,11 +383,13 @@ def main():
                     span_mode=HYPERPARAMS.get("span_mode", "mean"),
                     asym_spans=HYPERPARAMS.get("asym_spans", False),
                     asym_span_mode=HYPERPARAMS.get("asym_span_mode", "default"),
+                    model=model,
+                    tokenizer=tokenizer,
                 )
                 lab = torch.tensor(lab_list, device=device)  # (b,)
             else:
                 t_slice = [cols["text"][idx] for idx in batch_idx]
-                vecs = mean_pool_texts(t_slice, HYPERPARAMS["max_len"], device, with_grad=with_grad)
+                vecs = mean_pool_texts(t_slice, HYPERPARAMS["max_len"], device, with_grad=with_grad, model=model, tokenizer=tokenizer)
                 lab = torch.tensor([labels[idx] for idx in batch_idx], device=device)  # (b,)
 
             if use_mote:
