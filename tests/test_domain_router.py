@@ -108,12 +108,35 @@ TEST_BATTERIES = [
     ("math", "What is the prime factorization of 360 expressed in exponential form?"),
     ("math", "In a right triangle with legs of length 6 cm and 8 cm, calculate the length of the hypotenuse using the Pythagorean theorem."),
     ("math", "How many days are in 6 weeks, and how many hours are in 3 days altogether?"),
+    # -------------------- LEGAL (Track H) --------------------
+    ("legal", "Under tort law, what four essential elements must a plaintiff establish to succeed in a negligence action?"),
+    ("legal", "How does the parol evidence rule restrict the introduction of extrinsic evidence regarding a fully integrated written contract?"),
+    ("legal", "What constitutes mens rea in statutory criminal offenses, and how does it differ from actus reus?"),
+    ("legal", "Under the Fourteenth Amendment of the US Constitution, what standard of review applies to equal protection challenges involving race?"),
+    ("legal", "In federal civil litigation, under what circumstances can a court grant summary judgment under Rule 56?"),
+    ("legal", "What is the primary rationale behind the hearsay rule and its excited utterance exception in the law of evidence?"),
+    ("legal", "What fiduciary duties does a corporate director owe to the corporation and its shareholders under corporate law?"),
+    ("legal", "In constitutional jurisprudence, what is the significance of the Fifth Amendment right against self-incrimination?"),
+    ("legal", "Under what conditions can sovereign immunity be waived in a breach of contract lawsuit against a state government?"),
+    ("legal", "How does strict liability apply to abnormally dangerous activities compared to intentional torts?"),
+
+    # -------------------- FINANCE (Track I) --------------------
+    ("finance", "How does straight-line depreciation affect an entity's income statement and balance sheet over the asset's useful life?"),
+    ("finance", "What is EBITDA, and why is it frequently used by credit analysts as an operational cash flow proxy?"),
+    ("finance", "How do changes in monetary policy by a central bank affect short-term inflation rates and nominal interest rates?"),
+    ("finance", "In econometrics, what is the consequence of multicollinearity among independent variables in an ordinary least squares regression?"),
+    ("finance", "How do you calculate the Weighted Average Cost of Capital (WACC) given equity and debt weights, cost of equity, and after-tax cost of debt?"),
+    ("finance", "What does a company's quick ratio measure compared to its current ratio in evaluating short-term liquidity?"),
+    ("finance", "According to macroeconomic theory, what is the liquidity preference framework and how does it determine equilibrium interest rates?"),
+    ("finance", "How is gross margin calculated, and what does a declining gross margin trend signal about production costs?"),
+    ("finance", "What is the economic concept of price elasticity of demand, and what occurs when demand is inelastic?"),
+    ("finance", "In accounting, how do increases in accounts receivable impact net operating cash flow on the cash flow statement?"),
 ]
 
 
 def run_benchmark():
     print("========================================================================")
-    print(" DYNAMIC DOMAIN ROUTER BENCHMARK & VERIFICATION (70 QUESTIONS)")
+    print(" DYNAMIC DOMAIN ROUTER BENCHMARK & VERIFICATION (90 QUESTIONS)")
     print("========================================================================")
 
     router = DomainRouter(device="cpu")
