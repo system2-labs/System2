@@ -28,6 +28,8 @@ DATA_PATHS = {
     "auto": os.path.join(ROOT_DIR, "data", "auto"),
     "culinary": os.path.join(ROOT_DIR, "data", "culinary"),
     "math": os.path.join(ROOT_DIR, "data", "math"),
+    "legal": os.path.join(ROOT_DIR, "data", "legal"),
+    "finance": os.path.join(ROOT_DIR, "data", "finance"),
 }
 
 OUTPUT_PATH = os.path.join(ROOT_DIR, "routing", "domain_centroids.pt")
@@ -43,7 +45,7 @@ def main():
     model.to("cpu")
     model.eval()
 
-    tracks_order = ["science", "code", "med", "electrical", "auto", "culinary", "math"]
+    tracks_order = ["science", "code", "med", "electrical", "auto", "culinary", "math", "legal", "finance"]
     centroids_list = []
 
     for track in tracks_order:
