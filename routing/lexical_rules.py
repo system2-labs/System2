@@ -16,6 +16,7 @@ PATTERNS = {
         re.compile(r"\b(?:arr\.append|println!|console\.log|printf\(|std::cout|nullptr|malloc\(|free\()\b"),
         re.compile(r"(?:\b(?:borrow\s+checker|data\s+races|instance\s+variable|Binary\s+Search\s+Tree|BST|dictionary\s+key)\b|\bC\+\+|\bnew\[\]|\bdelete\[\])"),
         re.compile(r"\bIn\s+(?:Python|Rust|Java|Bash|SQL|Golang|C\+\+)", re.IGNORECASE),
+        re.compile(r"\b(?:echo\s+\$\(|expr\s+[0-9]+|Bash\s+script)\b", re.IGNORECASE),
     ],
     "auto": [
         re.compile(r"\b[PBUC][0-3][0-9A-F]{3}\b"),  # OBD-II Diagnostic Trouble Codes (e.g. P0300, P0171)
@@ -68,8 +69,8 @@ PATTERNS = {
         re.compile(r"\b(?:torts?|statute|breach\s+of\s+contract|jurisdiction|mens\s+rea|actus\s+reus)\b", re.IGNORECASE),
         re.compile(r"\b(?:plaintiff|defendant|prosecution|appellant|appellee|habeas\s+corpus)\b", re.IGNORECASE),
         re.compile(r"\b(?:Fifth\s+Amendment|Fourteenth\s+Amendment|due\s+process|strict\s+liability|negligence)\b", re.IGNORECASE),
-        re.compile(r"\b(?:hearsay\s+exception|parol\s+evidence|sovereign\s+immunity|summary\s+judgment)\b", re.IGNORECASE),
-        re.compile(r"\b(?:Bar\s+Exam|Multistate\s+Bar|MBE|jurisprudence|fiduciary\s+duty)\b", re.IGNORECASE),
+        re.compile(r"\b(?:hearsay(?:\s+rule|\s+exception)?|excited\s+utterance|parol\s+evidence|sovereign\s+immunity|summary\s+judgment)\b", re.IGNORECASE),
+        re.compile(r"\b(?:Bar\s+Exam|Multistate\s+Bar|MBE|jurisprudence|fiduciary\s+dut(?:y|ies))\b", re.IGNORECASE),
     ],
     "finance": [
         re.compile(r"\b(?:depreciation|EBITDA|balance\s+sheet|income\s+statement|cash\s+flow)\b", re.IGNORECASE),
