@@ -15,15 +15,17 @@ Each System2 domain track uses identical parameter partitioning:
 
 ### Track Inventory & Guarded Metrics
 
-| Track ID | Domain Name | Guarded Metric | Accuracy | Brier Score | Calibration $\tau$ | Checkpoint SHA-256 (first 12) |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `science` | **Track A: Science & Causal Reasoning** | **`0.7397`** | 73.97% | 0.1700 | `0.6633` | `8fea99797ca1...` |
-| `code` | **Track B: Polyglot Code & Query Traces** | **`0.901`** | 89.11% | 0.0891 | `0.6533` | `eeb5665d2924...` |
-| `med` | **Track C: Clinical & Medical Diagnostics** | **`0.5397`** | 29.38% | 0.2145 | `1.092` | `0f0f420da289...` |
-| `electrical` | **Track D: Electrical, Electronics & Power Systems** | **`0.5496`** | 32.09% | 0.2217 | `0.9558` | `4ca3edf8d4e6...` |
-| `auto` | **Track E: Automotive & HVAC Diagnostics** | **`0.9881`** | 99.50% | 0.0188 | `0.6411` | `00641bb63889...` |
-| `culinary` | **Track F: Culinary Chemistry & Food Science** | **`0.7487`** | 68.46% | 0.1872 | `0.6853` | `d092ce196947...` |
-| `math` | **Track G: Mathematical & Quantitative Reasoning** | **`0.9462`** | 95.60% | 0.0636 | `0.5432` | `151c2c9f3e5e...` |
+| Track ID | Domain Name | Guarded Metric | Raw Accuracy | Brier Score | True ECE (10-bin) | Calibration $\tau$ | Checkpoint |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `science` | **Track A: Science & Causal Reasoning** | **`0.7397`** | 73.97% | 0.1700 | 0.0821 | `0.6633` | `models/system2_science.pt` |
+| `code` | **Track B: Polyglot Code & Query Traces** | **`0.9010`** | 89.11% | 0.0891 | 0.0542 | `0.6533` | `models/system2_code.pt` |
+| `med` | **Track C: Clinical & Medical Diagnostics** | **`0.5427`** | 29.77% | 0.2123 | 0.0546 | `1.0920` | `models/system2_med.pt` |
+| `electrical` | **Track D: Electrical, Electronics & Power Systems** | **`0.5496`** | 32.09% | 0.2217 | 0.0984 | `0.9558` | `models/system2_electrical.pt` |
+| `auto` | **Track E: Automotive & HVAC Diagnostics** | **`0.9881`** | 99.50% | 0.0188 | 0.0124 | `0.6411` | `models/system2_auto.pt` |
+| `culinary` | **Track F: Culinary Chemistry & Food Science** | **`0.7487`** | 68.46% | 0.1872 | 0.0762 | `0.6853` | `models/system2_culinary.pt` |
+| `math` | **Track G: Mathematical & Quantitative Reasoning** | **`0.9462`** | 95.60% | 0.0636 | 0.0412 | `0.5432` | `models/system2_math.pt` |
+| `legal` | **Track H: Legal Reasoning & Statutory Compliance** | **`0.5505`** | 33.92% | 0.2383 | 0.1314 | `0.7500` | `models/system2_legal.pt` |
+| `finance` | **Track I: Financial Reasoning & Quantitative Analysis** | **`0.5832`** | 40.78% | 0.2415 | 0.0658 | `0.7500` | `models/system2_finance.pt` |
 
 ---
 
