@@ -23,6 +23,7 @@ __pycache__/
 .DS_Store
 # scratch / cache files
 scratch/
+notes_local/
 *.pt
 *.log
 # NOTE: .best_metric is intentionally TRACKED - it is the loop's memory.
