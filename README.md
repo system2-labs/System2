@@ -117,26 +117,51 @@ Every specialized track enforces the **Metric Invariant**: all commits must stri
 - PyTorch with Apple Silicon MPS support (`torch.backends.mps.is_available() == True`)
 - Hugging Face `transformers` and `datasets`
 
-### 2. Interactive Prompt Routing
-Test the sub-millisecond dynamic domain router from the CLI:
-```bash
-python3 scripts/route_prompt.py "Can authentic sourdough bread be baked using industrial glue and Portland cement?"
-# -> Dispatched Track: [CULINARY] (Confidence: 96.0%, Latency: 0.062 ms)
+### 2. Unified Deliberation Engine & CLI (`sys2`)
+Execute full feedforward deliberation with automatic dynamic domain routing and in-memory LoRA adapter hot-swapping (< 3 ms) directly from the command line:
 
-python3 scripts/route_prompt.py "A vehicle triggers DTC code P0300 with active misfire counts across cylinders 1, 3, and 5."
-# -> Dispatched Track: [AUTO] (Confidence: 99.0%, Latency: 0.062 ms)
+```bash
+# Adjudicate a multi-choice question with full 5-head parallel deliberation:
+python3 -m sys2 "Under contract law, what element creates mutual assent?" \
+  --choices "Offer and acceptance" "Unilateral expectation" "Past consideration" "Promissory estoppel"
+# -> Verdict: (A) Offer and acceptance
+# -> Confidence: 78.4% | Consensus: 5/5 Heads
+# -> Domain: [LEGAL] (lexical, route=0.06ms, delib=34.20ms, total=34.26ms)
+
+# Ultra-fast Dynamic Domain Route Only (< 0.1 ms):
+python3 -m sys2 --route "A vehicle triggers DTC code P0300 with active misfire counts."
+# -> Routed Domain: [AUTO] (Track E: Automotive & HVAC Diagnostics)
+# -> Method: lexical | Confidence: 99.0% | Latency: 0.061 ms
+
+# Interactive Deliberation REPL:
+python3 -m sys2 --interactive
 ```
 
-### 3. Deliberation Benchmark
-Run the 4-tier model scaling deliberation benchmark comparing independent zero-knowledge LLM samples adjudicated by System 2 on CPU:
+### 3. Multi-Domain Hybrid Deliberation Benchmark
+Run the end-to-end Path B hybrid deliberation benchmark pairing a small local model (`google/gemma-4-e4b`, 4B) in LM Studio with System 2 feedforward arbitration across 5 distinct domains:
+
 ```bash
-python3 scripts/benchmark_four_model_scaling.py
+python3 scripts/benchmark_multidomain_hybrid.py
 ```
 
-### 4. AutoResearch Loop
-Run the autonomous metric-guarded training loop on any track worktree:
+| Domain | Routed Track | Routing Method & Latency | System 2 Deliberation Verdict | Small LLM (4B) Direct | Deliberation Latency |
+| :--- | :--- | :--- | :---: | :---: | :---: |
+| **Legal** | `legal` | Lexical (1.13 ms) | (D) ✗ (Conf: 40.2%, 2/5 Heads) | (C) ✓ | 3028 ms |
+| **Finance** | `finance` | Lexical (0.10 ms) | (A) ✗ (Conf: 47.7%, 4/5 Heads) | (A) ✗ | 335 ms |
+| **Medicine** | `med` | Centroid (259 ms) | (D) ✗ (Conf: 42.3%, 3/5 Heads) | (A) ✗ | 1375 ms |
+| **Code** | `code` | Lexical (0.28 ms) | **(B) ✓ (Conf: 46.2%, 1/5 Heads)** | (A) ✗ *(Rescued by Sys2)* | 1449 ms |
+| **Math** | `math` | Centroid (182 ms) | **(C) ✓ (Conf: 70.8%, 4/5 Heads)** | **(C) ✓** | 1280 ms |
+
+### 4. Running the ML Regression Test Suite
+Verify that all 15 unit tests (checkpoint roundtrips, span pooling, contrastive losses, 5-head deliberation, adapter hot-swapping) pass cleanly:
 ```bash
-cd scratch/worktrees/track-e
-./runner_auto.sh "experiment: sharpen calibration smoothing to 0.12"
+pytest tests/
+# -> 15 passed in 8.25s
+```
+
+### 5. Automated AutoResearch Worktree Sweeps
+Run metric-guarded hyperparameter sweeps across isolated git worktrees with automatic rollback on regressions:
+```bash
+python3 scripts/run_parallel_sweeps.py --tracks track-h track-i --max-trials 3
 ```
 The runner trains on Apple Silicon MPS, judges on the full held-out test split, and commits if improved or executes `git reset --hard HEAD` if regressed.

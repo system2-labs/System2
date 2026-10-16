@@ -66,11 +66,11 @@ PATTERNS = {
         re.compile(r"\b(?:percentage\s+increase|cost\s+per\s+item|discount\s+of|calculate\s+the\s+total)\b", re.IGNORECASE),
     ],
     "legal": [
-        re.compile(r"\b(?:torts?|statute|breach\s+of\s+contract|jurisdiction|mens\s+rea|actus\s+reus)\b", re.IGNORECASE),
-        re.compile(r"\b(?:plaintiff|defendant|prosecution|appellant|appellee|habeas\s+corpus)\b", re.IGNORECASE),
-        re.compile(r"\b(?:Fifth\s+Amendment|Fourteenth\s+Amendment|due\s+process|strict\s+liability|negligence)\b", re.IGNORECASE),
+        re.compile(r"\b(?:torts?|statute|contracts?|contractual|breach\s+of\s+contract|jurisdiction|mens\s+rea|actus\s+reus)\b", re.IGNORECASE),
+        re.compile(r"\b(?:plaintiff|defendant|prosecution|appellant|appellee|habeas\s+corpus|mutual\s+assent|promissory\s+estoppel)\b", re.IGNORECASE),
+        re.compile(r"\b(?:Fifth\s+Amendment|Fourteenth\s+Amendment|due\s+process|strict\s+liability|negligence|consideration)\b", re.IGNORECASE),
         re.compile(r"\b(?:hearsay(?:\s+rule|\s+exception)?|excited\s+utterance|parol\s+evidence|sovereign\s+immunity|summary\s+judgment)\b", re.IGNORECASE),
-        re.compile(r"\b(?:Bar\s+Exam|Multistate\s+Bar|MBE|jurisprudence|fiduciary\s+dut(?:y|ies))\b", re.IGNORECASE),
+        re.compile(r"\b(?:Bar\s+Exam|Multistate\s+Bar|MBE|jurisprudence|fiduciary\s+dut(?:y|ies)|statutory)\b", re.IGNORECASE),
     ],
     "finance": [
         re.compile(r"\b(?:depreciation|EBITDA|balance\s+sheet|income\s+statement|cash\s+flow)\b", re.IGNORECASE),
@@ -78,6 +78,7 @@ PATTERNS = {
         re.compile(r"\b(?:amortization|capital\s+structure|weighted\s+average\s+cost|WACC|liquidity\s+ratio)\b", re.IGNORECASE),
         re.compile(r"\b(?:gross\s+margin|accounts\s+receivable|accounts\s+payable|equity\s+multiplier)\b", re.IGNORECASE),
         re.compile(r"\b(?:fiscal\s+stimulus|Keynesian|price\s+elasticity|comparative\s+advantage|GDP\s+deflator)\b", re.IGNORECASE),
+        re.compile(r"\b(?:audit(?:or|ing)?|substantive\s+test|attribute\s+sampling|control\s+risk|management\s+fraud)\b", re.IGNORECASE),
     ],
 }
 
