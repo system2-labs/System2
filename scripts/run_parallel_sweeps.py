@@ -28,19 +28,14 @@ WORKTREE_MAP = {
         "best_file": ".best_metric_legal",
         "trials": [
             {
-                "desc": "asym_span_mode constraint_spectrum",
-                "param": "asym_span_mode",
-                "val": '"constraint_spectrum"',
+                "desc": "warmup_ratio 0.05 and cosine annealing",
+                "param": "warmup_ratio",
+                "val": "0.05",
             },
             {
                 "desc": "lambda_cand_margin 0.08",
                 "param": "lambda_cand_margin",
                 "val": "0.08",
-            },
-            {
-                "desc": "warmup_ratio 0.05 and cosine annealing",
-                "param": "warmup_ratio",
-                "val": "0.05",
             },
         ],
     },
@@ -50,19 +45,14 @@ WORKTREE_MAP = {
         "best_file": ".best_metric_finance",
         "trials": [
             {
-                "desc": "lambda_cand_margin 0.06",
-                "param": "lambda_cand_margin",
-                "val": "0.06",
-            },
-            {
-                "desc": "soft_target_tau 0.45",
-                "param": "soft_target_tau",
-                "val": "0.45",
-            },
-            {
                 "desc": "warmup_ratio 0.05 and cosine annealing",
                 "param": "warmup_ratio",
                 "val": "0.05",
+            },
+            {
+                "desc": "lambda_cand_margin 0.06",
+                "param": "lambda_cand_margin",
+                "val": "0.06",
             },
         ],
     },
