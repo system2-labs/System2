@@ -1,0 +1,62 @@
+[
+  {
+    "domain": "legal",
+    "routed_track": "legal",
+    "ground_truth": "C",
+    "llm_pred": "C",
+    "llm_correct": true,
+    "sys2_pred": "D",
+    "sys2_correct": false,
+    "confidence": 0.4019,
+    "consensus": "2/5",
+    "delib_latency_ms": 3028.61
+  },
+  {
+    "domain": "finance",
+    "routed_track": "finance",
+    "ground_truth": "D",
+    "llm_pred": "A",
+    "llm_correct": false,
+    "sys2_pred": "A",
+    "sys2_correct": false,
+    "confidence": 0.4767,
+    "consensus": "4/5",
+    "delib_latency_ms": 335.44
+  },
+  {
+    "domain": "med",
+    "routed_track": "med",
+    "ground_truth": "B",
+    "llm_pred": "A",
+    "llm_correct": false,
+    "sys2_pred": "D",
+    "sys2_correct": false,
+    "confidence": 0.4232,
+    "consensus": "3/5",
+    "delib_latency_ms": 1375.68
+  },
+  {
+    "domain": "code",
+    "routed_track": "code",
+    "ground_truth": "B",
+    "llm_pred": "A",
+    "llm_correct": false,
+    "sys2_pred": "B",
+    "sys2_correct": true,
+    "confidence": 0.4616,
+    "consensus": "1/5",
+    "delib_latency_ms": 1449.14
+  },
+  {
+    "domain": "math",
+    "routed_track": "math",
+    "ground_truth": "C",
+    "llm_pred": "C",
+    "llm_correct": true,
+    "sys2_pred": "C",
+    "sys2_correct": true,
+    "confidence": 0.7081,
+    "consensus": "4/5",
+    "delib_latency_ms": 1280.08
+  }
+]

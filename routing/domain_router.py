@@ -151,8 +151,9 @@ class DomainRouter:
 
             elapsed_ms = round((time.perf_counter() - t0) * 1000, 3)
 
-            # Fallback if completely ambiguous / out-of-distribution
-            if max_prob < 0.30:
+            # Fallback if completely ambiguous / out-of-distribution (below 1.5x uniform probability)
+            ambiguity_threshold = 1.5 / len(self.tracks_order)
+            if max_prob < ambiguity_threshold:
                 return RouteDecision(
                     selected_track="science",
                     confidence=round(max_prob, 4),
