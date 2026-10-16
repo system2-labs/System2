@@ -67,19 +67,20 @@ class System2Engine:
 
     def __init__(self, device: Optional[str] = None):
         if device is None:
-            self.device = "mps" if torch.backends.mps.is_available() else "cpu"
+            self.device = "cpu"
         else:
             self.device = device
 
         print(f"[System2Engine] Initializing on {self.device.upper()}...", file=sys.stderr)
-        self.tokenizer, self.model = get_bert("answerdotai/ModernBERT-Large-Instruct")
-        self.model.to(self.device)
+        from transformers import AutoModel, AutoTokenizer
+        self.tokenizer = AutoTokenizer.from_pretrained("answerdotai/ModernBERT-Large-Instruct", clean_up_tokenization_spaces=False)
+        self.model = AutoModel.from_pretrained("answerdotai/ModernBERT-Large-Instruct").to(self.device)
         self.model.eval()
 
         # Inject LoRA scaffolding into top 8 layers
         apply_lora(self.model, r=32, alpha=32, num_layers=8)
 
-        # Dynamic Router
+        # Dynamic Router (runs on CPU)
         self.router = DomainRouter(device="cpu")
 
         # In-memory adapter cache: domain -> (encoder_state, sys2_instance)
