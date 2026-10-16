@@ -12,11 +12,11 @@ CANDIDATE="./models/candidate_legal.pt"
 
 mkdir -p ./models
 
-# Train on Track H Legal dataset
-python3 train.py --save "$CANDIDATE" --data "./data/legal" --train-size 1478 --dynamic-len
+# Train on Track H Legal dataset (capped at max-len 1024)
+python3 train.py --save "$CANDIDATE" --data "./data/legal" --train-size 1478 --max-len 1024 --dynamic-len
 
 # Judge on held-out Bar Exam & Statutory test set (370 samples)
-if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/legal" --dynamic-len)"; then
+if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/legal" --max-len 1024 --dynamic-len)"; then
   echo "[runner_legal] experiment INVALID (eval failed) -> revert"
   rm -f "$CANDIDATE"
   git reset --hard HEAD 2>/dev/null || true
