@@ -7,4 +7,19 @@ Exports:
 
 from sys2.engine import System2Engine, DeliberationResult
 
-__all__ = ["System2Engine", "DeliberationResult"]
+__all__ = [
+    "System2Engine",
+    "DeliberationResult",
+    "AgentGatekeeper",
+    "GuardVerdict",
+    "GuardResult",
+    "check_command",
+]
+
+
+def __getattr__(name: str):
+    if name in ("AgentGatekeeper", "GuardVerdict", "GuardResult", "check_command"):
+        import sys2.guard as guard_mod
+        return getattr(guard_mod, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+

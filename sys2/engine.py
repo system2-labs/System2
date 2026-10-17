@@ -36,6 +36,7 @@ CHECKPOINT_MAP = {
     "math": os.path.join(ROOT_DIR, "models", "system2_math.pt"),
     "legal": os.path.join(ROOT_DIR, "models", "system2_legal.pt"),
     "finance": os.path.join(ROOT_DIR, "models", "system2_finance.pt"),
+    "safety": os.path.join(ROOT_DIR, "models", "system2_safety.pt"),
 }
 
 

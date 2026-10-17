@@ -30,6 +30,10 @@ dependencies = [
     "tqdm>=4.66.0",
 ]
 
+[project.scripts]
+sys2 = "sys2.__main__:main"
+sys2-guard = "sys2.guard:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",

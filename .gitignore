@@ -18,6 +18,8 @@ data/trades
 data/math
 data/legal
 data/finance
+data/safety
+.fujimoto.yaml
 __pycache__/
 *.pyc
 .DS_Store
