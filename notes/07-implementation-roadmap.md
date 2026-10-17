@@ -17,8 +17,8 @@ These are concrete build tasks with clear entry/exit criteria. Each can be ticke
   - `python3 -m sys2.guard "ls /home"` → ALLOWED (Conf: 78.4%, 4/5 heads)
   - Confidence thresholds: >0.70 Benign → ALLOW, >0.70 threat → BLOCK, <0.40 → ABSTAIN
 - **Dependencies**: Existing `sys2/engine.py` (95% of the pipeline is already built)
-- **Missing**: Safety domain adapter (`system2_safety.pt`) trained on ~50 commands (25 safe, 15 destructive, 10 adversarial)
-- **Status**: NOT STARTED
+- **Safety domain adapter**: `system2_safety.pt` trained on 52 commands (25 safe, 15 destructive, 10 adversarial, 2 ambiguous)
+- **Status**: COMPLETE (Shipped in `sys2/guard.py` with `models/system2_safety.pt` adapter & 100% passing test suite)
 
 ### P1: 2-Pass Recurrent Deliberation
 - **What**: Judger feedback loop (2 passes, <50ms total)
@@ -57,7 +57,7 @@ These are concrete build tasks with clear entry/exit criteria. Each can be ticke
 
 | # | Priority | Step | Status |
 |---|----------|------|--------|
-| 1 | P0 | Agent Gatekeeper (`sys2/guard.py`) | NOT STARTED |
+| 1 | P0 | Agent Gatekeeper (`sys2/guard.py`) | COMPLETE |
 | 2 | P1 | 2-Pass Recurrent Deliberation | NOT STARTED |
 | 3 | P2 | Batched MCTS Pruner Harness | NOT STARTED |
 | 4 | P3 | Cyber-Physical Safety Interlock Benchmark | NOT STARTED |
@@ -120,7 +120,7 @@ These are research/infrastructure tasks — less immediately dogfoodable but unl
 
 | Order | Tag | Step | Type | Dependencies |
 |-------|-----|------|------|-------------|
-| 1 | **P0** | Agent Gatekeeper | Reference Build | None (dogfood immediately) |
+| 1 | **P0** | Agent Gatekeeper | Reference Build | COMPLETE |
 | 2 | **P1** | 2-Pass Recurrent Deliberation | Reference Build | P0 complete, hybrid CLI (D1) |
 | 3 | **P2** | Batched MCTS Pruner Harness | Reference Build | P1 (vectorized batching) |
 | 4 | **P3** | Cyber-Physical Interlock Benchmark | Reference Build | None (standalone) |
