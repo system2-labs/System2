@@ -14,6 +14,7 @@ __all__ = [
     "GuardVerdict",
     "GuardResult",
     "check_command",
+    "create_app",
 ]
 
 
@@ -21,5 +22,8 @@ def __getattr__(name: str):
     if name in ("AgentGatekeeper", "GuardVerdict", "GuardResult", "check_command"):
         import sys2.guard as guard_mod
         return getattr(guard_mod, name)
+    if name == "create_app":
+        import sys2.server as server_mod
+        return getattr(server_mod, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
