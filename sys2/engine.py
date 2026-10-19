@@ -52,6 +52,7 @@ class DeliberationResult:
     routing_latency_ms: float
     deliberation_latency_ms: float
     total_latency_ms: float
+    choice_probabilities: Optional[List[float]] = None
 
     def __str__(self) -> str:
         letters = ["A", "B", "C", "D"]
@@ -167,12 +168,17 @@ class System2Engine:
         # 2. Hot-Swap Adapter
         self.switch_domain(selected_domain)
 
+        num_raw = len(choices)
+        eval_choices = list(choices)
+        while len(eval_choices) < 4:
+            eval_choices.append("N/A")
+
         # 3. Deliberation Forward Pass
         t_delib_0 = time.perf_counter()
         with torch.no_grad():
             vecs = mean_pool_pairwise(
                 [question],
-                [choices],
+                [eval_choices],
                 max_len=max_len,
                 device=self.device,
                 with_grad=False,
@@ -184,7 +190,19 @@ class System2Engine:
             best, conf, pruned, confs, logits, emb, scores, ens_logits = self.current_sys2(vecs)
             t_delib_ms = (time.perf_counter() - t_delib_0) * 1000
 
-            win_idx = ens_logits.argmax(dim=-1).item()
+            if num_raw < 4:
+                masked_ens = ens_logits.clone()
+                masked_ens[:, num_raw:] = -1e9
+                win_idx = masked_ens.argmax(dim=-1).item()
+                raw_probs = torch.softmax(masked_ens[:, :num_raw], dim=-1).squeeze(0).tolist()
+            else:
+                win_idx = ens_logits[:, :num_raw].argmax(dim=-1).item()
+                raw_probs = torch.softmax(ens_logits[:, :num_raw], dim=-1).squeeze(0).tolist()
+
+            if isinstance(raw_probs, float):
+                raw_probs = [raw_probs]
+            choice_probs = [round(float(p), 4) for p in raw_probs]
+
             head_preds = logits.squeeze(0).argmax(dim=-1).tolist()
             consensus = head_preds.count(win_idx)
             calibrated_conf = conf.item() if hasattr(conf, "item") else float(conf)
@@ -202,4 +220,5 @@ class System2Engine:
             routing_latency_ms=round(t_route_ms, 2),
             deliberation_latency_ms=round(t_delib_ms, 2),
             total_latency_ms=round(t_total_ms, 2),
+            choice_probabilities=choice_probs,
         )

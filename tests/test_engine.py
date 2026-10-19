@@ -42,3 +42,20 @@ def test_engine_hot_swap_to_code(engine):
     assert res.domain == "code"
     assert res.selected_index == 0
     assert 0.0 <= res.confidence <= 1.0
+
+
+def test_engine_adjudicate_arbitrary_choices(engine):
+    question = "What state of matter is water at 20 degrees Celsius?"
+    choices = [
+        "Liquid",
+        "Solid",
+    ]
+    res = engine.adjudicate(question, choices)
+    assert res.selected_index == 0
+    assert res.selected_choice == "Liquid"
+    assert res.choice_probabilities is not None
+    assert len(res.choice_probabilities) == 2
+    assert sum(res.choice_probabilities) == pytest.approx(1.0, abs=0.01)
+    assert res.choice_probabilities[0] > res.choice_probabilities[1]
+
+

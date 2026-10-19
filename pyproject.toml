@@ -28,11 +28,15 @@ dependencies = [
     "accelerate>=0.27.0",
     "requests>=2.31.0",
     "tqdm>=4.66.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "httpx>=0.25.0",
 ]
 
 [project.scripts]
 sys2 = "sys2.__main__:main"
 sys2-guard = "sys2.guard:main"
+sys2-server = "sys2.server:main"
 
 [project.optional-dependencies]
 dev = [
