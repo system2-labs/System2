@@ -49,7 +49,7 @@ HYPERPARAMS = {
     "dynamic_len": True,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
     "epochs": 5,
-    "train_size": 2367,
+    "train_size": 1577,
     "lambda_div": 0.01,
     "lambda_judge": 0.15,
     "lambda_cal": 0.5,
