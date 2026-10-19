@@ -74,8 +74,9 @@ if is_mps:
 ```
 
 ### 5. OS-Level Environment Variable Guardrail
-Added to runner scripts (`runner.sh`, `runner_legal.sh`):
+Added to runner scripts (`runner.sh`, `runner_legal.sh`, `runner_finance.sh`):
 ```bash
 export PYTORCH_MPS_HIGH_WATERMARK_RATIO="${PYTORCH_MPS_HIGH_WATERMARK_RATIO:-0.7}"
+export PYTORCH_MPS_LOW_WATERMARK_RATIO="${PYTORCH_MPS_LOW_WATERMARK_RATIO:-0.5}"
 ```
-This instructs the Metal driver to trim its buffer pool whenever allocations exceed 70% of available system memory.
+Note: In PyTorch 2.13+, `PYTORCH_MPS_LOW_WATERMARK_RATIO` defaults to `1.4`. Setting `HIGH_WATERMARK_RATIO=0.7` without also setting `LOW_WATERMARK_RATIO <= 0.7` triggers `RuntimeError: invalid low watermark ratio 1.4`. Setting both ensures the Metal driver trims its buffer pool at 50% and strictly caps allocations at 70% of system memory.
