@@ -19,6 +19,8 @@ data/math
 data/legal
 data/finance
 data/safety
+data/physics
+data/electrical_pure
 .fujimoto.yaml
 __pycache__/
 *.pyc
