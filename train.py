@@ -49,7 +49,7 @@ HYPERPARAMS = {
     "dynamic_len": True,
     "device": "mps",   # "mps" = Apple GPU (~8x faster than cpu)
     "epochs": 5,
-    "train_size": 8440,
+    "train_size": 2367,
     "lambda_div": 0.01,
     "lambda_judge": 0.15,
     "lambda_cal": 0.5,
@@ -62,7 +62,7 @@ HYPERPARAMS = {
     "seed": 0,
     "label_smoothing": 0.15,
     "lambda_aux": 0.10,
-    "data_dir": "./data/arc_augmented",
+    "data_dir": "./data/legal",
     "pairwise": True,
     "diff_features": True,
     "task_prefixes": False,
@@ -164,10 +164,11 @@ def main():
         HYPERPARAMS["epochs"] = args.epochs
     if args.batch_size is not None:
         HYPERPARAMS["batch_size"] = args.batch_size
+    if args.dynamic_len is not None:
+        HYPERPARAMS["dynamic_len"] = args.dynamic_len
     if args.max_len is not None:
         HYPERPARAMS["max_len"] = args.max_len
-    if args.dynamic_len:
-        HYPERPARAMS["dynamic_len"] = True
+    elif args.dynamic_len and "max_len" not in HYPERPARAMS:
         HYPERPARAMS["max_len"] = 8192
 
     data_dir = args.data or HYPERPARAMS.get("data_dir", "./data/arc")
@@ -182,6 +183,17 @@ def main():
 
     set_seed(HYPERPARAMS.get("seed", 42))
     device = HYPERPARAMS["device"]
+    is_mps = (
+        device == "mps"
+        or (isinstance(device, str) and "mps" in device)
+        or (hasattr(device, "type") and device.type == "mps")
+    )
+    if is_mps and hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        if hasattr(torch.mps, "set_per_process_memory_fraction"):
+            try:
+                torch.mps.set_per_process_memory_fraction(0.7)
+            except Exception:
+                pass
 
     bert_name = HYPERPARAMS.get("bert_model", "answerdotai/ModernBERT-large")
     from bert import get_bert
@@ -565,7 +577,7 @@ def main():
                 + aux_weight * aux_loss
             )
 
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True)
             total_loss.backward()
             optimizer.step()
             if scheduler is not None:
@@ -575,6 +587,22 @@ def main():
             total_cal += cal_loss.item()
             total_judge += judge_loss.item()
             total_div += div_loss.item()
+
+            # Prevent memory accumulation and Metal buffer heap fragmentation on MPS
+            del total_loss, task_loss, cal_loss, judge_loss, judge_cal_loss, div_loss, balance_loss, cand_margin_loss
+            del vecs, lab
+            if "out" in locals():
+                del out
+            if "ce" in locals():
+                del ce
+            if "win_logits" in locals():
+                del win_logits
+
+            if is_mps and n_batches % 10 == 0:
+                torch.mps.empty_cache()
+
+        if is_mps:
+            torch.mps.empty_cache()
 
         print(
             f"epoch {epoch + 1}/{HYPERPARAMS['epochs']}  "
