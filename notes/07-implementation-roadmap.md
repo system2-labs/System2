@@ -57,6 +57,17 @@ These are concrete build tasks with clear entry/exit criteria. Each can be ticke
   - `sys2-guard = sys2.guard:main`
 - **Status**: COMPLETE (Verified CLI execution and test suite `tests/test_packaging.py`)
 
+### P5: LM Studio & Jev Decision Server (`sys2/server.py`)
+- **What**: Drop-in HTTP server implementing `/v1/systemone` (Jev/TypeSafe AI schema) and `/v1/decisions` (OpenAI decision schema), with standalone and reverse-proxy modes
+- **Why**: Allows instant compatibility with companion agent apps (Bionic v1.1.8+), TypeSafe AI SDKs, and local agent orchestrators that query decision models without waiting for generative token streaming
+- **Deliverable**: `sys2/server.py` module + CLI entrypoint (`python -m sys2.server` / `sys2-server`)
+  - `POST /v1/systemone`: maps `state` + `questions` (`choice`, `noul`) to `System2Engine.deliberate()` and `CommandGuard.verify()`, returning calibrated probabilities, winning choices, and `output_tokens: 0`
+  - `POST /v1/decisions`: OpenAI-compatible structured decision format
+  - `GET /v1/models` & `GET /health`: Model discovery and liveness check
+  - Reverse-proxy mode (`--upstream-llm http://localhost:1234`): Transparently handles `/v1/systemone` and `/v1/decisions` locally in <30ms, while proxying `/v1/chat/completions` to LM Studio
+- **Dependencies**: `sys2/engine.py`, `sys2/guard.py`
+- **Status**: IN PROGRESS (Assigned to branch `feat/sys2-decision-server` in worktree `scratch/worktrees/decision-server`)
+
 | # | Priority | Step | Status |
 |---|----------|------|--------|
 | 1 | P0 | Agent Gatekeeper (`sys2/guard.py`) | COMPLETE |
@@ -64,6 +75,7 @@ These are concrete build tasks with clear entry/exit criteria. Each can be ticke
 | 3 | P2 | Batched MCTS Pruner Harness (`scripts/mcts_pruner_harness.py`) | COMPLETE |
 | 4 | P3 | Cyber-Physical Safety Interlock Benchmark (`benchmarks/benchmark_cyber_physical_interlock.py`) | COMPLETE |
 | 5 | P4 | Package as pip-installable wheel (`sys2`, `sys2-guard`) | COMPLETE |
+| 6 | P5 | LM Studio & Jev Decision Server (`sys2/server.py`) | IN PROGRESS |
 
 ---
 
@@ -142,7 +154,8 @@ These are research/infrastructure tasks — less immediately dogfoodable but unl
 | 3 | **P2** | Batched MCTS Pruner Harness | Reference Build | P1 (vectorized batching) |
 | 4 | **P3** | Cyber-Physical Interlock Benchmark | Reference Build | None (standalone) |
 | 5 | **P4** | Package as pip wheel | Infrastructure | P0, P2, P3 |
-| 6 | **D1** | Unified Path B Hybrid CLI | Research | None (enables P0–P3) |
-| 7 | **D2** | Breakers (Track C + I) | Research | D1 (Path B data format) |
-| 8 | **D3** | AutoResearch Sweeps (H + I) | Research | D2 (improved data) |
-| 9 | **D4** | Clean scratch/ archive | Housekeeping | Any time |
+| 6 | **P5** | LM Studio & Jev Decision Server | Reference Build | P0, P4 (FastAPI/sys2 engine) |
+| 7 | **D1** | Unified Path B Hybrid CLI | Research | None (enables P0–P3) |
+| 8 | **D2** | Breakers (Track C + I) | Research | D1 (Path B data format) |
+| 9 | **D3** | AutoResearch Sweeps (H + I) | Research | D2 (improved data) |
+| 10 | **D4** | Clean scratch/ archive | Housekeeping | COMPLETE |
