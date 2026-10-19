@@ -12,6 +12,9 @@ CANDIDATE="./models/candidate_finance.pt"
 
 mkdir -p ./models
 
+# Guardrail: Prevent Apple Silicon Metal/MPS unified memory runaway and swap thrashing
+export PYTORCH_MPS_HIGH_WATERMARK_RATIO="${PYTORCH_MPS_HIGH_WATERMARK_RATIO:-0.7}"
+
 # Train on Track I Finance dataset (capped at max-len 1024)
 python3 train.py --save "$CANDIDATE" --data "./data/finance" --train-size 1020 --max-len 1024 --dynamic-len
 
