@@ -1,5 +1,7 @@
 # System2: Parallel Hypothesis Reasoning Architecture
 
+A system that makes split-second decisions faster than generative AI — and admits when it's unsure. Evaluates competing hypotheses across 5 parallel perspectives in < 30ms on-device. No hallucinations. No waiting.
+
 A from-scratch, non-autoregressive "System 2" deliberation architecture designed to run and train locally on Apple Silicon.
 
 System2 generates parallel hypotheses, estimates calibrated confidence for each across asymmetric span formulations, attends across competing candidates with arithmetic centroid contrast, normalizes logit variances in equal standard-deviation currency, and prunes flawed reasoning branches in $<30\text{ ms}$.
