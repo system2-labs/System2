@@ -66,7 +66,7 @@ These are concrete build tasks with clear entry/exit criteria. Each can be ticke
   - `GET /v1/models` & `GET /health`: Model discovery and liveness check
   - Reverse-proxy mode (`--upstream-llm http://localhost:1234`): Transparently handles `/v1/systemone` and `/v1/decisions` locally in <30ms, while proxying `/v1/chat/completions` to LM Studio
 - **Dependencies**: `sys2/engine.py`, `sys2/guard.py`
-- **Status**: IN PROGRESS (Assigned to branch `feat/sys2-decision-server` in worktree `scratch/worktrees/decision-server`)
+- **Status**: PARKED — POST-TRAINING (Implemented with 100% passing test suite on branch `feat/sys2-decision-server` in worktree `scratch/worktrees/decision-server`; hold merge to `main` until all domain checkpoints complete training)
 
 | # | Priority | Step | Status |
 |---|----------|------|--------|
@@ -75,7 +75,7 @@ These are concrete build tasks with clear entry/exit criteria. Each can be ticke
 | 3 | P2 | Batched MCTS Pruner Harness (`scripts/mcts_pruner_harness.py`) | COMPLETE |
 | 4 | P3 | Cyber-Physical Safety Interlock Benchmark (`benchmarks/benchmark_cyber_physical_interlock.py`) | COMPLETE |
 | 5 | P4 | Package as pip-installable wheel (`sys2`, `sys2-guard`) | COMPLETE |
-| 6 | P5 | LM Studio & Jev Decision Server (`sys2/server.py`) | IN PROGRESS |
+| 6 | P5 | LM Studio & Jev Decision Server (`sys2/server.py`) | PARKED (Ready in worktree; merge post-training) |
 
 ---
 
@@ -92,7 +92,7 @@ These are research/infrastructure tasks — less immediately dogfoodable but unl
   4. Dynamic Router dispatches in <0.1ms to specialized domain track
   5. System2 arbitrates across candidates in <35ms
 - **Why**: Bridges gap between raw classification and generative reasoning — complete offline reasoning daemon for Apple Silicon under 4GB memory
-- **Status**: COMPLETE (Shipped in `sys2/__main__.py` and benchmarked in `scripts/benchmark_multidomain_hybrid.py`)
+- **Status**: PARKED — POST-TRAINING (Prototyped in worktree `scratch/worktrees/data-enhancement` on branch `feat/data-enhancement-and-hybrid`; deferred until all domain tracks reach target accuracy so System2 does not overrule valid LLM generations on under-trained domains)
 
 ### D2: Architectural Breakers & Data Diagnostics (Track D Electrical & Track C Medicine)
 - **What**: Source-by-source dataset audits and causal purity enforcement
@@ -105,27 +105,27 @@ These are research/infrastructure tasks — less immediately dogfoodable but unl
   - Accuracy jumped from **33.0% to 36.0%** (+3.0%) across 100 clinical vignettes with zero retraining
 - **Status**: COMPLETE (Shipped `data/electrical_pure`, `scripts/build_pure_electrical_dataset.py`, verified +10.03% accuracy gain)
 
-### D3: Multi-Trial AutoResearch Sweeps on Track H (Legal) & Track I (Finance)
-- **What**: Automated metric-guarded sweeps across isolated worktrees
+### D3: Multi-Trial AutoResearch Sweeps on Lagging Tracks (Med, Electrical, Legal, Finance)
+- **What**: Automated metric-guarded sweeps across isolated worktrees (now unblocked by MPS memory leak & `--max-len` fix in `b920cb4`)
 - **Track H (Legal)**:
   - Trial 1 (`warmup_ratio = 0.05` linear ramp): Metric improved **0.5505 → 0.5518** (Acc: 33.92% → 35.19%), committed (`0c452fa`)
   - Trial 2 (`lambda_cand_margin = 0.06`): Metric improved **0.5518 → 0.5526** (Acc: 34.43%, Brier: 0.2390, ECE: 0.1049), committed (`181aac1`)
 - **Track I (Finance)**:
   - Baseline evaluated on 255 held-out test samples: Metric = **0.5832** (Acc: 40.78%, Brier: 0.2415, ECE: 0.0658)
-- **Status**: IN PROGRESS (Track H advanced to 0.5526; Track I baseline recorded)
+- **Status**: IN PROGRESS — ACTIVE PRIORITY (Complete domain model training before merging serving/hybrid layers P5 & D1)
 
 ### D4: Clean & Archive the scratch/ Experiment Graveyard
 - **What**: Organize 25+ abandoned ablation scripts into `scratch/archive/`
 - **Examples**: `test_dual_stream_contest.py`, `test_norm_grid.py`, `fine_grid.py`
 - **Why**: Only active worktrees and verified benchmarks should remain in root workspace. Clean workspace reduces confusion and accelerates new experiments.
-- **Status**: NOT STARTED
+- **Status**: COMPLETE (Archived in commit `c04104e`)
 
 | # | Priority | Step | Status |
 |---|----------|------|--------|
-| 6 | D1 | Unified Path B Hybrid CLI (`--hybrid`) | COMPLETE |
+| 6 | D1 | Unified Path B Hybrid CLI (`--hybrid`) | PARKED (Post-Training) |
 | 7 | D2 | Architectural Breakers (Track D Electrical, Track C Medicine) | COMPLETE |
-| 8 | D3 | Multi-Trial AutoResearch Sweeps (Track H Legal, Track I Finance) | IN PROGRESS |
-| 9 | D4 | Clean & Archive scratch/ Experiment Graveyard | NOT STARTED |
+| 8 | D3 | Multi-Trial AutoResearch Sweeps (Med, Electrical, Legal, Finance) | IN PROGRESS (Active Priority) |
+| 9 | D4 | Clean & Archive scratch/ Experiment Graveyard | COMPLETE |
 
 ---
 
@@ -147,15 +147,15 @@ These are research/infrastructure tasks — less immediately dogfoodable but unl
 
 ## Combined Priority Summary
 
-| Order | Tag | Step | Type | Dependencies |
-|-------|-----|------|------|-------------|
+| Order | Tag | Step | Type | Status / Gate |
+|-------|-----|------|------|---------------|
 | 1 | **P0** | Agent Gatekeeper | Reference Build | COMPLETE |
-| 2 | **P1** | 2-Pass Recurrent Deliberation | Reference Build | P0 complete, hybrid CLI (D1) |
-| 3 | **P2** | Batched MCTS Pruner Harness | Reference Build | P1 (vectorized batching) |
-| 4 | **P3** | Cyber-Physical Interlock Benchmark | Reference Build | None (standalone) |
-| 5 | **P4** | Package as pip wheel | Infrastructure | P0, P2, P3 |
-| 6 | **P5** | LM Studio & Jev Decision Server | Reference Build | P0, P4 (FastAPI/sys2 engine) |
-| 7 | **D1** | Unified Path B Hybrid CLI | Research | None (enables P0–P3) |
-| 8 | **D2** | Breakers (Track C + I) | Research | D1 (Path B data format) |
-| 9 | **D3** | AutoResearch Sweeps (H + I) | Research | D2 (improved data) |
-| 10 | **D4** | Clean scratch/ archive | Housekeeping | COMPLETE |
+| 2 | **P1** | 2-Pass Recurrent Deliberation | Reference Build | COMPLETE |
+| 3 | **P2** | Batched MCTS Pruner Harness | Reference Build | COMPLETE |
+| 4 | **P3** | Cyber-Physical Interlock Benchmark | Reference Build | COMPLETE |
+| 5 | **P4** | Package as pip wheel | Infrastructure | COMPLETE |
+| 6 | **D4** | Clean scratch/ archive | Housekeeping | COMPLETE |
+| 7 | **D2** | Breakers (Track D Electrical, Track C Medicine) | Research | COMPLETE |
+| 8 | **D3** | Complete Model Training (`med`, `electrical`, `legal`, `finance`) | Core Training | **ACTIVE PRIORITY** |
+| 9 | **P5** | LM Studio & Jev Decision Server (`sys2/server.py`) | Serving / API | **PARKED** (Ready in worktree; merge after D3) |
+| 10 | **D1** | Unified Path B Hybrid CLI (`--hybrid`) | Hybrid CLI | **PARKED** (In worktree; merge after D3) |
