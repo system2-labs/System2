@@ -95,7 +95,7 @@ HYPERPARAMS = {
     "judger_residual": True,
     "head_mlp_dim": 256,
     "head_norm_diff": False,
-    "lambda_cand_margin": 0.06,
+    "lambda_cand_margin": 0.08,
     "cand_margin": 1.0,
     "veto_blend": 0.0,
     "dual_stream_contest": False,
