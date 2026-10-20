@@ -193,9 +193,9 @@ def execute_trial(worktree: str, trial: Dict[str, Any]) -> Dict[str, Any]:
             sline = line.rstrip()
             if sline.startswith("epoch ") or sline.startswith("[runner") or "BETTER:" in sline or "WORSE" in sline:
                 print(f"  {sline}", flush=True)
-            if time.perf_counter() - t0 > 1800:
+            if time.perf_counter() - t0 > 3000:
                 os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-                raise TimeoutError(f"Trial exceeded 1800s timeout: {desc}")
+                raise TimeoutError(f"Trial exceeded 3000s timeout: {desc}")
         proc.wait(timeout=60)
         elapsed_sec = round(time.perf_counter() - t0, 1)
         new_best = read_metric(wpath, best_file)
