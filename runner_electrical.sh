@@ -16,11 +16,11 @@ mkdir -p ./models
 export PYTORCH_MPS_HIGH_WATERMARK_RATIO="${PYTORCH_MPS_HIGH_WATERMARK_RATIO:-0.7}"
 export PYTORCH_MPS_LOW_WATERMARK_RATIO="${PYTORCH_MPS_LOW_WATERMARK_RATIO:-0.5}"
 
-# Rebuild the model on Track D Pure Electrical data (In-Domain Causal Purity Law, capped at max-len 1024)
-python3 train.py --save "$CANDIDATE" --data "./data/electrical_pure" --train-size 522 --max-len 1024 --dynamic-len
+# Rebuild the model on Track D Expanded Electrical data (In-Domain Causal Purity Law, capped at max-len 1024)
+python3 train.py --save "$CANDIDATE" --data "./data/electrical_expanded" --train-size 3609 --max-len 1024 --dynamic-len
 
-# Judge on held-out pure Electrical test set (134 samples)
-if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/electrical_pure" --max-len 1024 --dynamic-len)"; then
+# Judge on held-out pure Electrical test set (638 samples)
+if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/electrical_expanded" --max-len 1024 --dynamic-len)"; then
   echo "[runner_electrical] experiment INVALID (eval failed) -> revert"
   rm -f "$CANDIDATE"
   git reset --hard HEAD 2>/dev/null || true
