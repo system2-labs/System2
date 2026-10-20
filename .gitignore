@@ -18,6 +18,9 @@ data/trades
 data/math
 data/legal
 data/finance
+data/electrical_pure
+data/electrical_expanded
+*.arrow
 __pycache__/
 *.pyc
 .DS_Store
