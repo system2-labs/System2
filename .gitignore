@@ -21,6 +21,10 @@ data/finance
 data/safety
 data/physics
 data/electrical_pure
+data/physics_expanded
+data/med_expanded
+data/legal_expanded
+data/electrical_expanded
 .fujimoto.yaml
 __pycache__/
 *.pyc
