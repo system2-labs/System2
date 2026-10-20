@@ -28,32 +28,16 @@ WORKTREE_MAP = {
         "best_file": ".best_metric_electrical",
         "trials": [
             {
-                "desc": "trial D-1: stabilized lr_heads 0.0003, lr_lora 0.0001, shuffle_per_epoch True on pure electrical",
+                "desc": "trial D-4: pure electrical dataset with baseline regularized regime and ensemble_temp 0.50",
                 "params": {
-                    "lr_heads": "0.0003",
-                    "lr_lora": "0.0001",
-                    "shuffle_per_epoch": "True",
-                    "warmup_ratio": "0.05",
+                    "ensemble_temp": "0.50",
                 },
             },
             {
-                "desc": "trial D-2: causal_attn span pooling with lr_heads 0.0003, lr_lora 0.0001",
+                "desc": "trial D-5: pure electrical dataset with causal_attn span pooling and ensemble_temp 0.50",
                 "params": {
-                    "lr_heads": "0.0003",
-                    "lr_lora": "0.0001",
-                    "shuffle_per_epoch": "True",
                     "asym_span_mode": '"causal_attn"',
-                    "warmup_ratio": "0.05",
-                },
-            },
-            {
-                "desc": "trial D-3: ensemble_temp 0.55 and lambda_cand_margin 0.06 with stabilized lr",
-                "params": {
-                    "lr_heads": "0.0003",
-                    "lr_lora": "0.0001",
-                    "shuffle_per_epoch": "True",
-                    "ensemble_temp": "0.55",
-                    "lambda_cand_margin": "0.06",
+                    "ensemble_temp": "0.50",
                 },
             },
         ],
@@ -64,33 +48,24 @@ WORKTREE_MAP = {
         "best_file": ".best_metric_finance",
         "trials": [
             {
-                "desc": "trial I-2: stabilized lr_heads 0.0003, lr_lora 0.0001, shuffle_per_epoch True, warmup_ratio 0.05",
+                "desc": "trial I-2: causal_attn span pooling with ensemble_temp 0.50",
                 "params": {
-                    "lr_heads": "0.0003",
-                    "lr_lora": "0.0001",
-                    "shuffle_per_epoch": "True",
-                    "warmup_ratio": "0.05",
-                },
-            },
-            {
-                "desc": "trial I-3: causal_attn span pooling with stabilized lr_heads 0.0003, lr_lora 0.0001",
-                "params": {
-                    "lr_heads": "0.0003",
-                    "lr_lora": "0.0001",
-                    "shuffle_per_epoch": "True",
-                    "warmup_ratio": "0.05",
                     "asym_span_mode": '"causal_attn"',
+                    "ensemble_temp": "0.50",
                 },
             },
             {
-                "desc": "trial I-4: lambda_cand_margin 0.08 and decision_conf_tau 0.65 with stabilized lr",
+                "desc": "trial I-3: ensemble_temp 0.45 and decision_conf_tau 0.65",
                 "params": {
-                    "lr_heads": "0.0003",
-                    "lr_lora": "0.0001",
-                    "shuffle_per_epoch": "True",
-                    "warmup_ratio": "0.05",
-                    "lambda_cand_margin": "0.08",
+                    "ensemble_temp": "0.45",
                     "decision_conf_tau": "0.65",
+                },
+            },
+            {
+                "desc": "trial I-4: lambda_cand_margin 0.08 with ensemble_temp 0.50",
+                "params": {
+                    "lambda_cand_margin": "0.08",
+                    "ensemble_temp": "0.50",
                 },
             },
         ],
@@ -101,32 +76,24 @@ WORKTREE_MAP = {
         "best_file": ".best_metric_legal",
         "trials": [
             {
-                "desc": "trial H-3: stabilized lr_heads 0.0003, lr_lora 0.0001, shuffle_per_epoch True",
+                "desc": "trial H-3: ensemble_temp 0.50 with lambda_cand_margin 0.08",
                 "params": {
-                    "lr_heads": "0.0003",
-                    "lr_lora": "0.0001",
-                    "shuffle_per_epoch": "True",
-                    "warmup_ratio": "0.05",
+                    "ensemble_temp": "0.50",
+                    "lambda_cand_margin": "0.08",
                 },
             },
             {
-                "desc": "trial H-4: causal_attn span pooling with stabilized lr_heads 0.0003, lr_lora 0.0001",
+                "desc": "trial H-4: causal_attn span pooling with ensemble_temp 0.50 and lambda_cand_margin 0.08",
                 "params": {
-                    "lr_heads": "0.0003",
-                    "lr_lora": "0.0001",
-                    "shuffle_per_epoch": "True",
-                    "warmup_ratio": "0.05",
                     "asym_span_mode": '"causal_attn"',
+                    "ensemble_temp": "0.50",
+                    "lambda_cand_margin": "0.08",
                 },
             },
             {
-                "desc": "trial H-5: ensemble_temp 0.55 and soft_target_tau 0.45 with stabilized lr",
+                "desc": "trial H-5: decision_conf_tau 0.65 and soft_target_tau 0.45",
                 "params": {
-                    "lr_heads": "0.0003",
-                    "lr_lora": "0.0001",
-                    "shuffle_per_epoch": "True",
-                    "warmup_ratio": "0.05",
-                    "ensemble_temp": "0.55",
+                    "decision_conf_tau": "0.65",
                     "soft_target_tau": "0.45",
                 },
             },
@@ -138,24 +105,17 @@ WORKTREE_MAP = {
         "best_file": ".best_metric_med",
         "trials": [
             {
-                "desc": "trial C-1: causal_attn span pooling with stabilized lr_heads 0.0003, lr_lora 0.0001, shuffle_per_epoch True",
+                "desc": "trial C-1: causal_attn span pooling with ensemble_temp 0.50 on USMLE vignettes",
                 "params": {
-                    "lr_heads": "0.0003",
-                    "lr_lora": "0.0001",
-                    "shuffle_per_epoch": "True",
-                    "warmup_ratio": "0.05",
                     "asym_span_mode": '"causal_attn"',
+                    "ensemble_temp": "0.50",
                 },
             },
             {
-                "desc": "trial C-2: choice_forward span pooling with stabilized lr_heads 0.0003, lr_lora 0.0001, ensemble_temp 0.55",
+                "desc": "trial C-2: lambda_cand_margin 0.08 and ensemble_temp 0.50 on USMLE vignettes",
                 "params": {
-                    "lr_heads": "0.0003",
-                    "lr_lora": "0.0001",
-                    "shuffle_per_epoch": "True",
-                    "warmup_ratio": "0.05",
-                    "ensemble_temp": "0.55",
-                    "lambda_cand_margin": "0.06",
+                    "lambda_cand_margin": "0.08",
+                    "ensemble_temp": "0.50",
                 },
             },
         ],
