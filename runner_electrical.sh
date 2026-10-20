@@ -10,11 +10,17 @@ BEST_FILE=".best_metric_electrical"
 CHECKPOINT="./models/system2_electrical.pt"
 CANDIDATE="./models/candidate_electrical.pt"
 
-# Rebuild the model on Track D Electrical data with dynamic length up to 8192
-python3 train.py --save "$CANDIDATE" --data "./data/electrical" --dynamic-len
+mkdir -p ./models
 
-# Judge on held-out Electrical test set
-if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/electrical" --dynamic-len)"; then
+# Guardrail: Prevent Apple Silicon Metal/MPS unified memory runaway and swap thrashing
+export PYTORCH_MPS_HIGH_WATERMARK_RATIO="${PYTORCH_MPS_HIGH_WATERMARK_RATIO:-0.7}"
+export PYTORCH_MPS_LOW_WATERMARK_RATIO="${PYTORCH_MPS_LOW_WATERMARK_RATIO:-0.5}"
+
+# Rebuild the model on Track D Pure Electrical data (In-Domain Causal Purity Law, capped at max-len 1024)
+python3 train.py --save "$CANDIDATE" --data "./data/electrical_pure" --train-size 522 --max-len 1024 --dynamic-len
+
+# Judge on held-out pure Electrical test set (134 samples)
+if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/electrical_pure" --max-len 1024 --dynamic-len)"; then
   echo "[runner_electrical] experiment INVALID (eval failed) -> revert"
   rm -f "$CANDIDATE"
   git reset --hard HEAD 2>/dev/null || true
