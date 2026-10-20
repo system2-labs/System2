@@ -173,26 +173,34 @@ def execute_trial(worktree: str, trial: Dict[str, Any]) -> Dict[str, Any]:
     elif "param" in trial and "val" in trial:
         modify_hyperparam(train_py, trial["param"], trial["val"])
 
-    # 2. Run runner script
+    # 2. Run runner script with live line-by-line streaming and process-group cleanup
+    import signal
     cmd = [runner, desc]
+    stdout_lines = []
+    proc = subprocess.Popen(
+        cmd,
+        cwd=wpath,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+        start_new_session=True,
+    )
     try:
-        proc = subprocess.run(
-            cmd,
-            cwd=wpath,
-            capture_output=True,
-            text=True,
-            timeout=2400,  # 40 min per trial
-        )
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            stdout_lines.append(line)
+            sline = line.rstrip()
+            if sline.startswith("epoch ") or sline.startswith("[runner") or "BETTER:" in sline or "WORSE" in sline:
+                print(f"  {sline}", flush=True)
+            if time.perf_counter() - t0 > 1800:
+                os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+                raise TimeoutError(f"Trial exceeded 1800s timeout: {desc}")
+        proc.wait(timeout=60)
         elapsed_sec = round(time.perf_counter() - t0, 1)
         new_best = read_metric(wpath, best_file)
 
         improved = (new_best is not None and initial_best is not None and new_best > initial_best)
-
-        for line in proc.stdout.splitlines():
-            if line.startswith("epoch ") or line.startswith("[runner"):
-                print(f"  {line}", flush=True)
-        if proc.returncode != 0 and proc.stderr:
-            print(f"  [stderr] {proc.stderr[-400:]}", flush=True)
 
         status_str = "✓ IMPROVEMENT COMMITTED" if improved else "✗ REVERTED (no improvement)"
         print(f"[{worktree.upper()}] Trial Complete in {elapsed_sec}s -> {status_str}", flush=True)
@@ -205,10 +213,15 @@ def execute_trial(worktree: str, trial: Dict[str, Any]) -> Dict[str, Any]:
             "final_best": new_best,
             "improved": improved,
             "elapsed_sec": elapsed_sec,
-            "stdout_tail": proc.stdout[-500:],
+            "stdout_tail": "".join(stdout_lines)[-500:],
         }
     except Exception as e:
-        print(f"[{worktree.upper()}] Trial Failed with Exception: {e}", file=sys.stderr)
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except Exception:
+            pass
+        subprocess.run(["git", "reset", "--hard", "HEAD"], cwd=wpath, capture_output=True)
+        print(f"[{worktree.upper()}] Trial Failed with Exception: {e}", file=sys.stderr, flush=True)
         return {
             "worktree": worktree,
             "desc": desc,
