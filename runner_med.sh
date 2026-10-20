@@ -10,11 +10,17 @@ BEST_FILE=".best_metric_med"
 CHECKPOINT="./models/system2_med.pt"
 CANDIDATE="./models/candidate_med.pt"
 
-# Rebuild the model on Track C data with dynamic length up to 8192
-python3 train.py --save "$CANDIDATE" --data "./data/medical" --train-size 10178 --dynamic-len
+mkdir -p ./models
+
+# Guardrail: Prevent Apple Silicon Metal/MPS unified memory runaway and swap thrashing
+export PYTORCH_MPS_HIGH_WATERMARK_RATIO="${PYTORCH_MPS_HIGH_WATERMARK_RATIO:-0.7}"
+export PYTORCH_MPS_LOW_WATERMARK_RATIO="${PYTORCH_MPS_LOW_WATERMARK_RATIO:-0.5}"
+
+# Rebuild the model on Track C data capped at max-len 1024
+python3 train.py --save "$CANDIDATE" --data "./data/medical" --train-size 2500 --epochs 3 --max-len 1024 --dynamic-len
 
 # Judge on held-out MedQA USMLE test set (1,273 samples)
-if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/medical" --dynamic-len)"; then
+if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/medical" --max-len 1024 --dynamic-len)"; then
   echo "[runner_med] experiment INVALID (eval failed) -> revert"
   rm -f "$CANDIDATE"
   git reset --hard HEAD 2>/dev/null || true
