@@ -105,13 +105,21 @@ These are research/infrastructure tasks — less immediately dogfoodable but unl
   - Accuracy jumped from **33.0% to 36.0%** (+3.0%) across 100 clinical vignettes with zero retraining
 - **Status**: COMPLETE (Shipped `data/electrical_pure`, `scripts/build_pure_electrical_dataset.py`, verified +10.03% accuracy gain)
 
-### D3: Multi-Trial AutoResearch Sweeps on Lagging Tracks (Med, Electrical, Legal, Finance)
+### D3: Multi-Trial AutoResearch Sweeps on Lagging Tracks (Med, Electrical, Legal, Finance, Physics)
 - **What**: Automated metric-guarded sweeps across isolated worktrees (now unblocked by MPS memory leak & `--max-len` fix in `b920cb4`)
 - **Track H (Legal)**:
   - Trial 1 (`warmup_ratio = 0.05` linear ramp): Metric improved **0.5505 → 0.5518** (Acc: 33.92% → 35.19%), committed (`0c452fa`)
   - Trial 2 (`lambda_cand_margin = 0.06`): Metric improved **0.5518 → 0.5526** (Acc: 34.43%, Brier: 0.2390, ECE: 0.1049), committed (`181aac1`)
+  - Trial 3 (`lambda_cand_margin = 0.08`): Metric improved **0.5526 → 0.5544** (Acc: 35.19%, Brier: 0.2430, ECE: 0.1049), committed (`6173a3e`)
+  - Trial 4 (Ingest MMLU Gov/Politics + LegalBench SCALR, `train_size: 2367`): Regressed **0.5544 → 0.5309** (Acc: 31.14%) due to civics trivia & 5-choice holding syntax dilution; auto-reverted per In-Domain Causal Purity Law.
+  - Per-source breakdown (`0.5544`): `mmlu_jurisprudence` 42.9%, `mmlu_international_law` 39.1%, `mmlu_professional_law` 34.3%.
 - **Track I (Finance)**:
   - Baseline evaluated on 255 held-out test samples: Metric = **0.5832** (Acc: 40.78%, Brier: 0.2415, ECE: 0.0658)
+  - Trial I-1 (`ensemble_temp = 0.50`): Metric improved **0.5832 → 0.5862** (Acc: **41.57%**, Brier: 0.2432, ECE: **0.0585**), committed (`8774f3a`)
+  - Per-source breakdown (`0.5862`): `macroeconomics` **50.0%**, `microeconomics` **40.7%**, `management` **40.0%**, `professional_accounting` **37.5%**, `econometrics` **25.9%** (identified as matrix-statistics manifold breaker; 43.0% acc without `econometrics`).
+- **Track J (Physics)**:
+  - Assembled `./data/physics` (`scripts/prepare_physics.py`, 553 train / 139 test) from evicted MMLU physics splits (`college_physics`, `high_school_physics`, `conceptual_physics`, `astronomy`).
+  - Baseline recorded (`cf06805`): Metric = **0.5103** (Acc: 25.18%, Brier: 0.2312, ECE: 0.1967) — needs 7+ epochs & 5% warmup due to small sample count (35 steps/epoch).
 - **Status**: IN PROGRESS — ACTIVE PRIORITY (Complete domain model training before merging serving/hybrid layers P5 & D1)
 
 ### D4: Clean & Archive the scratch/ Experiment Graveyard
