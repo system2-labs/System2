@@ -25,6 +25,8 @@ data/physics_expanded
 data/med_expanded
 data/legal_expanded
 data/electrical_expanded
+data/finance_expanded
+data/physics_grounded_expanded
 .fujimoto.yaml
 __pycache__/
 *.pyc
