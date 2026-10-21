@@ -14,10 +14,12 @@ data/culinary
 data/electrical
 data/medical
 data/med
+data/med_expanded
 data/trades
 data/math
 data/legal
 data/finance
+*.arrow
 __pycache__/
 *.pyc
 .DS_Store
