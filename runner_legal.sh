@@ -16,11 +16,11 @@ mkdir -p ./models
 export PYTORCH_MPS_HIGH_WATERMARK_RATIO="${PYTORCH_MPS_HIGH_WATERMARK_RATIO:-0.7}"
 export PYTORCH_MPS_LOW_WATERMARK_RATIO="${PYTORCH_MPS_LOW_WATERMARK_RATIO:-0.5}"
 
-# Train on Track H Legal dataset (capped at max-len 384: covers p95=281 words in ~12m for 5 epochs)
-python3 train.py --save "$CANDIDATE" --data "./data/legal" --train-size 1577 --max-len 384 --dynamic-len
+# Train on Track H Expanded Legal dataset (2,377 train samples, capped at max-len 384)
+python3 train.py --save "$CANDIDATE" --data "./data/legal_expanded" --train-size 2377 --max-len 384 --dynamic-len
 
-# Judge on held-out Bar Exam & Statutory test set (395 samples)
-if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/legal" --max-len 384 --dynamic-len)"; then
+# Judge on held-out legal reasoning test set (595 samples)
+if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/legal_expanded" --max-len 384 --dynamic-len)"; then
   echo "[runner_legal] experiment INVALID (eval failed) -> revert"
   rm -f "$CANDIDATE"
   git reset --hard HEAD 2>/dev/null || true

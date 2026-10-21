@@ -17,7 +17,9 @@ data/med
 data/trades
 data/math
 data/legal
+data/legal_expanded
 data/finance
+*.arrow
 __pycache__/
 *.pyc
 .DS_Store
