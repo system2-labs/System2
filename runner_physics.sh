@@ -16,11 +16,11 @@ mkdir -p ./models
 export PYTORCH_MPS_HIGH_WATERMARK_RATIO="${PYTORCH_MPS_HIGH_WATERMARK_RATIO:-0.7}"
 export PYTORCH_MPS_LOW_WATERMARK_RATIO="${PYTORCH_MPS_LOW_WATERMARK_RATIO:-0.5}"
 
-# Train on Track J Expanded Physics dataset (1,282 train samples, capped at max-len 512)
-python3 train.py --save "$CANDIDATE" --data "./data/physics_expanded" --train-size 1282 --max-len 512 --dynamic-len
+# Train on Track J Grounded Expanded Physics dataset (4,510 train samples, capped at max-len 384)
+python3 train.py --save "$CANDIDATE" --data "./data/physics_grounded_expanded" --train-size 4510 --max-len 384 --dynamic-len
 
-# Judge on held-out physics & astrophysics test set (321 samples)
-if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/physics_expanded" --max-len 512 --dynamic-len)"; then
+# Judge on held-out physics & astrophysics test set (797 samples)
+if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/physics_grounded_expanded" --max-len 384 --dynamic-len)"; then
   echo "[runner_physics] experiment INVALID (eval failed) -> revert"
   rm -f "$CANDIDATE"
   git reset --hard HEAD 2>/dev/null || true
