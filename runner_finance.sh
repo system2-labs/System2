@@ -16,11 +16,11 @@ mkdir -p ./models
 export PYTORCH_MPS_HIGH_WATERMARK_RATIO="${PYTORCH_MPS_HIGH_WATERMARK_RATIO:-0.7}"
 export PYTORCH_MPS_LOW_WATERMARK_RATIO="${PYTORCH_MPS_LOW_WATERMARK_RATIO:-0.5}"
 
-# Train on Track I Finance dataset (capped at max-len 1024)
-python3 train.py --save "$CANDIDATE" --data "./data/finance" --train-size 1020 --max-len 1024 --dynamic-len
+# Train on Track I Expanded Finance dataset (3,518 train samples, capped at max-len 384)
+python3 train.py --save "$CANDIDATE" --data "./data/finance_expanded" --train-size 3518 --max-len 384 --dynamic-len
 
-# Judge on held-out financial accounting & economics test set (255 samples)
-if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/finance" --max-len 1024 --dynamic-len)"; then
+# Judge on held-out financial accounting & economics test set (621 samples)
+if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/finance_expanded" --max-len 384 --dynamic-len)"; then
   echo "[runner_finance] experiment INVALID (eval failed) -> revert"
   rm -f "$CANDIDATE"
   git reset --hard HEAD 2>/dev/null || true
