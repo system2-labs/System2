@@ -107,20 +107,19 @@ These are research/infrastructure tasks — less immediately dogfoodable but unl
 
 ### D3: Multi-Trial AutoResearch Sweeps on Lagging Tracks (Med, Electrical, Legal, Finance, Physics)
 - **What**: Automated metric-guarded sweeps across isolated worktrees (now unblocked by MPS memory leak & `--max-len` fix in `b920cb4`)
+- **Track D (Electrical)**:
+  - Migrated to expanded vocational electrical dataset (3,609 train / 638 test via `generate_nec_vocational_dataset.py`)
+  - Metric surged **0.5496 → 0.9114** (Acc: **89.03%**, Brier: **0.0674**, ECE: **0.1870**), committed in `track-d` (`dbc418e`) and synced to root `models/system2_electrical.pt`.
 - **Track H (Legal)**:
-  - Trial 1 (`warmup_ratio = 0.05` linear ramp): Metric improved **0.5505 → 0.5518** (Acc: 33.92% → 35.19%), committed (`0c452fa`)
-  - Trial 2 (`lambda_cand_margin = 0.06`): Metric improved **0.5518 → 0.5526** (Acc: 34.43%, Brier: 0.2390, ECE: 0.1049), committed (`181aac1`)
-  - Trial 3 (`lambda_cand_margin = 0.08`): Metric improved **0.5526 → 0.5544** (Acc: 35.19%, Brier: 0.2430, ECE: 0.1049), committed (`6173a3e`)
-  - Trial 4 (Ingest MMLU Gov/Politics + LegalBench SCALR, `train_size: 2367`): Regressed **0.5544 → 0.5309** (Acc: 31.14%) due to civics trivia & 5-choice holding syntax dilution; auto-reverted per In-Domain Causal Purity Law.
-  - Per-source breakdown (`0.5544`): `mmlu_jurisprudence` 42.9%, `mmlu_international_law` 39.1%, `mmlu_professional_law` 34.3%.
+  - Migrated to expanded legal reasoning dataset (2,377 train / 595 test via `prepare_legal_expanded.py`), baseline **0.6173** committed (`e426c84`)
+  - Trial H-3 (`ensemble_temp = 0.50`, `lambda_cand_margin = 0.08`): Training currently in progress.
 - **Track I (Finance)**:
-  - Baseline evaluated on 255 held-out test samples: Metric = **0.5832** (Acc: 40.78%, Brier: 0.2415, ECE: 0.0658)
-  - Trial I-1 (`ensemble_temp = 0.50`): Metric improved **0.5832 → 0.5862** (Acc: **41.57%**, Brier: 0.2432, ECE: **0.0585**), committed (`8774f3a`)
-  - Per-source breakdown (`0.5862`): `macroeconomics` **50.0%**, `microeconomics` **40.7%**, `management` **40.0%**, `professional_accounting` **37.5%**, `econometrics` **25.9%** (identified as matrix-statistics manifold breaker; 43.0% acc without `econometrics`).
+  - Migrated to grounded expanded finance dataset (3,518 train / 621 test via `generate_finance_grounded_dataset.py`), baseline **0.7136** committed (`0cd4f24`)
+  - Retraining run surged metric **0.7136 → 0.8453** (Acc: **79.71%**, Brier: **0.1065**, ECE: **0.1511**), committed in `track-i` (`88b4ddf`) and synced to root `models/system2_finance.pt`.
 - **Track J (Physics)**:
-  - Assembled `./data/physics` (`scripts/prepare_physics.py`, 553 train / 139 test) from evicted MMLU physics splits (`college_physics`, `high_school_physics`, `conceptual_physics`, `astronomy`).
-  - Baseline recorded (`cf06805`): Metric = **0.5103** (Acc: 25.18%, Brier: 0.2312, ECE: 0.1967) — needs 7+ epochs & 5% warmup due to small sample count (35 steps/epoch).
-- **Status**: IN PROGRESS — ACTIVE PRIORITY (Complete domain model training before merging serving/hybrid layers P5 & D1)
+  - Migrated to grounded expanded physics dataset (4,510 train / 797 test via `generate_physics_grounded_dataset.py`), baseline **0.7592** committed (`a767284`)
+  - Retraining run surged metric **0.7592 → 0.8697** (Acc: **82.56%**, Brier: **0.0862**, ECE: **0.1521**), committed in `main` (`e4d43fa`) and pushed.
+- **Status**: IN PROGRESS — ACTIVE PRIORITY (Track H training in progress; Track D, I, J verified above 80-90% acc)
 
 ### D4: Clean & Archive the scratch/ Experiment Graveyard
 - **What**: Organize 25+ abandoned ablation scripts into `scratch/archive/`
