@@ -80,7 +80,7 @@ Every specialized track enforces the **Metric Invariant**: all commits must stri
 | `auto` | **Track E: Automotive & HVAC Diagnostics** | **`0.9881`** | 99.50% | 0.0188 | 0.0124 | [`models/system2_auto.pt`](file:///Users/thomjames-worrall/System2/models/system2_auto.pt) | Verified |
 | `culinary` | **Track F: Culinary Chemistry & Food Science** | **`0.7487`** | 68.46% | 0.1872 | 0.0762 | [`models/system2_culinary.pt`](file:///Users/thomjames-worrall/System2/models/system2_culinary.pt) | Verified |
 | `math` | **Track G: Mathematical & Quantitative Reasoning** | **`0.9462`** | 95.60% | 0.0636 | 0.0412 | [`models/system2_math.pt`](file:///Users/thomjames-worrall/System2/models/system2_math.pt) | Verified |
-| `legal` | **Track H: Legal Reasoning & Statutory Compliance** | **`0.6173`** | 47.90% | 0.2289 | 0.0984 | [`models/system2_legal.pt`](file:///Users/thomjames-worrall/System2/models/system2_legal.pt) | In Progress |
+| `legal` | **Track H: Legal Reasoning & Statutory Compliance** | **`0.6700`** | 57.14% | 0.2315 | 0.0854 | [`models/system2_legal.pt`](file:///Users/thomjames-worrall/System2/models/system2_legal.pt) | Verified |
 | `finance` | **Track I: Financial Reasoning & Quantitative Analysis** | **`0.8453`** | 79.71% | 0.1065 | 0.1511 | [`models/system2_finance.pt`](file:///Users/thomjames-worrall/System2/models/system2_finance.pt) | Verified |
 | `physics` | **Track J: Classical, Modern Physics & Astrophysics** | **`0.8697`** | 82.56% | 0.0862 | 0.1521 | [`models/system2_physics.pt`](file:///Users/thomjames-worrall/System2/models/system2_physics.pt) | Verified |
 

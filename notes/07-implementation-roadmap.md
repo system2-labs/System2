@@ -112,7 +112,7 @@ These are research/infrastructure tasks — less immediately dogfoodable but unl
   - Metric surged **0.5496 → 0.9114** (Acc: **89.03%**, Brier: **0.0674**, ECE: **0.1870**), committed in `track-d` (`dbc418e`) and synced to root `models/system2_electrical.pt`.
 - **Track H (Legal)**:
   - Migrated to expanded legal reasoning dataset (2,377 train / 595 test via `prepare_legal_expanded.py`), baseline **0.6173** committed (`e426c84`)
-  - Trial H-3 (`ensemble_temp = 0.50`, `lambda_cand_margin = 0.08`): Training currently in progress.
+  - Trial H-3 (`ensemble_temp = 0.50`, `lambda_cand_margin = 0.08`): Metric surged **0.6173 → 0.6700** (Acc: **57.14%**, Brier: **0.2315**, ECE: **0.0854**), committed in `track-h` (`c096a30`) and synced to root `models/system2_legal.pt`.
 - **Track I (Finance)**:
   - Migrated to grounded expanded finance dataset (3,518 train / 621 test via `generate_finance_grounded_dataset.py`), baseline **0.7136** committed (`0cd4f24`)
   - Retraining run surged metric **0.7136 → 0.8453** (Acc: **79.71%**, Brier: **0.1065**, ECE: **0.1511**), committed in `track-i` (`88b4ddf`) and synced to root `models/system2_finance.pt`.
