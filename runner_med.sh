@@ -16,11 +16,11 @@ mkdir -p ./models
 export PYTORCH_MPS_HIGH_WATERMARK_RATIO="${PYTORCH_MPS_HIGH_WATERMARK_RATIO:-0.7}"
 export PYTORCH_MPS_LOW_WATERMARK_RATIO="${PYTORCH_MPS_LOW_WATERMARK_RATIO:-0.5}"
 
-# Rebuild the model on Track C Expanded Med data (13,000 train samples, max-len 256 covers 100% of MedMCQA)
-python3 train.py --save "$CANDIDATE" --data "./data/med_expanded" --train-size 13000 --epochs 3 --max-len 256 --dynamic-len
+# Rebuild the model on Track C Grounded Expanded Med data (4,378 train samples, capped at max-len 384)
+python3 train.py --save "$CANDIDATE" --data "./data/med_grounded_expanded" --train-size 4378 --epochs 5 --max-len 384 --dynamic-len
 
-# Judge on held-out MedMCQA clinical test set (2,000 samples)
-if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/med_expanded" --max-len 256 --dynamic-len)"; then
+# Judge on held-out grounded clinical test set (772 samples)
+if ! OUT="$(python3 eval.py "$CANDIDATE" --data "./data/med_grounded_expanded" --max-len 384 --dynamic-len)"; then
   echo "[runner_med] experiment INVALID (eval failed) -> revert"
   rm -f "$CANDIDATE"
   git reset --hard HEAD 2>/dev/null || true
