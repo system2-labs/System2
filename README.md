@@ -75,7 +75,7 @@ Every specialized track enforces the **Metric Invariant**: all commits must stri
 | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :--- |
 | `science` | **Track A: Science & Causal Reasoning** | **`0.7397`** | 73.97% | 0.1700 | 0.0821 | [`models/system2.pt`](file:///Users/thomjames-worrall/System2/models/system2.pt) | Verified |
 | `code` | **Track B: Polyglot Code & Query Traces** | **`0.9010`** | 89.11% | 0.0891 | 0.0542 | [`models/system2_code.pt`](file:///Users/thomjames-worrall/System2/models/system2_code.pt) | Verified |
-| `med` | **Track C: Clinical & Medical Diagnostics** | **`0.5427`** | 29.77% | 0.2123 | 0.0546 | [`models/system2_med.pt`](file:///Users/thomjames-worrall/System2/models/system2_med.pt) | Overhauled |
+| `med` | **Track C: Clinical & Medical Diagnostics** | **`0.8954`** | 86.92% | 0.0785 | 0.1800 | [`models/system2_med.pt`](file:///Users/thomjames-worrall/System2/models/system2_med.pt) | Verified |
 | `electrical` | **Track D: Electrical, Electronics & Power** | **`0.9114`** | 89.03% | 0.0674 | 0.1870 | [`models/system2_electrical.pt`](file:///Users/thomjames-worrall/System2/models/system2_electrical.pt) | Verified |
 | `auto` | **Track E: Automotive & HVAC Diagnostics** | **`0.9881`** | 99.50% | 0.0188 | 0.0124 | [`models/system2_auto.pt`](file:///Users/thomjames-worrall/System2/models/system2_auto.pt) | Verified |
 | `culinary` | **Track F: Culinary Chemistry & Food Science** | **`0.7487`** | 68.46% | 0.1872 | 0.0762 | [`models/system2_culinary.pt`](file:///Users/thomjames-worrall/System2/models/system2_culinary.pt) | Verified |

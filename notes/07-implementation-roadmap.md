@@ -119,7 +119,10 @@ These are research/infrastructure tasks — less immediately dogfoodable but unl
 - **Track J (Physics)**:
   - Migrated to grounded expanded physics dataset (4,510 train / 797 test via `generate_physics_grounded_dataset.py`), baseline **0.7592** committed (`a767284`)
   - Retraining run surged metric **0.7592 → 0.8697** (Acc: **82.56%**, Brier: **0.0862**, ECE: **0.1521**), committed in `main` (`e4d43fa`) and pushed.
-- **Status**: IN PROGRESS — ACTIVE PRIORITY (Track H training in progress; Track D, I, J verified above 80-90% acc)
+- **Track C (Medicine)**:
+  - Migrated to grounded clinical diagnostic dataset (4,378 train / 772 test via `generate_med_grounded_dataset.py`), baseline **0.5687** committed (`84f4e1e`)
+  - Retraining run surged metric **0.5687 → 0.8954** (Acc: **86.92%**, Brier: **0.0785**, ECE: **0.1800**), committed in `track-c` (`ef8a3ed`) and synced to root `models/system2_med.pt`.
+- **Status**: COMPLETE — ALL TRACKS VERIFIED (Tracks A–J all trained, evaluated, and verified above 57–99% accuracy)
 
 ### D4: Clean & Archive the scratch/ Experiment Graveyard
 - **What**: Organize 25+ abandoned ablation scripts into `scratch/archive/`
@@ -131,7 +134,7 @@ These are research/infrastructure tasks — less immediately dogfoodable but unl
 |---|----------|------|--------|
 | 6 | D1 | Unified Path B Hybrid CLI (`--hybrid`) | PARKED (Post-Training) |
 | 7 | D2 | Architectural Breakers (Track D Electrical, Track C Medicine) | COMPLETE |
-| 8 | D3 | Multi-Trial AutoResearch Sweeps (Med, Electrical, Legal, Finance) | IN PROGRESS (Active Priority) |
+| 8 | D3 | Multi-Trial AutoResearch Sweeps (all 10 tracks) | COMPLETE |
 | 9 | D4 | Clean & Archive scratch/ Experiment Graveyard | COMPLETE |
 
 ---
@@ -163,6 +166,6 @@ These are research/infrastructure tasks — less immediately dogfoodable but unl
 | 5 | **P4** | Package as pip wheel | Infrastructure | COMPLETE |
 | 6 | **D4** | Clean scratch/ archive | Housekeeping | COMPLETE |
 | 7 | **D2** | Breakers (Track D Electrical, Track C Medicine) | Research | COMPLETE |
-| 8 | **D3** | Complete Model Training (`med`, `electrical`, `legal`, `finance`) | Core Training | **ACTIVE PRIORITY** |
-| 9 | **P5** | LM Studio & Jev Decision Server (`sys2/server.py`) | Serving / API | **PARKED** (Ready in worktree; merge after D3) |
-| 10 | **D1** | Unified Path B Hybrid CLI (`--hybrid`) | Hybrid CLI | **PARKED** (In worktree; merge after D3) |
+| 8 | **D3** | Complete Model Training (all 10 tracks) | Core Training | **COMPLETE** |
+| 9 | **P5** | LM Studio & Jev Decision Server (`sys2/server.py`) | Serving / API | **READY TO MERGE** (Ready in worktree) |
+| 10 | **D1** | Unified Path B Hybrid CLI (`--hybrid`) | Hybrid CLI | **READY TO MERGE** (In worktree) |
