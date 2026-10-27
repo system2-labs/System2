@@ -80,6 +80,14 @@ PATTERNS = {
         re.compile(r"\b(?:fiscal\s+stimulus|Keynesian|price\s+elasticity|comparative\s+advantage|GDP\s+deflator)\b", re.IGNORECASE),
         re.compile(r"\b(?:audit(?:or|ing)?|substantive\s+test|attribute\s+sampling|control\s+risk|management\s+fraud)\b", re.IGNORECASE),
     ],
+    "safety": [
+        re.compile(r"(?:\bbash\s+-i\s+>&|/dev/tcp/[0-9.]+|\bnc(?:at)?(?:\.traditional)?\s+-e|\bsocat\s+tcp-connect)", re.IGNORECASE),
+        re.compile(r"(?:curl|wget|fetch|busybox\s+wget)\s+[^|;]+\|\s*(?:bash|sh|python|perl)", re.IGNORECASE),
+        re.compile(r"(?:/etc/sudoers|/etc/crontab|/etc/cron\.[a-z]+|chmod\s+[u\+]*s\s+/bin/bash|LD_PRELOAD=)", re.IGNORECASE),
+        re.compile(r"(?:rm\s+-(?:rf|fr)\s+(?:/|/\*|~|/etc|/var|/usr|/boot)|mkfs\.[a-z0-9]+\s+/dev/|dd\s+if=/dev/(?:zero|urandom)\s+of=/dev/|:\(\){\s*:\|:&\s*};:)", re.IGNORECASE),
+        re.compile(r"(?:/etc/shadow|\.ssh/id_rsa|\.aws/credentials|\.kube/config|\.docker/config\.json)\s*(?:\||>|--data|curl|nc\b)", re.IGNORECASE),
+        re.compile(r"(?:base64\s+-(?:d|-decode)\s*\|\s*(?:bash|sh)|xxd\s+-r\s+-p\s*\|\s*(?:bash|sh)|printf\s+'\\x[0-9a-fA-F]{2})", re.IGNORECASE),
+    ],
 }
 
 
