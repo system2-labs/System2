@@ -1,0 +1,23 @@
+services:
+  sys2-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: system2-server:latest
+    container_name: system2-server
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - DEVICE=cpu
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Read-only volume mount for model checkpoints so container image stays small
+      - ./models:/app/models:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
