@@ -30,7 +30,7 @@ def main():
     )
     parser.add_argument("prompt", nargs="?", help="Input prompt / question to deliberate or route")
     parser.add_argument("--choices", "-c", nargs="+", help="Candidate choices (2 to 4 choices)")
-    parser.add_argument("--domain", "-d", choices=["science", "code", "med", "electrical", "auto", "culinary", "math", "legal", "finance"], help="Manually override domain track")
+    parser.add_argument("--domain", "-d", choices=["science", "code", "med", "electrical", "auto", "culinary", "math", "legal", "finance", "physics", "safety"], help="Manually override domain track")
     parser.add_argument("--route", action="store_true", help="Execute two-stage domain routing only without full deliberation")
     parser.add_argument("--interactive", "-i", action="store_true", help="Launch interactive deliberation REPL")
     parser.add_argument("--device", default=None, help="Device to execute on (mps, cpu, cuda)")
