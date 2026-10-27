@@ -167,5 +167,6 @@ These are research/infrastructure tasks — less immediately dogfoodable but unl
 | 6 | **D4** | Clean scratch/ archive | Housekeeping | COMPLETE |
 | 7 | **D2** | Breakers (Track D Electrical, Track C Medicine) | Research | COMPLETE |
 | 8 | **D3** | Complete Model Training (all 10 tracks) | Core Training | **COMPLETE** |
-| 9 | **P5** | LM Studio & Jev Decision Server (`sys2/server.py`) | Serving / API | **READY TO MERGE** (Ready in worktree) |
-| 10 | **D1** | Unified Path B Hybrid CLI (`--hybrid`) | Hybrid CLI | **READY TO MERGE** (In worktree) |
+| 9 | **P5** | High-Speed Decision Server & Docker (`sys2/server.py`) | Serving / API | **COMPLETE** |
+| 10 | **Track K** | Agent Gatekeeper & Safety AutoResearch | Core Training | **COMPLETE** (Metric: 0.9817, Acc: 99.50%) |
+| 11 | **D1** | Unified Path B Hybrid CLI (`--hybrid`) | Hybrid CLI | **READY TO MERGE** (In worktree) |

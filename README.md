@@ -83,7 +83,7 @@ Every specialized track enforces the **Metric Invariant**: all commits must stri
 | `legal` | **Track H: Legal Reasoning & Statutory Compliance** | **`0.6700`** | 57.14% | 0.2315 | 0.0854 | [`models/system2_legal.pt`](file:///Users/thomjames-worrall/System2/models/system2_legal.pt) | Verified |
 | `finance` | **Track I: Financial Reasoning & Quantitative Analysis** | **`0.8453`** | 79.71% | 0.1065 | 0.1511 | [`models/system2_finance.pt`](file:///Users/thomjames-worrall/System2/models/system2_finance.pt) | Verified |
 | `physics` | **Track J: Classical, Modern Physics & Astrophysics** | **`0.8697`** | 82.56% | 0.0862 | 0.1521 | [`models/system2_physics.pt`](file:///Users/thomjames-worrall/System2/models/system2_physics.pt) | Verified |
-| `safety` | **Track K: Agent Gatekeeper & Command Safety** | **`0.8289`** | 79.50% | 0.1371 | 0.0305 | [`models/system2_safety.pt`](file:///Users/thomjames-worrall/System2/models/system2_safety.pt) | Verified (Baseline) |
+| `safety` | **Track K: Agent Gatekeeper & Command Safety** | **`0.9817`** | 99.50% | 0.0315 | 0.1599 | [`models/system2_safety.pt`](file:///Users/thomjames-worrall/System2/models/system2_safety.pt) | Verified |
 
 ---
 
