@@ -20,6 +20,14 @@ data/math
 data/legal
 data/finance
 data/safety
+data/physics
+data/electrical_pure
+data/physics_expanded
+data/med_expanded
+data/legal_expanded
+data/electrical_expanded
+data/finance_expanded
+data/physics_grounded_expanded
 .fujimoto.yaml
 __pycache__/
 *.pyc
@@ -30,3 +38,4 @@ notes_local/
 *.pt
 *.log
 # NOTE: .best_metric is intentionally TRACKED - it is the loop's memory.
+data/med_grounded_expanded
