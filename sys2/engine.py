@@ -107,7 +107,9 @@ class System2Engine:
 
         # Extract encoder LoRA parameters if present
         encoder_state = {}
-        if isinstance(state, dict) and "encoder" in state:
+        if isinstance(state, dict) and "lora" in state:
+            encoder_state = state["lora"]
+        elif isinstance(state, dict) and "encoder" in state:
             encoder_state = state["encoder"]
         elif isinstance(state, dict):
             encoder_state = {k: v for k, v in state.items() if "lora_" in k or "layers." in k}
