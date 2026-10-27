@@ -210,18 +210,26 @@ def load_system2(
 
     # Adapt ModernBERT backbone with LoRA if present in checkpoint
     if apply_encoder_lora and isinstance(state, dict) and "lora" in state:
+        import bert as bert_mod
+        bert_name = state.get("bert_model", "answerdotai/ModernBERT-large")
+        tok, target_bert = get_bert(bert_name)
         lora_cfg = state.get("lora_config", {"r": 32, "alpha": 32, "num_layers": 8})
         train_norms = lora_cfg.get("train_norms", False) or ("lora_norms" in state)
         apply_lora(
-            default_bert_model,
+            target_bert,
             r=lora_cfg.get("r", 32),
             alpha=lora_cfg.get("alpha", 32),
             num_layers=lora_cfg.get("num_layers", 8),
             train_norms=train_norms,
         )
-        default_bert_model.load_state_dict(state["lora"], strict=False)
+        target_bert.load_state_dict(state["lora"], strict=False)
         if "lora_norms" in state:
-            default_bert_model.load_state_dict(state["lora_norms"], strict=False)
+            target_bert.load_state_dict(state["lora_norms"], strict=False)
+        global default_bert_model, default_tokenizer
+        default_bert_model = target_bert
+        default_tokenizer = tok
+        bert_mod.model = target_bert
+        bert_mod.tokenizer = tok
 
     model.to(target_device)
     model.eval()
