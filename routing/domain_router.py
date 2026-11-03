@@ -36,7 +36,7 @@ class RouteDecision:
 class DomainRouter:
     """Dynamic Domain Router for System2 Multi-Track Deliberation."""
 
-    TRACKS = ["science", "code", "med", "electrical", "auto", "culinary", "math"]
+    TRACKS = ["science", "code", "med", "electrical", "auto", "culinary", "math", "legal", "finance", "physics", "safety"]
 
     TRACK_NAMES = {
         "science": "Track A: Science & Causal Reasoning",
@@ -46,6 +46,10 @@ class DomainRouter:
         "auto": "Track E: Automotive & HVAC Diagnostics",
         "culinary": "Track F: Culinary Chemistry & Food Science",
         "math": "Track G: Mathematical & Quantitative Reasoning",
+        "legal": "Track H: Legal Reasoning & Statutory Compliance",
+        "finance": "Track I: Financial Reasoning & Quantitative Analysis",
+        "physics": "Track J: Pure Physics & Astrophysics",
+        "safety": "Track K: Agent Gatekeeper & Command Safety",
     }
 
     def __init__(
@@ -149,8 +153,9 @@ class DomainRouter:
 
             elapsed_ms = round((time.perf_counter() - t0) * 1000, 3)
 
-            # Fallback if completely ambiguous / out-of-distribution
-            if max_prob < 0.30:
+            # Fallback if completely ambiguous / out-of-distribution (below 1.5x uniform probability)
+            ambiguity_threshold = 1.5 / len(self.tracks_order)
+            if max_prob < ambiguity_threshold:
                 return RouteDecision(
                     selected_track="science",
                     confidence=round(max_prob, 4),

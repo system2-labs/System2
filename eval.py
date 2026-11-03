@@ -302,10 +302,11 @@ if __name__ == "__main__":
         ap.add_argument("--decision-conf-alpha", type=float, default=None, help="Hybrid confidence alpha blend")
         ap.add_argument("--max-len", type=int, default=None, help="Override evaluation max_len")
         ap.add_argument("--dynamic-len", action=argparse.BooleanOptionalAction, default=True, help="Dynamically scale context window up to architectural ceiling (8192)")
+        ap.add_argument("--device", default=None, help="Device to evaluate on: cpu, mps, cuda")
         args = ap.parse_args()
         ckpt = args.ckpt
         hw = [float(x) for x in args.head_weights.split(",")] if args.head_weights else None
-        m = evaluate(ckpt, max_samples=args.max_samples, data_dir=args.data, ensemble=args.ensemble, head_weights=hw, ensemble_temp=args.ensemble_temp, head_norm_logits=args.head_norm_logits, veto_blend=args.veto_blend, margin_gamma=args.margin_gamma, decision_conf=args.decision_conf, decision_conf_mode=args.decision_conf_mode, decision_conf_tau=args.decision_conf_tau, decision_conf_alpha=args.decision_conf_alpha, max_len=args.max_len, dynamic_len=args.dynamic_len)
+        m = evaluate(ckpt, max_samples=args.max_samples, device=args.device, data_dir=args.data, ensemble=args.ensemble, head_weights=hw, ensemble_temp=args.ensemble_temp, head_norm_logits=args.head_norm_logits, veto_blend=args.veto_blend, margin_gamma=args.margin_gamma, decision_conf=args.decision_conf, decision_conf_mode=args.decision_conf_mode, decision_conf_tau=args.decision_conf_tau, decision_conf_alpha=args.decision_conf_alpha, max_len=args.max_len, dynamic_len=args.dynamic_len)
         metric = 0.5 * m["accuracy"] + 0.5 * (1 - m["brier"])
         print(json.dumps({"metric": round(metric, 4), "accuracy": round(m["accuracy"], 4), "brier": round(m["brier"], 4), "ece": round(m["ece"], 4)}))
     except Exception as e:

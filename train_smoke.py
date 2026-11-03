@@ -15,4 +15,6 @@ if __name__ == "__main__":
         sys.argv += ["--train-size", "200"]
     if "--epochs" not in sys.argv:
         sys.argv += ["--epochs", "1"]
+    if "--save" not in sys.argv:
+        sys.argv += ["--save", "./models/test_smoke.pt"]
     train.main()

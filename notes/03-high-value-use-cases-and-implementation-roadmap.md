@@ -276,6 +276,56 @@ Given a scientific assertion, parallel heads evaluate competing epistemic postur
 
 ---
 
+### 11. MCTS Branch Pruner for Reasoning Models
+
+#### Application
+Tree-of-Thought and Monte Carlo Tree Search (MCTS) require evaluating hundreds of candidate reasoning paths. Each node evaluation with a large verifier model (70B+) takes 1–3 seconds. A depth-5 tree with branching factor 4 requires evaluating hundreds of candidate paths — taking minutes per prompt.
+
+#### Why System2 Fits
+System2 evaluates 4 alternative semantic continuation branches simultaneously in **<15ms** on Apple Silicon. Because candidate vectors are contrasted against their arithmetic mean ($d_i = x_i - \bar{x}$), the model directly evaluates *differential utility* between branches rather than absolute plausibility. One workstation can execute 1,000 node rollouts in seconds.
+
+#### Advantage over Generative LLMs
+- **Throughput**: A 70B verifier taking 1–3 seconds per node makes depth-5 trees take minutes. System2 makes the same tree tractable in seconds.
+- **No KV-cache explosion**: Each branch evaluation is independent — no sequence length drift, no token-by-token commitment.
+- **Deterministic latency**: Enables true AlphaGo-style deep search over language space where autoregressive verifiers are computationally disqualified.
+
+#### Implementation Plan
+1. **Pipeline**: Wrap a reasoning LLM (any size) as a "draft generator." Generate N candidate next-step continuations per tree node.
+2. **System2**: Feed all N continuations simultaneously to System2 for parallel evaluation. The 5 heads evaluate differential validity of each branch against the question context.
+3. **Integration**: Drop into any existing ToT/MCTS framework as a drop-in evaluator — no changes needed to the tree search algorithm itself.
+
+#### Testing & Validation Methodology
+- **Datasets**: GSM8K proof trees, Codeforces competition problems, synthetic constraint satisfaction problems.
+- **Metrics**: Number of nodes pruned per second vs. accuracy preserved, speedup over autoregressive verifier, depth-5 success rate.
+- **Stress Test**: Compare System2-pruned MCTS vs. full-tree search with 70B verifier on problems where full-tree is tractable but slow.
+
+---
+
+### 12. Cyber-Physical Safety Interlocks (20–50Hz Control Loops)
+
+#### Application
+Hard real-time control loops for autonomous systems — autonomous driving emergency braking, humanoid robot balance recovery, drone obstacle avoidance, surgical robotic arm safety. These systems require decisions at 20–50Hz (20–50ms per decision) with deterministic, bounded latency.
+
+#### Why System2 Fits
+System2 provides **strictly bounded, deterministic latency (<25ms on GPU)**. A safety-critical perception system proposes 4 contingency trajectories (e.g., Emergency Stop, Swerve Left, Maintain Course, Controlled Deceleration). System2 deliberates in a single forward pass. Its **calibrated uncertainty (ECE < 0.07)** acts as a dead-man's switch: if confidence drops below a configurable threshold (e.g., 0.50, meaning heads are split 2/5 or 3/5), the system instantly triggers a fail-safe mechanical interlock. Autoregressive models will hallucinate an essay justifying a crash trajectory with 99% artificial confidence — System2 reliably says "I don't know" when uncertain.
+
+#### Advantage over Generative LLMs
+- **Deterministic bounded latency**: Autoregressive models have variable, non-deterministic latency (O(T) sequential loops) and cannot participate in hard real-time control loops. System2 is strictly bounded.
+- **Calibrated confidence as a control signal**: Low confidence = instant fail-safe. This is a safety feature, not a bug. The threshold is configurable per application.
+- **No hallucination risk**: Frozen encoder cannot be manipulated or confused into producing confident-but-wrong outputs about physical trajectories.
+
+#### Implementation Plan
+1. **Pipeline**: Perception system (camera/LiDAR/radar) proposes 4 contingency trajectories as structured choices.
+2. **System2**: 5 heads evaluate trajectory validity given current sensor state. Judger outputs decision + calibrated confidence.
+3. **Safety Layer**: If confidence > 0.70 → execute best trajectory. If 0.40–0.70 → execute safe fallback (e.g., gentle deceleration). If < 0.40 → trigger dead-man's fail-safe (emergency stop, engage mechanical brakes, request human takeover).
+
+#### Testing & Validation Methodology
+- **Datasets**: nuScenes driving scenarios, robot benchmark trajectories (ALOHA, DROID), drone obstacle course simulations (Gazebo/Isaac Sim).
+- **Metrics**: Decision latency p99, fail-safe trigger rate on OOD scenarios, successful trajectory execution rate, calibration accuracy.
+- **Stress Test**: Simulate sensor failures, adversarial noise, sudden OOD events (pedestrian stepping into path, robot falling, drone sensor degradation) to verify dead-man's switch engages correctly.
+
+---
+
 ## 4. Cross-Cutting Engineering & Commercialization Framework
 
 ```
@@ -294,7 +344,8 @@ Given a scientific assertion, parallel heads evaluate competing epistemic postur
              ▼                     ▼                     ▼
     [Embedded Edge]        [On-Premises Linux]    [Microservice Daemon]
    (Avionics, Drones,     (SCADA, Legal Audit,    (Agent Gatekeeper, Fraud,
-     Tactical Comms)         Clinical Triage)       Streaming Moderation)
+     Tactical Comms,       Clinical Triage,        MCTS Reasoning,
+     Safety Interlocks)     Cyber-Physical)        Content Moderation)
 ```
 
 By proving this architecture on benchmark tasks, System2 establishes a scalable design pattern: **a fast, honest, local decision engine for problems where generative LLMs are too slow, too sycophantic, or too dangerous to trust.**

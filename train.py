@@ -157,7 +157,13 @@ def main():
     ap.add_argument("--max-len", type=int, default=None)
     ap.add_argument("--dynamic-len", action=argparse.BooleanOptionalAction, default=True, help="Enable dynamic sequence length up to architectural ceiling (8192)")
     ap.add_argument("--resume", action="store_true", help="Resume from most recent intermediate epoch checkpoint")
+    ap.add_argument("--device", default=None, help="Device to train on (mps, cpu, cuda)")
+    ap.add_argument("--lora", action=argparse.BooleanOptionalAction, default=True, help="Enable/disable LoRA encoder adaptation")
     args = ap.parse_args()
+    if not args.lora:
+        HYPERPARAMS["use_lora"] = False
+    if args.device is not None:
+        HYPERPARAMS["device"] = args.device
     if args.train_size is not None:
         HYPERPARAMS["train_size"] = args.train_size
     if args.epochs is not None:

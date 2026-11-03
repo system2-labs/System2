@@ -10,6 +10,10 @@ BEST_FILE=".best_metric"
 CHECKPOINT="./models/system2.pt"
 CANDIDATE="./models/candidate.pt"
 
+# Guardrail: Prevent Apple Silicon Metal/MPS unified memory runaway and swap thrashing
+export PYTORCH_MPS_HIGH_WATERMARK_RATIO="${PYTORCH_MPS_HIGH_WATERMARK_RATIO:-0.7}"
+export PYTORCH_MPS_LOW_WATERMARK_RATIO="${PYTORCH_MPS_LOW_WATERMARK_RATIO:-0.5}"
+
 # Rebuild the model with current hyperparams
 python3 train.py --save "$CANDIDATE"
 
