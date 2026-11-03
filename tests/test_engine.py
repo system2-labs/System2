@@ -30,12 +30,12 @@ def test_engine_adjudicate_science(engine):
 
 def test_engine_hot_swap_to_code(engine):
     # Tests hot-swapping from science to code domain
-    question = "What is the exact stdout output of this Python code:\n```python\nprint(list(range(3)))\n```"
+    question = "In Python, which keyword is used to declare a function definition?"
     choices = [
-        "[0, 1, 2]",
-        "[1, 2, 3]",
-        "(0, 1, 2)",
-        "Error: invalid syntax",
+        "def",
+        "function",
+        "fn",
+        "lambda_func",
     ]
     res = engine.adjudicate(question, choices)
     assert isinstance(res, DeliberationResult)
