@@ -1,6 +1,6 @@
 # System2: Parallel Hypothesis Reasoning Architecture
 
-A system that makes split-second decisions faster than generative AI — and admits when it's unsure. Evaluates competing hypotheses across 5 parallel perspectives in < 30ms on-device. No hallucinations. No waiting.
+A system that makes split-second decisions faster than generative AI and admits when it's unsure. Evaluates competing hypotheses across 5 parallel perspectives in < 30ms on-device. No hallucinations. No waiting.
 
 A from-scratch, non-autoregressive "System 2" deliberation architecture designed to run and train locally on Apple Silicon.
 
