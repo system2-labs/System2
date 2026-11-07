@@ -265,31 +265,49 @@
           </thead>
           <tbody>
             <tr>
-              <td>Qwen 27B Smoll<small>2.0-bit GGUF</small></td>
+              <td>Qwen 27B Smoll<small>2.0-bit GGUF (&lt;think&gt; on)</small></td>
               <td>6.77 GB</td>
               <td>99.7%</td>
               <td>94.2%</td>
               <td>99.6%</td>
               <td>580 ms</td>
-              <td><span class="tag coral">CoT loop truncation</span></td>
+              <td><span class="tag coral">0% (CoT loop truncation)</span></td>
             </tr>
             <tr>
-              <td>Qwen 27B IQ3_XXS<small>3.0-bit GGUF</small></td>
+              <td>Qwen 27B IQ3_XXS<small>3.0-bit GGUF (&lt;think&gt; on)</small></td>
               <td>10.18 GB</td>
               <td>81.6%</td>
               <td>75.2%</td>
               <td>67.8%</td>
               <td>982 ms</td>
-              <td><span class="tag blue">2,500 token ceiling</span></td>
+              <td><span class="tag coral">0% (2,500 token ceiling)</span></td>
             </tr>
             <tr>
-              <td>Gemma 4 12B<small>4.0-bit MLX (unconstrained &lt;think&gt;)</small></td>
+              <td>Gemma 4 12B<small>4.0-bit MLX (&lt;think&gt; on)</small></td>
               <td>6.77 GB</td>
               <td>76.6%</td>
               <td>98.7%</td>
               <td>41.8%</td>
               <td>1,107 ms</td>
-              <td><span class="tag blue">Drift caught live</span></td>
+              <td><span class="tag blue">Drift caught live (41.8%)</span></td>
+            </tr>
+            <tr>
+              <td>Qwen 27B Smoll<small>2.0-bit GGUF (direct + S2 guard)</small></td>
+              <td>6.77 GB</td>
+              <td>98.5%</td>
+              <td>99.4%</td>
+              <td>98.5%</td>
+              <td>610 ms</td>
+              <td><span class="tag blue">67% (2/3 Pytest Passed)</span></td>
+            </tr>
+            <tr>
+              <td>Qwen 27B IQ3_XXS<small>3.0-bit GGUF (direct + S2 guard)</small></td>
+              <td>10.18 GB</td>
+              <td>98.5%</td>
+              <td>99.7%</td>
+              <td>99.2%</td>
+              <td>941 ms</td>
+              <td><span class="tag green">100% (12/12 Pytest Passed)</span></td>
             </tr>
             <tr>
               <td>Gemma 4 12B<small>4.0-bit MLX (direct + S2 guard)</small></td>
@@ -298,7 +316,7 @@
               <td>99.9%</td>
               <td>99.5%</td>
               <td>891 ms</td>
-              <td><span class="tag green">4/4 Pytest Passed</span></td>
+              <td><span class="tag green">100% (4/4 Pytest Passed)</span></td>
             </tr>
           </tbody>
         </table>

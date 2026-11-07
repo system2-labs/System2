@@ -22,10 +22,12 @@ System 2 is a non-autoregressive **epistemic filter**, not a text generator. A f
 
 ### 1.1 Principal Findings
 
-1. **Quantization collapse is real and measurable.** On an M4 Max, 2-bit (`UD-IQ2_XXS`, 6.77 GB) and 3-bit (`UD-IQ3_XXS`, 10.18 GB) quantizations of a 27B model fell into cyclic self-doubt loops inside `<think>` blocks. The loops consumed up to 1,477 of 1,500 reasoning tokens in the controlled evaluation, and all four candidates hit a 2,500-token ceiling in the swarm benchmark.
+1. **Quantization failure separates into two distinct regimes.**
+   - **Regime 1 (Termination Collapse in `<think>` mode at 2-bit and 3-bit):** On an M4 Max, 2-bit (`UD-IQ2_XXS`, 6.77 GB) and 3-bit (`UD-IQ3_XXS`, 10.18 GB) quantizations of Qwen 3.8 27B fell into cyclic self-doubt loops inside `<think>` blocks, exhausting token budgets before emitting valid modules (`0%` pytest pass rate).
+   - **Regime 2 (Representational Pointer Collapse at 2-bit):** When `<think>` is suppressed (`reasoning_effort="none"`) and paired with the System 2 guard and upstream module context, **3.0-bit (`UD-IQ3_XXS`, 10.18 GB) is completely rescued**, jumping from `0%` (`26.8 min`) to **`100%` (`12/12` pytest passed in 0.45s, `4.2 min` total)** because its underlying coding weights remain intact. By contrast, **2.0-bit (`UD-IQ2_XXS`, 6.77 GB) recovers from `0%` to `67%` (`2/3` pytest passed)**, passing basic `get/set/delete` tests while failing `test_lru_eviction` due to residual 2-bit representational noise on 4-pointer sentinel logic (`if self.head.next is not self.tail:`).
 2. **System 2 is an evaluator, not a repair model.** It cannot judge code that was never produced (the Garbage In, Garbage Out law). Its value is detection and routing.
 3. **Live drift detection works.** In the unconstrained-thinking Gemma run (Stage 2.3), candidate divergence inside extended scratchpads collapsed System 2 confidence from 98.7% to **41.8%**, well below the 88% certainty threshold, flagging epistemic drift before execution.
-4. **End-to-end multi-agent verification succeeds when paired with direct completion (`reasoning_effort="none"`).** Suppressing extended `<think>` monologue on Google Gemma 4 12B (4-bit MLX, 6.77 GB), forwarding upstream module interfaces across stages, and normalizing markdown fence indentation reduced total 3-stage swarm time from 18.5 minutes to **2.1 minutes** (127.5s), achieved **99.5% to 99.9% consensus (5/5 heads)** across all three modules, and passed **4/4 automated pytest tests in 0.22s**.
+4. **Native 4-bit small models outperform 2-bit 27B models at the exact same 6.77 GB footprint.** Under the identical `direct + S2 guard` configuration, Google Gemma 4 12B (4-bit MLX, 6.77 GB) completed the 3-stage swarm in **2.1 minutes** (twice as fast as 3.0-bit 27B), achieved **99.5% to 99.9% consensus (5/5 heads)**, and passed **100% (`4/4` pytest tests in 0.22s)** with zero pointer bugs.
 5. **The code-track checkpoint is calibrated.** The guarded metric is 0.9010 (89.11% accuracy, 0.0891 Brier score, 0.0542 10-bin ECE) on held-out code traces.
 
 ### 1.2 Economic Paradigm
@@ -198,29 +200,52 @@ A Lead Architect (`qwen3.8-27b-splash`, 17.38 GB) decomposes a modular thread-sa
 
 ### 4.2 Head-to-Head Results
 
-**Table 3. Path A vs Path B vs Path Gemma (M4 Max, 128 GB).**
+We evaluated all three generators under two regimes:
+1. **Unconstrained `<think>` Regime (Table 3A):** Default extended-thinking generation where each stage runs without upstream module context.
+2. **Direct + System 2 Guard Regime (Table 3B):** Identical controlled harness across all three models (`reasoning_effort="none"`, upstream module context forwarded across stages, markdown indentation normalization, and AST `compile()` guard).
 
-| Metric | Path A: `qwen-3.8-27b-smoll` | Path B: `qwen-3.8-27b-iq3xxs` | Path Gemma (Unconstrained `<think>`) | Path Gemma (Remediated: `reasoning_effort="none"`) |
-| :--- | :--- | :--- | :--- | :--- |
-| Model size / VRAM | 2.0-bit GGUF (6.77 GB) | 3.0-bit GGUF (10.18 GB) | 4.0-bit MLX (6.77 GB) | 4.0-bit MLX (6.77 GB) |
-| Architect decomposition time | 24.1s (4 files) | 73.97s (3 files) | 27.04s (3 files) | 14.75s (3 files) |
-| Module 1 (`cache_node.py`) | 99.7% conf (5/5 heads, 41 lines) | 81.6% conf (5/5 heads, 19 lines) | 76.6% conf (5/5 heads, 22 lines) | **99.6% conf (5/5 heads, 44 lines)** |
-| Module 2 (`lru_ttl_cache.py`) | 94.2% conf (5/5 heads, 18 lines) | 75.2% conf (5/5 heads, 14 lines) | 98.7% conf (5/5 heads, 37 lines) | **99.9% conf (5/5 heads, 143 lines)** |
-| Module 3 (`test_lru_ttl_cache.py`) | 99.6% conf (5/5 heads, 31 lines) | 67.8% conf (5/5 heads, 10 lines) | **41.8% conf (EPISTEMIC DRIFT)** | **99.5% conf (5/5 heads, 85 lines)** |
-| Avg deliberation latency | 580 ms | 982 ms | 1,107 ms | **891 ms** |
-| Total generation latency | ~4.5 minutes | 26.8 minutes (480s per stage) | 18.5 minutes (430s per stage) | **~2.1 minutes (127.5s total)** |
-| Pytest result | FAILED (SyntaxError in cache.py) | FAILED (IndentationError, line 9) | HALTED / FAILED (Drift + Truncation) | **PASSED (4/4 tests in 0.22s)** |
-| Primary root cause / outcome | CoT loop trap in 2-bit quant | CoT loop trap in 3-bit quant | Extended `<think>` debate caught by S2 | **Direct completion + context forwarding + AST guard** |
+**Table 3A. Swarm Benchmark: Unconstrained `<think>` Regime (M4 Max, 128 GB).**
 
-### 4.3 Interpretation
+| Metric | Path A: `qwen-3.8-27b-smoll` | Path B: `qwen-3.8-27b-iq3xxs` | Path Gemma: `google/gemma-4-12b` |
+| :--- | :--- | :--- | :--- |
+| Model size / VRAM | 2.0-bit GGUF (6.77 GB) | 3.0-bit GGUF (10.18 GB) | 4.0-bit MLX (6.77 GB) |
+| Architect decomposition time | 24.1s (4 files) | 73.97s (3 files) | 27.04s (3 files) |
+| Module 1 (Node) | 99.7% conf (5/5 heads, 41 lines) | 81.6% conf (5/5 heads, 19 lines) | 76.6% conf (5/5 heads, 22 lines) |
+| Module 2 (Cache) | 94.2% conf (5/5 heads, 18 lines) | 75.2% conf (5/5 heads, 14 lines) | 98.7% conf (5/5 heads, 37 lines) |
+| Module 3 (Test suite) | 99.6% conf (5/5 heads, 31 lines) | 67.8% conf (5/5 heads, 10 lines) | **41.8% conf (EPISTEMIC DRIFT)** |
+| Avg deliberation latency | 580 ms | 982 ms | 1,107 ms |
+| Total generation latency | ~4.5 minutes | 26.8 minutes (480s per stage) | 18.5 minutes (430s per stage) |
+| Pytest result | **0% FAILED** (SyntaxError in cache.py) | **0% FAILED** (IndentationError, line 9) | **HALTED** (Drift + Truncation) |
+| Primary root cause | Regime 1: CoT loop truncation | Regime 1: 2,500-token CoT ceiling | Extended `<think>` debate caught by S2 |
 
-**Confidence is not correctness when all candidates fail identically.** Path A reports 94% to 99.7% confidence with unanimous 5/5 head agreement, yet its pytest run failed. When four candidates are all truncated or all malformed in the same way, they *agree*, and a similarity-based consensus signal reads that agreement as certainty. This is the clearest empirical statement of the GIGO law: System 2 correctly selects the least-bad candidate in a cluster, but it cannot synthesize code that was never emitted, and it cannot detect a shared failure that all candidates reproduce. Consensus measures agreement among hypotheses, not execution validity. Production pipelines must pair System 2 with a deterministic syntax and test gate (`compile()` + `pytest`).
+**Table 3B. Swarm Benchmark: Direct Completion (`reasoning_effort="none"`) + System 2 Guard Regime (M4 Max, 128 GB).**
 
-**Path B (3-bit) confirms the collapse is not unique to 2 bits.** All four candidates hit the 2,500-token ceiling inside `<think>`, emitting only 10 to 19 line fragments after 8 to 9 minutes per stage. Confidence fell progressively (81.6%, 75.2%, 67.8%), consistent with increasingly fragmentary candidates.
+| Metric | Path A: `qwen-3.8-27b-smoll` (2.0-bit) | Path B: `qwen-3.8-27b-iq3xxs` (3.0-bit) | Path Gemma: `google/gemma-4-12b` (4.0-bit) |
+| :--- | :--- | :--- | :--- |
+| Model size / VRAM | 2.0-bit GGUF (6.77 GB) | 3.0-bit GGUF (10.18 GB) | 4.0-bit MLX (6.77 GB) |
+| Architect decomposition time | 24.65s (4 files) | 67.12s (3 files) | 14.75s (3 files) |
+| Module 1 (Node / DLL) | 98.5% / 98.7% conf (5/5 heads, 16 / 86 lines) | **98.5% conf (5/5 heads, 19 lines)** | **99.6% conf (5/5 heads, 44 lines)** |
+| Module 2 (Cache) | 99.4% conf (5/5 heads, 44 lines) | **99.7% conf (5/5 heads, 108 lines)** | **99.9% conf (5/5 heads, 143 lines)** |
+| Module 3 (Test suite) | 98.5% conf (5/5 heads, 30 lines) | **99.2% conf (5/5 heads, 200 lines)** | **99.5% conf (5/5 heads, 85 lines)** |
+| Avg deliberation latency | 610 ms | 941 ms | **891 ms** |
+| Total stage generation latency | ~4.3 minutes (259.3s) | **~4.2 minutes (254.4s, 6.4x faster)** | **~2.1 minutes (127.5s, 8.8x faster)** |
+| Pytest result | **67% PASSED (2/3 tests passed)** | **100% PASSED (12/12 tests in 0.45s)** | **100% PASSED (4/4 tests in 0.22s)** |
+| Quantization regime diagnosis | **Regime 2:** Basic `get/set/delete` rescued; fails 4-pointer sentinel eviction (`if self.head.next is not self.tail:`) | **Regime 1 Solved:** Underlying 3.0-bit coding weights intact once `<think>` loop is bypassed | **Optimal Edge Baseline:** Same 6.77 GB footprint as 2.0-bit Qwen, 2x faster than 3.0-bit, 100% pass |
 
-**Path Gemma (Unconstrained `<think>`) vs Path Gemma (Remediated `reasoning_effort="none"`).** Comparing the two Gemma columns isolates the exact engineering conditions required for reliable edge code generation:
-1. **Unconstrained `<think>` run (Column 3):** When LM Studio ran `google/gemma-4-12b` in default extended-thinking mode without upstream module context, subagents spent hundreds of seconds debating edge cases inside `<think>` scratchpads and truncating at token limits. In Stage 2.3, candidate divergence collapsed System 2 confidence to **41.8%**, triggering an immediate **Epistemic Drift** alert before execution.
-2. **Remediated run (Column 4):** Applying three harness fixes (setting `reasoning_effort="none"` to suppress extended thinking, passing verified upstream modules as context into subsequent stages, and normalizing markdown indentation with `clean_python_indentation` + a `compile()` syntax guard) transformed the outcome on the exact same 6.77 GB model. Generation time fell from 18.5 minutes to **2.1 minutes**, System 2 consensus reached **99.6%, 99.9%, and 99.5%** across all 5 ThoughtHeads, and the generated `LRUTTLCache` implementation passed **4/4 pytest tests (`test_basic_set_get`, `test_lru_eviction`, `test_ttl_expiration`, `test_thread_safety`) in 0.22s**.
+### 4.3 Interpretation: The Two-Regime Quantization Step-Function
+
+Running the exact same `direct + S2 guard` harness across 2.0-bit, 3.0-bit, and 4.0-bit models separates quantization degradation into two distinct mechanisms:
+
+1. **Regime 1 (Termination Collapse in `<think>` Mode, Solved at 3.0-Bit):**
+   In Table 3A, both 2.0-bit (`UD-IQ2_XXS`) and 3.0-bit (`UD-IQ3_XXS`) failed completely (`0%` pytest pass) because degraded termination logits trapped all four candidate streams inside `<think>` blocks until `max_tokens` expired. When `<think>` is suppressed via `reasoning_effort="none"` (Table 3B), **Path B (`3.0-bit UD-IQ3_XXS`, 10.18 GB) recovers from `0%` to `100%` (`12/12` pytest tests passed in 0.45s)** while cutting stage generation time from 26.8 minutes down to **4.2 minutes**. This proves that at 3.0 bits per weight, the model's core code-synthesis representations remain intact; its failure under default settings was strictly an extended-thinking termination artifact.
+2. **Regime 2 (Representational Pointer Collapse at 2.0-Bit):**
+   Applying the identical `direct + S2 guard` configuration to **Path A (`2.0-bit UD-IQ2_XXS`, 6.77 GB)** lifts performance from `0%` (`SyntaxError` truncation) to **`67%` (`2/3` pytest tests passed: `test_get_set` and `test_delete` pass)**. However, the 2.0-bit model still fails `test_lru_eviction`. Inspecting the generated `dll.py` reveals two symptoms of true representational degradation at 2.0 bits:
+   - *In-code scratchpad leakage:* Deprived of a `<think>` block, the 2.0-bit model defined `class DoublyLinkedList:` three times sequentially within the same file (`# placeholder fix below`, `# Re-implement remove_last correctly`) to self-correct its own draft inline.
+   - *Sentinel pointer invariant corruption:* In `add_first()`, the 2.0-bit model wrote `if self.head.next is not self.tail: self.head.next.prev = node`. When the first key is inserted into an empty list (`self.head.next is self.tail`), `self.tail.prev` is never updated from `self.head` to the new node. Subsequent calls to `remove_last()` on capacity overflow therefore see `self.tail.prev == self.head` and return `None`.
+3. **Why Native 4.0-Bit Small Models Win the 6.77 GB Envelope:**
+   Comparing Column 1 (`qwen-3.8-27b-smoll`, 2.0-bit, 6.77 GB) and Column 3 (`google/gemma-4-12b`, 4.0-bit, 6.77 GB) in Table 3B holds memory footprint constant at **6.77 GB**. The 4.0-bit 12B model completes the swarm in **2.1 minutes** (half the time of the 27B models), achieves **99.5% to 99.9%** System 2 confidence across all 5 ThoughtHeads, and passes **100% (`4/4`)** of its unit and multi-threaded concurrency tests with zero pointer defects.
+
+**Mean-pooling centrality note.** In Path A (`dll.py`), System 2 scored the 86-line triple-definition candidate at 98.7% confidence because token-level mean pooling (`encoding.py`) and pairwise cosine centrality (`bridge/server.py`) average token embeddings across the full answer span. A candidate containing multiple full drafts of the target class sits near the barycenter of the candidate cluster, boosting its cosine centrality score. Pairing System 2 with deterministic AST and pytest verification catches semantic defects that consensus alone cannot see.
 
 ### 4.4 Live Validation Event: Gemma Stage 2.3 (Unconstrained `<think>`)
 
@@ -298,7 +323,7 @@ Pilot pricing in the release plan is $20 per developer per month for the Gateway
 
 ## 7. Conclusion
 
-Small local models will keep making stochastic errors, and extreme quantization makes some of those errors systematic, as the cyclic self-doubt loops of 2-bit and 3-bit models show. System 2 does not try to make a broken generator correct. It makes failure visible: five asymmetric perspectives, z-score standardized and arbitrated by a calibrated Judger, turn candidate disagreement into a quantitative certainty score in roughly half a second to a second on Apple Silicon. When subagents drifted inside unconstrained `<think>` scratchpads, System 2 dropped confidence to 41.8% and halted before broken code ran. When paired with a healthy 4-bit generator (`google/gemma-4-12b`, 6.77 GB) using direct completion (`reasoning_effort="none"`), upstream module context, and AST syntax verification, the swarm reached 99.5% to 99.9% consensus across all 5 ThoughtHeads and passed 4/4 pytest tests in 0.22s. On a $1,099 laptop, this is the gatekeeper that makes edge AI safe to act on.
+Small local models will keep making stochastic errors, and extreme quantization separates those errors into two distinct regimes: a `<think>` termination collapse at 2 to 3 bits, and a deeper representational pointer collapse at 2.0 bits. System 2 makes candidate divergence visible before code executes: five asymmetric perspectives, z-score standardized and arbitrated by a calibrated Judger, turn candidate disagreement into a quantitative certainty score in under a second on Apple Silicon, catching unconstrained Stage 2.3 drift at 41.8% confidence. When paired with direct completion (`reasoning_effort="none"`), upstream module context, and AST syntax verification, the System 2 harness rescues 3.0-bit Qwen 27B from 0% to 100% (`12/12` pytest passed in 0.45s), lifts 2.0-bit Qwen 27B from 0% to 67% (`2/3` pytest passed), and enables a 6.77 GB 4.0-bit Gemma 4 12B model to complete the entire multi-agent build in 2.1 minutes with `4/4` pytest tests passing. On a $1,099 laptop, this is the gatekeeper that makes edge AI safe to act on.
 
 ---
 
