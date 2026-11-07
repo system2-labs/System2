@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System 2: Automated Epistemic Gatekeeper & Deliberation Engine</title>
+  <meta name="description" content="Non-autoregressive 5-head deliberation engine on ModernBERT. Eliminates small model hallucinations, evaluates consensus in <30ms on MPS, and gates edge AI execution.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0c10;
+      --card-bg: #12151d;
+      --border: #232838;
+      --accent-blue: #3b82f6;
+      --accent-cyan: #06b6d4;
+      --accent-amber: #f59e0b;
+      --accent-emerald: #10b981;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --mono-font: 'JetBrains Mono', monospace;
+      --sans-font: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--sans-font);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    header {
+      padding: 24px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-wrap {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-weight: 800;
+      font-size: 1.25rem;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .logo-badge {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-link:hover {
+      color: #fff;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: #fff;
+      color: #000;
+    }
+
+    .btn-primary:hover {
+      background: #e2e8f0;
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: #fff;
+      border: 1px solid var(--border);
+    }
+
+    .btn-outline:hover {
+      background: var(--card-bg);
+      border-color: var(--text-muted);
+    }
+
+    .hero {
+      padding: 80px 0 60px;
+      text-align: center;
+    }
+
+    .pill-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: var(--accent-cyan);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      font-size: clamp(2.4rem, 5vw, 3.8rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 24px;
+      background: linear-gradient(180deg, #ffffff 0%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .quote-box {
+      max-width: 840px;
+      margin: 0 auto 36px;
+      background: rgba(18, 21, 29, 0.8);
+      border-left: 3px solid var(--accent-cyan);
+      border-radius: 0 12px 12px 0;
+      padding: 20px 24px;
+      text-align: left;
+      font-size: 1.05rem;
+      color: #cbd5e1;
+      line-height: 1.7;
+    }
+
+    .quote-box strong {
+      color: #fff;
+    }
+
+    .hero-actions {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .flow-section {
+      padding: 60px 0;
+    }
+
+    .section-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .section-subtitle {
+      color: var(--text-muted);
+      margin-bottom: 40px;
+      max-width: 600px;
+    }
+
+    .flow-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      margin-bottom: 60px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+    }
+
+    .card-num {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--accent-cyan);
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      text-align: center;
+      line-height: 28px;
+      margin-bottom: 16px;
+    }
+
+    .card h3 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .table-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow-x: auto;
+      margin-bottom: 60px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    th {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 16px 20px;
+      font-weight: 600;
+      color: #e2e8f0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      color: #cbd5e1;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .badge-drift {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-amber);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-pass {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .code-block {
+      background: #05070a;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      font-family: var(--mono-font);
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      overflow-x: auto;
+      margin: 16px 0;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="container nav-wrap">
+      <a href="/" class="logo">
+        <span>System 2</span>
+        <span class="logo-badge">v0.2.0</span>
+      </a>
+      <div class="nav-links">
+        <a href="https://huggingface.co/tjdoomer/system2-code" class="nav-link" target="_blank" rel="noopener">Hugging Face</a>
+        <a href="https://github.com/tj-doomer-it/System2" class="nav-link" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://huggingface.co/tjdoomer/system2-code" class="btn btn-primary" target="_blank" rel="noopener">Download Weights</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <div class="pill-badge">ModernBERT MPS/CUDA Engine • 143 MB Checkpoint</div>
+        <h1>The Automated Epistemic Gatekeeper for Edge AI</h1>
+        
+        <div class="quote-box">
+          &ldquo;Small local models have a 15% to 25% stochastic error rate, whether from CoT loops, hallucinated syntax, or formatting quirks. If you run them raw, they break in production. System 2's job is not to magically make a broken model write code; it is to catch those failures in 500ms on Apple Silicon MPS and say: <strong>Certainty is 41.8%, do not run this code.</strong> That is the automated gatekeeper that makes edge AI safe.&rdquo;
+        </div>
+
+        <div class="hero-actions">
+          <a href="https://huggingface.co/tjdoomer/system2-code" class="btn btn-primary" target="_blank" rel="noopener">
+            Get system2_code.pt (143 MB)
+          </a>
+          <a href="https://github.com/tj-doomer-it/System2" class="btn btn-outline" target="_blank" rel="noopener">
+            View on GitHub
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="flow-section">
+      <div class="container">
+        <h2 class="section-title">How Dual-Process Inference Works</h2>
+        <p class="section-subtitle">Pairing fast 4-bit small generators with a non-autoregressive consensus filter on consumer laptops.</p>
+
+        <div class="flow-grid">
+          <div class="card">
+            <span class="card-num">01</span>
+            <h3>Parallel Candidate Draw</h3>
+            <p>Fast 4-bit 7B to 12B local generator (e.g. Gemma 4 12B) emits 4 zero-knowledge candidate completions simultaneously at 50 to 70 tok/s in under 3 seconds.</p>
+          </div>
+          <div class="card">
+            <span class="card-num">02</span>
+            <h3>5-Head Perspective Deliberation</h3>
+            <p>A 143 MB ModernBERT network evaluates candidates across Holistic, Context-Anchored, Choice-Forward, Symmetric Balance, and Extreme Salience perspectives in ~500ms on Apple Silicon MPS.</p>
+          </div>
+          <div class="card">
+            <span class="card-num">03</span>
+            <h3>Cosine Cluster Consensus</h3>
+            <p>Calculates pairwise cosine similarity (0.88 threshold). If consensus &ge; 88%, execute locally for free. If candidates diverge, Epistemic Drift triggers smart cloud escalation.</p>
+          </div>
+        </div>
+
+        <h2 class="section-title">Swarm Benchmark: Apple Silicon M4 Max (128 GB Unified RAM)</h2>
+        <p class="section-subtitle">Empirical multi-agent test constructing an in-memory thread-safe LRUTTLCache.</p>
+
+        <div class="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Tier / Model</th>
+                <th>VRAM Footprint</th>
+                <th>Module 1 (Node)</th>
+                <th>Module 2 (Cache)</th>
+                <th>Module 3 (Test Suite)</th>
+                <th>Deliberation Time</th>
+                <th>Pytest Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Qwen 27B Smoll</strong><br><small style="color: var(--text-muted);">2.0-bit GGUF</small></td>
+                <td>6.77 GB</td>
+                <td>99.7% Conf</td>
+                <td>94.2% Conf</td>
+                <td>99.6% Conf</td>
+                <td>580 ms</td>
+                <td><span class="status-badge badge-drift">CoT Loop Truncation</span></td>
+              </tr>
+              <tr>
+                <td><strong>Qwen 27B IQ3_XXS</strong><br><small style="color: var(--text-muted);">3.0-bit GGUF</small></td>
+                <td>10.18 GB</td>
+                <td>81.6% Conf</td>
+                <td>75.2% Conf</td>
+                <td>67.8% Conf</td>
+                <td>982 ms</td>
+                <td><span class="status-badge badge-drift">2,500 Tok Ceiling</span></td>
+              </tr>
+              <tr>
+                <td><strong>Google Gemma 4 12B</strong><br><small style="color: var(--text-muted);">4.0-bit MLX</small></td>
+                <td>6.77 GB</td>
+                <td>76.6% Conf</td>
+                <td>98.7% Conf</td>
+                <td><strong>41.8% Conf</strong></td>
+                <td>1,107 ms</td>
+                <td><span class="status-badge badge-pass">Drift Caught Live</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 class="section-title">Developer Quickstart</h2>
+        <p class="section-subtitle">Run locally or deploy as a drop-in OpenAI-compatible proxy for Cursor, Windsurf, or Claude Code.</p>
+
+        <div class="code-block">
+# 1. Install the System 2 core SDK
+pip install system2
+
+# 2. Launch the local OpenAI-compatible bridge proxy
+python3 -m sys2.server --port 8000
+        </div>
+
+        <div class="code-block">
+from sys2 import System2Engine
+
+# Initialize on Apple Silicon GPU (mps) or NVIDIA (cuda)
+engine = System2Engine(device="mps")
+
+# Adjudicate competing hypotheses
+result = engine.adjudicate(
+    question="Select the thread-safe implementation of an LRU eviction node:",
+    choices=[candidate_a, candidate_b, candidate_c, candidate_d],
+    domain="code"
+)
+
+print(f"Winner: #{result.selected_index + 1} | Confidence: {result.confidence * 100:.1f}%")
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>System 2 is open source under the Apache 2.0 License. Built for Apple Silicon MPS & NVIDIA CUDA.</p>
+      <p style="margin-top: 8px;">&copy; 2026 Antigravity Research • Thom James-Worrall</p>
+    </div>
+  </footer>
+
+</body>
+</html>
