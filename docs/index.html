@@ -283,13 +283,22 @@
               <td><span class="tag blue">2,500 token ceiling</span></td>
             </tr>
             <tr>
-              <td>Gemma 4 12B<small>4.0-bit MLX</small></td>
+              <td>Gemma 4 12B<small>4.0-bit MLX (unconstrained &lt;think&gt;)</small></td>
               <td>6.77 GB</td>
               <td>76.6%</td>
               <td>98.7%</td>
               <td>41.8%</td>
               <td>1,107 ms</td>
-              <td><span class="tag green">Drift caught live</span></td>
+              <td><span class="tag blue">Drift caught live</span></td>
+            </tr>
+            <tr>
+              <td>Gemma 4 12B<small>4.0-bit MLX (direct + S2 guard)</small></td>
+              <td>6.77 GB</td>
+              <td>99.6%</td>
+              <td>99.9%</td>
+              <td>99.5%</td>
+              <td>891 ms</td>
+              <td><span class="tag green">4/4 Pytest Passed</span></td>
             </tr>
           </tbody>
         </table>
