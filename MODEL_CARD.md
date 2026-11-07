@@ -133,15 +133,15 @@ Point your OpenAI client base URL to `http://localhost:8000/v1`.
 
 ## Benchmarks: M4 Max (128 GB Unified Memory)
 
-| Metric | Path A: `qwen-3.8-27b-smoll` | Path B: `qwen-3.8-27b-iq3xxs` | Path Gemma: `google/gemma-4-12b` |
-| :--- | :--- | :--- | :--- |
-| **Model Size / VRAM** | 2.0-bit (6.77 GB) | 3.0-bit (10.18 GB) | 4.0-bit (6.77 GB) |
-| **Module 1 (Node)** | 99.7% Conf (41 lines) | 81.6% Conf (19 lines) | 76.6% Conf (22 lines) |
-| **Module 2 (Cache)** | 94.2% Conf (18 lines) | 75.2% Conf (14 lines) | 98.7% Conf (37 lines) |
-| **Module 3 (Test Suite)** | 99.6% Conf (31 lines) | 67.8% Conf (10 lines) | **41.8% Conf (Drift Flagged)** |
-| **Deliberation Latency (MPS)**| 580ms | 982ms | 1,107ms |
-| **Pytest Result** | FAILED (SyntaxError) | FAILED (IndentationError) | FAILED (Markdown list indent) |
-| **Root Failure Cause** | 2-bit CoT loop truncation | 3-bit CoT loop truncation | Indented markdown list block |
+| Metric | Path A: `qwen-3.8-27b-smoll` | Path B: `qwen-3.8-27b-iq3xxs` | Path Gemma (Unconstrained `<think>`) | Path Gemma (Direct + S2 Guard) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Model Size / VRAM** | 2.0-bit (6.77 GB) | 3.0-bit (10.18 GB) | 4.0-bit (6.77 GB) | 4.0-bit (6.77 GB) |
+| **Module 1 (Node)** | 99.7% Conf (41 lines) | 81.6% Conf (19 lines) | 76.6% Conf (22 lines) | **99.6% Conf (44 lines)** |
+| **Module 2 (Cache)** | 94.2% Conf (18 lines) | 75.2% Conf (14 lines) | 98.7% Conf (37 lines) | **99.9% Conf (143 lines)** |
+| **Module 3 (Test Suite)** | 99.6% Conf (31 lines) | 67.8% Conf (10 lines) | **41.8% Conf (Drift Flagged)** | **99.5% Conf (85 lines)** |
+| **Deliberation Latency (MPS)**| 580ms | 982ms | 1,107ms | **891ms** |
+| **Pytest Result** | FAILED (SyntaxError) | FAILED (IndentationError) | HALTED (Drift + Truncation) | **PASSED (4/4 tests in 0.22s)** |
+| **Root Failure / Outcome** | 2-bit CoT loop truncation | 3-bit CoT loop truncation | Extended `<think>` debate caught by S2 | **Direct completion + context + AST guard** |
 
 ---
 
