@@ -3,458 +3,330 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>System 2: Automated Epistemic Gatekeeper & Deliberation Engine</title>
-  <meta name="description" content="Non-autoregressive 5-head deliberation engine on ModernBERT. Eliminates small model hallucinations, evaluates consensus in <30ms on MPS, and gates edge AI execution.">
+  <title>System2 | The Epistemic Gatekeeper for Edge AI</title>
+  <meta name="description" content="Non-autoregressive 5-head deliberation engine on ModernBERT. Catches small-model failures before code runs. 143 MB checkpoint, Apache 2.0.">
+  <link rel="icon" type="image/svg+xml" href="assets/logos/icon-blue.svg">
+  <meta property="og:title" content="System2 | The Epistemic Gatekeeper for Edge AI">
+  <meta property="og:description" content="Catch small-model failures in ~500ms, before the code runs.">
+  <meta property="og:image" content="https://system2.online/assets/logos/logo-colour-tight.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
   <style>
+    /*
+      Layout approach: Mondrian grid.
+      Each section is a CSS grid whose background is black and whose gap is the
+      "line" thickness. White (or brand-colour) cells sit on top, so the black
+      background shows through the gaps as the structural rules. This avoids
+      per-cell borders, which double up where cells meet.
+      Brand colours are pulled straight from System2 Logo_Primary_Colour.svg.
+    */
     :root {
-      --bg-dark: #0a0c10;
-      --card-bg: #12151d;
-      --border: #232838;
-      --accent-blue: #3b82f6;
-      --accent-cyan: #06b6d4;
-      --accent-amber: #f59e0b;
-      --accent-emerald: #10b981;
-      --text-main: #f1f5f9;
-      --text-muted: #94a3b8;
-      --mono-font: 'JetBrains Mono', monospace;
-      --sans-font: 'Plus Jakarta Sans', sans-serif;
+      --blue: #3d8baa;   /* "Sys" */
+      --green: #3e8363;  /* "tem" */
+      --coral: #ef4223;  /* "2" */
+      --ink: #111111;
+      --paper: #ffffff;
+      --muted: #555555;
+      --rule: 6px;       /* Mondrian line weight */
+      --sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', ui-monospace, monospace;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background-color: var(--bg-dark);
-      color: var(--text-main);
-      font-family: var(--sans-font);
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
       line-height: 1.6;
-      overflow-x: hidden;
     }
 
-    .container {
-      max-width: 1120px;
-      margin: 0 auto;
-      padding: 0 24px;
-    }
+    a { color: inherit; }
 
-    header {
-      padding: 24px 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .nav-wrap {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .logo {
-      font-weight: 800;
-      font-size: 1.25rem;
-      letter-spacing: -0.02em;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #fff;
-      text-decoration: none;
-    }
-
-    .logo-badge {
-      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
-      color: #fff;
-      font-size: 0.75rem;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 6px;
-    }
-
-    .nav-links {
-      display: flex;
-      gap: 20px;
-      align-items: center;
-    }
-
-    .nav-link {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 0.9rem;
-      font-weight: 500;
-      transition: color 0.2s;
-    }
-
-    .nav-link:hover {
-      color: #fff;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 20px;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.2s;
-      cursor: pointer;
-    }
-
-    .btn-primary {
-      background: #fff;
-      color: #000;
-    }
-
-    .btn-primary:hover {
-      background: #e2e8f0;
-    }
-
-    .btn-outline {
-      background: transparent;
-      color: #fff;
-      border: 1px solid var(--border);
-    }
-
-    .btn-outline:hover {
-      background: var(--card-bg);
-      border-color: var(--text-muted);
-    }
-
-    .hero {
-      padding: 80px 0 60px;
-      text-align: center;
-    }
-
-    .pill-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(59, 130, 246, 0.1);
-      border: 1px solid rgba(59, 130, 246, 0.3);
-      color: var(--accent-cyan);
-      padding: 6px 14px;
-      border-radius: 999px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      margin-bottom: 24px;
-    }
-
-    h1 {
-      font-size: clamp(2.4rem, 5vw, 3.8rem);
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      line-height: 1.15;
-      margin-bottom: 24px;
-      background: linear-gradient(180deg, #ffffff 0%, #94a3b8 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .quote-box {
-      max-width: 840px;
-      margin: 0 auto 36px;
-      background: rgba(18, 21, 29, 0.8);
-      border-left: 3px solid var(--accent-cyan);
-      border-radius: 0 12px 12px 0;
-      padding: 20px 24px;
-      text-align: left;
-      font-size: 1.05rem;
-      color: #cbd5e1;
-      line-height: 1.7;
-    }
-
-    .quote-box strong {
-      color: #fff;
-    }
-
-    .hero-actions {
-      display: flex;
-      justify-content: center;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    .flow-section {
-      padding: 60px 0;
-    }
-
-    .section-title {
-      font-size: 1.75rem;
-      font-weight: 700;
-      margin-bottom: 12px;
-      letter-spacing: -0.02em;
-    }
-
-    .section-subtitle {
-      color: var(--text-muted);
-      margin-bottom: 40px;
-      max-width: 600px;
-    }
-
-    .flow-grid {
+    /* Outer frame: the whole page sits inside one thick black border */
+    .frame {
+      max-inline-size: 1200px;
+      margin: 32px auto;
+      border: var(--rule) solid var(--ink);
+      background: var(--ink);
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 24px;
-      margin-bottom: 60px;
+      gap: var(--rule);
     }
 
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 28px;
+    .grid {
+      display: grid;
+      gap: var(--rule);
+      background: var(--ink);
     }
 
-    .card-num {
-      display: inline-block;
-      width: 28px;
-      height: 28px;
-      background: rgba(59, 130, 246, 0.15);
-      color: var(--accent-cyan);
-      border-radius: 6px;
+    .cell {
+      background: var(--paper);
+      padding: 40px;
+    }
+
+    .cell.blue  { background: var(--blue);  color: #fff; }
+    .cell.green { background: var(--green); color: #fff; }
+    .cell.coral { background: var(--coral); color: #fff; }
+
+    /* Empty colour blocks are decorative only */
+    .block { padding: 0; min-block-size: 80px; }
+
+    /* ---------- Header ---------- */
+    .head {
+      grid-template-columns: 1fr auto auto;
+    }
+    .head .cell { display: flex; align-items: center; padding: 20px 32px; }
+    .brand img { block-size: 44px; inline-size: auto; display: block; }
+    .nav-link {
       font-weight: 700;
-      font-size: 0.85rem;
-      text-align: center;
-      line-height: 28px;
-      margin-bottom: 16px;
-    }
-
-    .card h3 {
-      font-size: 1.2rem;
-      font-weight: 700;
-      margin-bottom: 10px;
-    }
-
-    .card p {
-      color: var(--text-muted);
+      text-decoration: none;
       font-size: 0.95rem;
     }
+    .nav-link:hover { text-decoration: underline; text-underline-offset: 4px; }
 
-    .table-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow-x: auto;
-      margin-bottom: 60px;
+    /* ---------- Hero ---------- */
+    .hero {
+      grid-template-columns: 2fr 1fr;
+      grid-template-rows: auto 1fr;
     }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-      font-size: 0.9rem;
+    .hero-main { grid-row: span 2; padding: 64px 48px; }
+    .hero-main img { inline-size: min(420px, 100%); block-size: auto; display: block; margin-block-end: 40px; }
+    h1 {
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      font-weight: 800;
+      margin-block-end: 20px;
     }
+    .lede { font-size: 1.15rem; color: var(--muted); max-inline-size: 56ch; margin-block-end: 32px; }
 
-    th {
-      background: rgba(255, 255, 255, 0.03);
-      padding: 16px 20px;
-      font-weight: 600;
-      color: #e2e8f0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    td {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-      color: #cbd5e1;
-    }
-
-    tr:last-child td {
-      border-bottom: none;
-    }
-
-    .status-badge {
+    .btn {
       display: inline-block;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 0.75rem;
+      padding: 14px 24px;
+      border: 3px solid var(--ink);
+      background: var(--ink);
+      color: #fff;
       font-weight: 700;
-      text-transform: uppercase;
+      text-decoration: none;
+      margin-inline-end: 12px;
+      margin-block-end: 12px;
+    }
+    .btn:hover { background: var(--coral); border-color: var(--coral); }
+    .btn.ghost { background: transparent; color: var(--ink); }
+    .btn.ghost:hover { background: var(--ink); color: #fff; }
+
+    .stat { display: flex; flex-direction: column; justify-content: flex-end; }
+    .stat .num { font-size: 3rem; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
+    .stat .label { font-weight: 500; opacity: 0.9; }
+
+    /* ---------- Quote ---------- */
+    .quote { grid-template-columns: 120px 1fr; }
+    blockquote {
+      font-size: 1.2rem;
+      font-weight: 500;
+      line-height: 1.55;
+      max-inline-size: 70ch;
     }
 
-    .badge-drift {
-      background: rgba(245, 158, 11, 0.15);
-      color: var(--accent-amber);
-      border: 1px solid rgba(245, 158, 11, 0.3);
-    }
+    /* ---------- Section titles ---------- */
+    .section-title { padding: 28px 40px; }
+    h2 { font-size: 1.6rem; letter-spacing: -0.02em; font-weight: 800; }
+    .section-title p { color: var(--muted); }
 
-    .badge-pass {
-      background: rgba(16, 185, 129, 0.15);
-      color: var(--accent-emerald);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
+    /* ---------- How it works ---------- */
+    .steps { grid-template-columns: repeat(3, 1fr); }
+    .step-num { font-family: var(--mono); font-weight: 600; font-size: 0.9rem; margin-block-end: 12px; display: block; }
+    h3 { font-size: 1.2rem; font-weight: 800; margin-block-end: 10px; }
+    .steps p { color: var(--muted); }
+    .steps .cell.blue p, .steps .cell.green p, .steps .cell.coral p { color: #fff; opacity: 0.95; }
 
-    .code-block {
-      background: #05070a;
-      border: 1px solid var(--border);
-      border-radius: 10px;
+    /* ---------- Benchmark table ---------- */
+    .table-wrap { padding: 0; overflow-x: auto; }
+    table { inline-size: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    th, td { padding: 16px 20px; text-align: start; border-block-end: 3px solid var(--ink); }
+    th { background: var(--ink); color: #fff; font-weight: 700; white-space: nowrap; }
+    tr:last-child td { border-block-end: none; }
+    td small { display: block; color: var(--muted); font-family: var(--mono); font-size: 0.78rem; }
+    .tag { display: inline-block; padding: 4px 10px; font-weight: 700; font-size: 0.78rem; color: #fff; white-space: nowrap; }
+    .tag.coral { background: var(--coral); }
+    .tag.green { background: var(--green); }
+    .tag.blue  { background: var(--blue); }
+
+    /* ---------- Quickstart ---------- */
+    .quick { grid-template-columns: 1fr 1fr; }
+    pre {
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      background: #f4f4f4;
+      border: 3px solid var(--ink);
       padding: 20px;
-      font-family: var(--mono-font);
-      font-size: 0.85rem;
-      color: #e2e8f0;
       overflow-x: auto;
-      margin: 16px 0;
+      margin-block-start: 16px;
     }
 
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 40px 0;
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 0.85rem;
+    /* ---------- Footer ---------- */
+    .foot { grid-template-columns: auto 1fr 160px; }
+    .foot .cell { padding: 24px 32px; display: flex; align-items: center; gap: 16px; font-size: 0.9rem; }
+    .foot img { block-size: 40px; inline-size: 40px; }
+
+    /* ---------- Small screens: collapse every grid to one column ---------- */
+    @media (max-width: 820px) {
+      .frame { margin: 0; border-width: 4px; }
+      :root { --rule: 4px; }
+      .head, .hero, .quote, .steps, .quick, .foot { grid-template-columns: 1fr; }
+      .hero-main { grid-row: auto; padding: 40px 24px; }
+      .cell { padding: 28px 24px; }
+      .quote .block, .foot .block { display: none; }
     }
   </style>
 </head>
 <body>
+  <main class="frame">
 
-  <header>
-    <div class="container nav-wrap">
-      <a href="/" class="logo">
-        <span>System 2</span>
-        <span class="logo-badge">v0.2.0</span>
+    <!-- Header -->
+    <header class="grid head">
+      <a class="cell brand" href="/" aria-label="System2 home">
+        <img src="assets/logos/logo-colour-tight.svg" alt="System2" width="123" height="44">
       </a>
-      <div class="nav-links">
-        <a href="https://huggingface.co/tjdoomer/system2-code" class="nav-link" target="_blank" rel="noopener">Hugging Face</a>
-        <a href="https://github.com/tj-doomer-it/System2" class="nav-link" target="_blank" rel="noopener">GitHub</a>
-        <a href="https://huggingface.co/tjdoomer/system2-code" class="btn btn-primary" target="_blank" rel="noopener">Download Weights</a>
+      <div class="cell"><a class="nav-link" href="#how">How it works</a></div>
+      <div class="cell"><a class="nav-link" href="https://huggingface.co/tjdoomer/system2-code">Hugging Face</a></div>
+    </header>
+
+    <!-- Hero -->
+    <section class="grid hero">
+      <div class="cell hero-main">
+        <h1>The epistemic gatekeeper for edge AI.</h1>
+        <p class="lede">Small local models get it wrong 15 to 25% of the time. System2 is a non-autoregressive, 5-head deliberation engine that catches those failures in about 500ms, before the code runs.</p>
+        <a class="btn" href="https://huggingface.co/tjdoomer/system2-code">Get the weights (143 MB)</a>
+        <a class="btn ghost" href="#how">How it works</a>
       </div>
-    </div>
-  </header>
-
-  <main>
-    <section class="hero">
-      <div class="container">
-        <div class="pill-badge">ModernBERT MPS/CUDA Engine • 143 MB Checkpoint</div>
-        <h1>The Automated Epistemic Gatekeeper for Edge AI</h1>
-        
-        <div class="quote-box">
-          &ldquo;Small local models have a 15% to 25% stochastic error rate, whether from CoT loops, hallucinated syntax, or formatting quirks. If you run them raw, they break in production. System 2's job is not to magically make a broken model write code; it is to catch those failures in 500ms on Apple Silicon MPS and say: <strong>Certainty is 41.8%, do not run this code.</strong> That is the automated gatekeeper that makes edge AI safe.&rdquo;
-        </div>
-
-        <div class="hero-actions">
-          <a href="https://huggingface.co/tjdoomer/system2-code" class="btn btn-primary" target="_blank" rel="noopener">
-            Get system2_code.pt (143 MB)
-          </a>
-          <a href="https://github.com/tj-doomer-it/System2" class="btn btn-outline" target="_blank" rel="noopener">
-            View on GitHub
-          </a>
-        </div>
+      <div class="cell blue stat">
+        <span class="num">143 MB</span>
+        <span class="label">ModernBERT + LoRA + 5 ThoughtHeads</span>
+      </div>
+      <div class="cell coral stat">
+        <span class="num">41.8%</span>
+        <span class="label">Confidence on live drift. Execution halted.</span>
       </div>
     </section>
 
-    <section class="flow-section">
-      <div class="container">
-        <h2 class="section-title">How Dual-Process Inference Works</h2>
-        <p class="section-subtitle">Pairing fast 4-bit small generators with a non-autoregressive consensus filter on consumer laptops.</p>
+    <!-- Quote -->
+    <section class="grid quote">
+      <div class="cell green block" aria-hidden="true"></div>
+      <div class="cell">
+        <blockquote>"System2's job is not to magically make a broken model write code. It is to catch those failures on Apple Silicon and say: certainty is 41.8%, do not run this code."</blockquote>
+      </div>
+    </section>
 
-        <div class="flow-grid">
-          <div class="card">
-            <span class="card-num">01</span>
-            <h3>Parallel Candidate Draw</h3>
-            <p>Fast 4-bit 7B to 12B local generator (e.g. Gemma 4 12B) emits 4 zero-knowledge candidate completions simultaneously at 50 to 70 tok/s in under 3 seconds.</p>
-          </div>
-          <div class="card">
-            <span class="card-num">02</span>
-            <h3>5-Head Perspective Deliberation</h3>
-            <p>A 143 MB ModernBERT network evaluates candidates across Holistic, Context-Anchored, Choice-Forward, Symmetric Balance, and Extreme Salience perspectives in ~500ms on Apple Silicon MPS.</p>
-          </div>
-          <div class="card">
-            <span class="card-num">03</span>
-            <h3>Cosine Cluster Consensus</h3>
-            <p>Calculates pairwise cosine similarity (0.88 threshold). If consensus &ge; 88%, execute locally for free. If candidates diverge, Epistemic Drift triggers smart cloud escalation.</p>
-          </div>
-        </div>
+    <!-- How it works -->
+    <section class="grid" id="how">
+      <div class="cell section-title">
+        <h2>How dual-process inference works</h2>
+        <p>Fast 4-bit generator. Non-autoregressive judge. Runs on a laptop.</p>
+      </div>
+    </section>
+    <section class="grid steps">
+      <div class="cell">
+        <span class="step-num">01</span>
+        <h3>Parallel candidates</h3>
+        <p>A 4-bit 7B to 12B local model (e.g. Gemma 4 12B) drafts 4 independent candidates in under 3 seconds.</p>
+      </div>
+      <div class="cell blue">
+        <span class="step-num">02</span>
+        <h3>5-head deliberation</h3>
+        <p>Five asymmetric ThoughtHeads score every candidate from different perspectives in a single forward pass. No token streaming.</p>
+      </div>
+      <div class="cell">
+        <span class="step-num">03</span>
+        <h3>Consensus or halt</h3>
+        <p>If the heads agree, run locally for free. If they fracture, epistemic drift is flagged and execution stops.</p>
+      </div>
+    </section>
 
-        <h2 class="section-title">Swarm Benchmark: Apple Silicon M4 Max (128 GB Unified RAM)</h2>
-        <p class="section-subtitle">Empirical multi-agent test constructing an in-memory thread-safe LRUTTLCache.</p>
+    <!-- Benchmark -->
+    <section class="grid">
+      <div class="cell section-title">
+        <h2>Swarm benchmark</h2>
+        <p>Apple Silicon M4 Max, 128 GB. Multi-agent build of a thread-safe LRU TTL cache.</p>
+      </div>
+      <div class="cell table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Generator</th>
+              <th scope="col">Memory</th>
+              <th scope="col">Node</th>
+              <th scope="col">Cache</th>
+              <th scope="col">Tests</th>
+              <th scope="col">Deliberation</th>
+              <th scope="col">Outcome</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Qwen 27B Smoll<small>2.0-bit GGUF</small></td>
+              <td>6.77 GB</td>
+              <td>99.7%</td>
+              <td>94.2%</td>
+              <td>99.6%</td>
+              <td>580 ms</td>
+              <td><span class="tag coral">CoT loop truncation</span></td>
+            </tr>
+            <tr>
+              <td>Qwen 27B IQ3_XXS<small>3.0-bit GGUF</small></td>
+              <td>10.18 GB</td>
+              <td>81.6%</td>
+              <td>75.2%</td>
+              <td>67.8%</td>
+              <td>982 ms</td>
+              <td><span class="tag blue">2,500 token ceiling</span></td>
+            </tr>
+            <tr>
+              <td>Gemma 4 12B<small>4.0-bit MLX</small></td>
+              <td>6.77 GB</td>
+              <td>76.6%</td>
+              <td>98.7%</td>
+              <td>41.8%</td>
+              <td>1,107 ms</td>
+              <td><span class="tag green">Drift caught live</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-        <div class="table-card">
-          <table>
-            <thead>
-              <tr>
-                <th>Tier / Model</th>
-                <th>VRAM Footprint</th>
-                <th>Module 1 (Node)</th>
-                <th>Module 2 (Cache)</th>
-                <th>Module 3 (Test Suite)</th>
-                <th>Deliberation Time</th>
-                <th>Pytest Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><strong>Qwen 27B Smoll</strong><br><small style="color: var(--text-muted);">2.0-bit GGUF</small></td>
-                <td>6.77 GB</td>
-                <td>99.7% Conf</td>
-                <td>94.2% Conf</td>
-                <td>99.6% Conf</td>
-                <td>580 ms</td>
-                <td><span class="status-badge badge-drift">CoT Loop Truncation</span></td>
-              </tr>
-              <tr>
-                <td><strong>Qwen 27B IQ3_XXS</strong><br><small style="color: var(--text-muted);">3.0-bit GGUF</small></td>
-                <td>10.18 GB</td>
-                <td>81.6% Conf</td>
-                <td>75.2% Conf</td>
-                <td>67.8% Conf</td>
-                <td>982 ms</td>
-                <td><span class="status-badge badge-drift">2,500 Tok Ceiling</span></td>
-              </tr>
-              <tr>
-                <td><strong>Google Gemma 4 12B</strong><br><small style="color: var(--text-muted);">4.0-bit MLX</small></td>
-                <td>6.77 GB</td>
-                <td>76.6% Conf</td>
-                <td>98.7% Conf</td>
-                <td><strong>41.8% Conf</strong></td>
-                <td>1,107 ms</td>
-                <td><span class="status-badge badge-pass">Drift Caught Live</span></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+    <!-- Quickstart -->
+    <section class="grid quick">
+      <div class="cell">
+        <h2>Grab the checkpoint</h2>
+        <p>Frozen weights, Apache 2.0, hosted on Hugging Face.</p>
+<pre><code>pip install huggingface_hub
+huggingface-cli download \
+  tjdoomer/system2-code system2_code.pt</code></pre>
+      </div>
+      <div class="cell">
+        <h2>Gate a decision</h2>
+        <p>Runs on Apple Silicon (mps) or NVIDIA (cuda).</p>
+<pre><code>from sys2 import System2Engine
 
-        <h2 class="section-title">Developer Quickstart</h2>
-        <p class="section-subtitle">Run locally or deploy as a drop-in OpenAI-compatible proxy for Cursor, Windsurf, or Claude Code.</p>
-
-        <div class="code-block">
-# 1. Install the System 2 core SDK
-pip install system2
-
-# 2. Launch the local OpenAI-compatible bridge proxy
-python3 -m sys2.server --port 8000
-        </div>
-
-        <div class="code-block">
-from sys2 import System2Engine
-
-# Initialize on Apple Silicon GPU (mps) or NVIDIA (cuda)
 engine = System2Engine(device="mps")
-
-# Adjudicate competing hypotheses
 result = engine.adjudicate(
-    question="Select the thread-safe implementation of an LRU eviction node:",
-    choices=[candidate_a, candidate_b, candidate_c, candidate_d],
-    domain="code"
+    question="Pick the thread-safe LRU node:",
+    choices=[a, b, c, d],
+    domain="code",
 )
-
-print(f"Winner: #{result.selected_index + 1} | Confidence: {result.confidence * 100:.1f}%")
-        </div>
-
+print(result.confidence)</code></pre>
       </div>
     </section>
+
+    <!-- Footer -->
+    <footer class="grid foot">
+      <div class="cell"><img src="assets/logos/icon-blue.svg" alt="" width="40" height="40"></div>
+      <div class="cell">Open weights under Apache 2.0. &copy; 2026 Thom James-Worrall.</div>
+      <div class="cell coral block" aria-hidden="true"></div>
+    </footer>
+
   </main>
-
-  <footer>
-    <div class="container">
-      <p>System 2 is open source under the Apache 2.0 License. Built for Apple Silicon MPS & NVIDIA CUDA.</p>
-      <p style="margin-top: 8px;">&copy; 2026 Antigravity Research • Thom James-Worrall</p>
-    </div>
-  </footer>
-
 </body>
 </html>
