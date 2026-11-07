@@ -20,6 +20,8 @@ pipeline_tag: text-classification
 
 # System 2: 5-Head Deliberation & Epistemic Drift Detector (Code Track)
 
+> "Small local models have a 15% to 25% stochastic error rate, whether from CoT loops, hallucinated syntax, or formatting quirks. If you run them raw, they break in production. System 2's job is not to magically make a broken model write code; it is to catch those failures in 500ms on Apple Silicon MPS and say: **Certainty is 41.8%, do not run this code.** That is the automated gatekeeper that makes edge AI safe."
+
 **System 2** is a non-autoregressive deliberation engine built on ModernBERT. It evaluates competing hypotheses across 5 parallel perspectives in under 30ms on Apple Silicon MPS or NVIDIA CUDA, calculates pairwise cosine cluster consensus, and detects epistemic drift before code execution.
 
 - **Checkpoint:** `system2_code.pt` (143 MB)

@@ -1,5 +1,7 @@
 # System2: Parallel Hypothesis Reasoning Architecture
 
+> "Small local models have a 15% to 25% stochastic error rate, whether from CoT loops, hallucinated syntax, or formatting quirks. If you run them raw, they break in production. System 2's job is not to magically make a broken model write code; it is to catch those failures in 500ms on Apple Silicon MPS and say: **Certainty is 41.8%, do not run this code.** That is the automated gatekeeper that makes edge AI safe."
+
 A system that makes split-second decisions faster than generative AI and admits when it's unsure. Evaluates competing hypotheses across 5 parallel perspectives in < 30ms on-device. No hallucinations. No waiting.
 
 A from-scratch, non-autoregressive "System 2" deliberation architecture designed to run and train locally on Apple Silicon.
