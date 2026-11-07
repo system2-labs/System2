@@ -88,6 +88,19 @@ PATTERNS = {
         re.compile(r"(?:/etc/shadow|\.ssh/id_rsa|\.aws/credentials|\.kube/config|\.docker/config\.json)\s*(?:\||>|--data|curl|nc\b)", re.IGNORECASE),
         re.compile(r"(?:base64\s+-(?:d|-decode)\s*\|\s*(?:bash|sh)|xxd\s+-r\s+-p\s*\|\s*(?:bash|sh)|printf\s+'\\x[0-9a-fA-F]{2})", re.IGNORECASE),
     ],
+    "eval": [
+        re.compile(r"\[EVAL_RUBRIC:", re.IGNORECASE),
+        re.compile(r"\b(?:Reference\s+Context:|Rubric\s+Constraints:|Rubric\s+Formatting\s+Rule:|Candidate\s+Output\s+to\s+Grade:)\b", re.IGNORECASE),
+        re.compile(r"\b(?:Extrinsic\s+Hallucination|Intrinsic\s+Contradiction|Rubric\s+Constraint\s+Violation|ClosedQA\s+Faithfulness)\b", re.IGNORECASE),
+        re.compile(r"\b(?:Candidate\s+Reasoning\s+Trace:|Process\s+Supervision\s+Audit|Model-Graded\s+Output\s+Verification)\b", re.IGNORECASE),
+        re.compile(r"\b(?:LLM-as-a-Judge|hallucination\s+audit|faithfulness\s+rubric|ground-truth\s+rubric)\b", re.IGNORECASE),
+    ],
+    "logic": [
+        re.compile(r"\b(?:Modus\s+Tollens|Modus\s+Ponens|Disjunctive\s+Syllogism|Categorical\s+Syllogism|Hypothetical\s+Syllogism)\b", re.IGNORECASE),
+        re.compile(r"\b(?:Affirming\s+the\s+Consequent|Denying\s+the\s+Antecedent|contrapositive|Knights\s+and\s+Knaves)\b", re.IGNORECASE),
+        re.compile(r"\b(?:Truth-Table\s+Puzzle|Formal\s+Logic\s+Premises|Deductive\s+Constraint\s+Satisfaction)\b", re.IGNORECASE),
+        re.compile(r"(?:∀x:|∃x:|¬[PQR]\b|\b[PQR]\s*→\s*[PQR]\b)"),
+    ],
 }
 
 
