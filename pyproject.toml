@@ -48,6 +48,9 @@ dev = [
     "ruff>=0.3.0",
 ]
 
+[tool.setuptools.packages.find]
+include = ["sys2*"]
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
