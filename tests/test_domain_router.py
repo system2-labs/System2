@@ -131,6 +131,18 @@ TEST_BATTERIES = [
     ("finance", "How is gross margin calculated, and what does a declining gross margin trend signal about production costs?"),
     ("finance", "What is the economic concept of price elasticity of demand, and what occurs when demand is inelastic?"),
     ("finance", "In accounting, how do increases in accounts receivable impact net operating cash flow on the cash flow statement?"),
+
+    # -------------------- EVAL META-JUDGE (Track L) --------------------
+    ("eval", "[EVAL_RUBRIC: ClosedQA Faithfulness & Constraint Audit] Reference Context: ChronosDB uses raft-v3. Select the response that passes all rubric criteria."),
+    ("eval", "Reference Context: The API Rate Limiter uses token-bucket. Rubric Formatting Rule: No SQL snippets. Candidate Output to Grade: 'The limiter uses token-bucket.'"),
+    ("eval", "[EVAL_RUBRIC: Chain-of-Thought Process Supervision Audit] Candidate Reasoning Trace: 'Step 1: 12 * 4 = 48.' Audit the trace:"),
+    ("eval", "Perform a hallucination audit on the candidate response against the ground-truth rubric to check for Extrinsic Hallucination or Intrinsic Contradiction."),
+
+    # -------------------- FORMAL LOGIC (Track M) --------------------
+    ("logic", "Formal Logic Premises: Premise 1: If P, then Q (P → Q). Premise 2: ¬Q. Which conclusion follows by Modus Tollens?"),
+    ("logic", "Categorical Syllogism: Axiom 1: All deterministic automata are halting verifiers (∀x: A(x) → B(x)). Which statement is entailed?"),
+    ("logic", "Knights and Knaves Truth-Table Puzzle: Alden says 'At least one of us is a Knave.' Determine the logically consistent assignment."),
+    ("logic", "Deductive Constraint Satisfaction: Five pipeline stages execute sequentially subject to strict ordering constraints."),
 ]
 
 

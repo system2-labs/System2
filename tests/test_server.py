@@ -29,14 +29,16 @@ def test_health_check(client):
     assert "science" in data["available_domains"]
     assert "physics" in data["available_domains"]
     assert "safety" in data["available_domains"]
-    assert len(data["available_domains"]) == 11
+    assert "eval" in data["available_domains"]
+    assert "logic" in data["available_domains"]
+    assert len(data["available_domains"]) == 13
 
 
 def test_list_tracks(client):
     resp = client.get("/tracks")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total_tracks"] == 11
+    assert data["total_tracks"] == 13
     track_ids = [t["id"] for t in data["tracks"]]
     assert "science" in track_ids
     assert "code" in track_ids
@@ -49,6 +51,8 @@ def test_list_tracks(client):
     assert "finance" in track_ids
     assert "physics" in track_ids
     assert "safety" in track_ids
+    assert "eval" in track_ids
+    assert "logic" in track_ids
 
 
 def test_list_models(client):

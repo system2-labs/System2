@@ -23,29 +23,34 @@ from bert import get_bert
 DATA_PATHS = {
     "science": os.path.join(ROOT_DIR, "data", "arc_augmented"),
     "code": os.path.join(ROOT_DIR, "data", "code_traces"),
-    "med": os.path.join(ROOT_DIR, "data", "medical"),
-    "electrical": os.path.join(ROOT_DIR, "data", "electrical"),
+    "med": os.path.join(ROOT_DIR, "data", "med_grounded_expanded"),
+    "electrical": os.path.join(ROOT_DIR, "data", "electrical_expanded"),
     "auto": os.path.join(ROOT_DIR, "data", "auto"),
     "culinary": os.path.join(ROOT_DIR, "data", "culinary"),
     "math": os.path.join(ROOT_DIR, "data", "math"),
     "legal": os.path.join(ROOT_DIR, "data", "legal"),
     "finance": os.path.join(ROOT_DIR, "data", "finance"),
+    "physics": os.path.join(ROOT_DIR, "data", "physics_grounded_expanded"),
+    "safety": os.path.join(ROOT_DIR, "data", "safety"),
+    "eval": os.path.join(ROOT_DIR, "data", "eval"),
+    "logic": os.path.join(ROOT_DIR, "data", "logic"),
 }
 
 OUTPUT_PATH = os.path.join(ROOT_DIR, "routing", "domain_centroids.pt")
 
 
 def main():
+    device = "mps" if torch.backends.mps.is_available() else "cpu"
     print("========================================================================")
     print(" COMPUTING PROTOTYPE DOMAIN CENTROIDS FOR DYNAMIC ROUTING")
-    print(" Device: CPU (Zero GPU Contention)")
+    print(f" Device: {device.upper()}")
     print("========================================================================")
 
     tokenizer, model = get_bert("answerdotai/ModernBERT-Large-Instruct")
-    model.to("cpu")
+    model.to(device)
     model.eval()
 
-    tracks_order = ["science", "code", "med", "electrical", "auto", "culinary", "math", "legal", "finance"]
+    tracks_order = ["science", "code", "med", "electrical", "auto", "culinary", "math", "legal", "finance", "physics", "safety", "eval", "logic"]
     centroids_list = []
 
     for track in tracks_order:
@@ -69,14 +74,14 @@ def main():
         with torch.no_grad():
             for i in range(0, sample_size, batch_size):
                 batch_texts = questions[i:i + batch_size]
-                inputs = tokenizer(batch_texts, return_tensors="pt", padding=True, truncation=True, max_length=256)
+                inputs = tokenizer(batch_texts, return_tensors="pt", padding=True, truncation=True, max_length=256).to(device)
                 last_hidden = model(**inputs).last_hidden_state
                 mask = inputs["attention_mask"].unsqueeze(-1)
                 # Attention-weighted mean pooling
                 pooled = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
                 # L2 normalize each
                 pooled = torch.nn.functional.normalize(pooled, p=2, dim=1)
-                all_embs.append(pooled)
+                all_embs.append(pooled.cpu())
 
         domain_embs = torch.cat(all_embs, dim=0)  # (N, 1024)
         centroid = domain_embs.mean(dim=0, keepdim=True)  # (1, 1024)

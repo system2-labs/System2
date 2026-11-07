@@ -36,7 +36,7 @@ class RouteDecision:
 class DomainRouter:
     """Dynamic Domain Router for System2 Multi-Track Deliberation."""
 
-    TRACKS = ["science", "code", "med", "electrical", "auto", "culinary", "math", "legal", "finance", "physics", "safety"]
+    TRACKS = ["science", "code", "med", "electrical", "auto", "culinary", "math", "legal", "finance", "physics", "safety", "eval", "logic"]
 
     TRACK_NAMES = {
         "science": "Track A: Science & Causal Reasoning",
@@ -50,6 +50,8 @@ class DomainRouter:
         "finance": "Track I: Financial Reasoning & Quantitative Analysis",
         "physics": "Track J: Pure Physics & Astrophysics",
         "safety": "Track K: Agent Gatekeeper & Command Safety",
+        "eval": "Track L: Rubric, Faithfulness & Hallucination Meta-Judge",
+        "logic": "Track M: Formal & Deductive Logic",
     }
 
     def __init__(
