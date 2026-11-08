@@ -1,0 +1,282 @@
+[
+  {
+    "id": "neg_01",
+    "domain": "logic",
+    "prompt_positive": "Premise 1: If a server encounters an OOM exception, the watchdog daemon restarts it.\nPremise 2: The server encountered an OOM exception.\nWhich statement MUST be true?",
+    "prompt_negative": "Premise 1: If a server encounters an OOM exception, the watchdog daemon restarts it.\nPremise 2: The server encountered an OOM exception.\nWhich statement CANNOT be true?",
+    "choices": [
+      "The watchdog daemon restarts the server.",
+      "The watchdog daemon remains dormant and does not restart the server.",
+      "The server switches to an unmonitored bare-metal mode.",
+      "The watchdog daemon terminates itself immediately."
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_02",
+    "domain": "logic",
+    "prompt_positive": "In propositional calculus, given (P -> Q) and ~Q, what conclusion is deductively valid via Modus Tollens?",
+    "prompt_negative": "In propositional calculus, given (P -> Q) and ~Q, which conclusion is a formal logical fallacy and invalid?",
+    "choices": [
+      "~P",
+      "P",
+      "Q",
+      "P and Q"
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_03",
+    "domain": "logic",
+    "prompt_positive": "All microservices in cluster Alpha utilize mTLS. Service Omega is a microservice in cluster Alpha.\nWhich conclusion MUST be true?",
+    "prompt_negative": "All microservices in cluster Alpha utilize mTLS. Service Omega is a microservice in cluster Alpha.\nWhich conclusion CANNOT be true?",
+    "choices": [
+      "Service Omega utilizes mTLS.",
+      "Service Omega communicates over plaintext HTTP without mTLS.",
+      "Cluster Alpha consists exclusively of Service Omega.",
+      "All services in the organization utilize mTLS."
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_04",
+    "domain": "logic",
+    "prompt_positive": "Predicate logic: What is the exact logical negation of the statement 'Every database transaction is atomic'?",
+    "prompt_negative": "Predicate logic: Which statement is logically equivalent to 'Every database transaction is atomic'?",
+    "choices": [
+      "There exists at least one database transaction that is not atomic.",
+      "No database transaction is atomic.",
+      "All database transactions fail atomicity guarantees.",
+      "If a transaction is in the database, it must be atomic."
+    ],
+    "label_positive": 0,
+    "label_negative": 3
+  },
+  {
+    "id": "neg_05",
+    "domain": "science",
+    "prompt_positive": "When an ideal gas undergoes an isothermal expansion, which thermodynamic property MUST remain constant?",
+    "prompt_negative": "When an ideal gas undergoes an isothermal expansion, which thermodynamic property CANNOT remain constant and must change?",
+    "choices": [
+      "Temperature",
+      "Volume",
+      "Entropy",
+      "Helmholtz free energy"
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_06",
+    "domain": "science",
+    "prompt_positive": "In cellular respiration, what molecule acts as the final electron acceptor in the mitochondrial electron transport chain under aerobic conditions?",
+    "prompt_negative": "In cellular respiration, which molecule CANNOT act as the final electron acceptor under strictly aerobic conditions?",
+    "choices": [
+      "Molecular oxygen (O2)",
+      "Lactate",
+      "Water",
+      "Pyruvate"
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_07",
+    "domain": "legal",
+    "prompt_positive": "Under common law contract principles, which element is strictly required to form a legally binding contract?",
+    "prompt_negative": "Under common law contract principles, which factor is NOT required to form a legally binding contract?",
+    "choices": [
+      "Mutual assent through offer and acceptance supported by consideration",
+      "A written instrument notarized by a public notary in all circumstances",
+      "Capacity of the contracting parties",
+      "Legality of the contract's subject matter"
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_08",
+    "domain": "legal",
+    "prompt_positive": "Under the Fourth Amendment exclusionary rule, evidence gathered via an unconstitutional, warrantless search without any applicable exception MUST be:",
+    "prompt_negative": "Under the Fourth Amendment exclusionary rule, evidence gathered via an unconstitutional, warrantless search CANNOT be:",
+    "choices": [
+      "Suppressed and excluded from the prosecution's case-in-chief",
+      "Admitted unconditionally as primary substantive evidence against the defendant",
+      "Considered an automatic dismissal of all underlying indictments with prejudice",
+      "Treated as conclusive presumption of guilt"
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_09",
+    "domain": "code",
+    "prompt_positive": "In Python, which built-in data type is strictly IMMUTABLE?",
+    "prompt_negative": "In Python, which built-in data type is strictly MUTABLE and cannot be used as a dictionary key?",
+    "choices": [
+      "tuple",
+      "list",
+      "frozenset",
+      "int"
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_10",
+    "domain": "code",
+    "prompt_positive": "In Rust, what does the compiler guarantee about references under the borrowing rules?",
+    "prompt_negative": "In Rust, which reference pattern is explicitly FORBIDDEN by the borrow checker?",
+    "choices": [
+      "You may have either one mutable reference or any number of immutable references, but not both simultaneously.",
+      "Having simultaneously multiple active mutable references to the same data in the same scope.",
+      "References are allowed to outlive the data they point to.",
+      "Immutable references can freely mutate underlying struct fields without RefCell."
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_11",
+    "domain": "physics",
+    "prompt_positive": "In special relativity, which quantity is invariant across all inertial reference frames?",
+    "prompt_negative": "In special relativity, which quantity is frame-dependent and CANNOT be invariant across inertial reference frames?",
+    "choices": [
+      "The spacetime interval (and the speed of light in vacuum c)",
+      "The measured elapsed coordinate time between two events",
+      "The rest mass of an isolated particle",
+      "The total charge of a closed system"
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_12",
+    "domain": "physics",
+    "prompt_positive": "According to the Second Law of Thermodynamics, the total entropy of an isolated system in any spontaneous process MUST:",
+    "prompt_negative": "According to the Second Law of Thermodynamics, the total entropy of an isolated system in any spontaneous process CANNOT:",
+    "choices": [
+      "Increase or remain constant (dS >= 0)",
+      "Strictly decrease over time (dS < 0)",
+      "Oscillate periodically between zero and infinity",
+      "Equal zero at all temperatures above absolute zero"
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_13",
+    "domain": "math",
+    "prompt_positive": "Which of the following functions is strictly MONOTONICALLY INCREASING on the entire real interval (-inf, +inf)?",
+    "prompt_negative": "Which of the following functions is NOT strictly monotonically increasing on the entire real interval (-inf, +inf)?",
+    "choices": [
+      "f(x) = exp(x)",
+      "f(x) = x^2",
+      "f(x) = x^3 + x",
+      "f(x) = 2x + 5"
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_14",
+    "domain": "math",
+    "prompt_positive": "In linear algebra, if a square matrix A has a non-zero determinant (det(A) != 0), which statement MUST be true?",
+    "prompt_negative": "In linear algebra, if a square matrix A has a non-zero determinant (det(A) != 0), which statement CANNOT be true?",
+    "choices": [
+      "The matrix A is invertible and its column vectors are linearly independent.",
+      "The null space of A contains non-trivial vectors other than the zero vector.",
+      "The eigenvalues of A are all strictly zero.",
+      "The rank of A is strictly less than its dimension n."
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_15",
+    "domain": "safety",
+    "prompt_positive": "When evaluating an automated agent shell execution, which operation is considered SAFE and non-destructive?",
+    "prompt_negative": "When evaluating an automated agent shell execution, which operation is strictly DANGEROUS and must be blocked?",
+    "choices": [
+      "cat /etc/os-release && uname -a",
+      "rm -rf / --no-preserve-root",
+      "ls -la /var/log",
+      "python3 -c 'print(1+1)'"
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_16",
+    "domain": "eval",
+    "prompt_positive": "In automated LLM evaluation, a model output that strictly adheres to the grounding context without introducing ungrounded facts is classified as:",
+    "prompt_negative": "In automated LLM evaluation, a model output that claims external fabricated figures not found in the source text is classified as:",
+    "choices": [
+      "Faithful and grounded",
+      "Hallucinated and unfaithful",
+      "Format non-compliant",
+      "Toxic and harmful"
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_17",
+    "domain": "electrical",
+    "prompt_positive": "According to Kirchhoff's Current Law (KCL), what MUST the algebraic sum of all currents entering and exiting any electrical node equal?",
+    "prompt_negative": "According to Kirchhoff's Current Law (KCL), the algebraic sum of currents entering and exiting a closed electrical node CANNOT:",
+    "choices": [
+      "Strictly zero (sum I = 0)",
+      "A non-zero net current resulting in continuous ungrounded charge accumulation",
+      "The total system impedance",
+      "The open circuit voltage"
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_18",
+    "domain": "auto",
+    "prompt_positive": "In a modern automotive EFI system, what condition triggers closed-loop fuel control?",
+    "prompt_negative": "In a modern automotive EFI system, which operating condition CANNOT operate in closed-loop fuel control?",
+    "choices": [
+      "The engine coolant temperature reaches normal operating range and oxygen sensors are hot and active.",
+      "Wide Open Throttle (WOT) power enrichment mode where lambda targets are aggressively rich.",
+      "Idle after the oxygen sensor heater circuit activates.",
+      "Steady-state highway cruising at stoichiometric AFR."
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_19",
+    "domain": "culinary",
+    "prompt_positive": "What chemical condition is REQUIRED for the Maillard browning reaction to proceed rapidly during cooking?",
+    "prompt_negative": "Which condition will INHIBIT or PREVENT the Maillard browning reaction on the surface of searing proteins?",
+    "choices": [
+      "Surface moisture removal and temperatures exceeding 140°C (284°F)",
+      "Excess liquid surface water causing boiling at 100°C",
+      "Presence of reducing sugars and amino acids",
+      "Alkaline or neutral pH environment"
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  },
+  {
+    "id": "neg_20",
+    "domain": "finance",
+    "prompt_positive": "In corporate valuation, which cash flow measure represents the cash generated by operations available to ALL capital providers (both debt and equity)?",
+    "prompt_negative": "In corporate valuation, which cash flow measure CANNOT be distributed to debt holders because debt service and interest have already been subtracted?",
+    "choices": [
+      "Free Cash Flow to Firm (FCFF)",
+      "Free Cash Flow to Equity (FCFE)",
+      "EBITDA before taxes",
+      "Gross operating profit"
+    ],
+    "label_positive": 0,
+    "label_negative": 1
+  }
+]
