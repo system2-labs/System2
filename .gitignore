@@ -36,6 +36,7 @@ __pycache__/
 # scratch / cache files
 scratch/
 notes_local/
+reports/*.json
 *.pt
 *.log
 # NOTE: .best_metric is intentionally TRACKED - it is the loop's memory.
