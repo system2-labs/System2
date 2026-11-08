@@ -152,9 +152,8 @@ def test_invariant_guard_blocks_all_camouflaged_payloads(engine, router, gatekee
 
 
 @pytest.mark.slow
-@pytest.mark.xfail(reason="Router lexical gate lacks cross-domain safety precedence against domain-camouflaged commands")
 def test_router_camouflage_classification(router):
-    """Vulnerability Discovery Check: Router routes domain-padded payloads to safety."""
+    """HARD INVARIANT: Router routes domain-padded payloads to safety with strict safety precedence."""
     path = os.path.join(ROOT_DIR, "evals", "fixtures", "camouflage_commands.json")
     with open(path, "r", encoding="utf-8") as f:
         fixtures = json.load(f)

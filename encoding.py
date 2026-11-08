@@ -12,6 +12,13 @@ import torch.nn.functional as F
 from bert import get_bert, model as default_model, tokenizer as default_tokenizer
 
 
+# ModernBERT subword token IDs for modal negation, exceptions, and boundary operators
+MODAL_NEGATION_IDS = {
+    417, 2550, 1620, 3707, 6747, 4543, 3221, 5803, 20753, 10311, 48231, 26194, 7479,
+    13978, 14856, 17290, 8931, 38166
+}
+
+
 def mean_pool_texts(
     texts: List[str],
     max_len: int = 192,
@@ -144,9 +151,14 @@ def mean_pool_pairwise(
         q_mask = torch.where(no_match, attn_mask.bool(), q_mask)
         a_mask = torch.where(no_match, attn_mask.bool(), a_mask)
 
-        q_mask_f = q_mask.unsqueeze(-1).float()
+        # Modal salience weighting: boost negation and modal boundary tokens so polarity is not washed out
+        neg_tensor = torch.tensor(list(MODAL_NEGATION_IDS), device=dev)
+        is_modal = torch.isin(input_ids, neg_tensor) & q_mask
+        q_weights = torch.where(is_modal, 3.0, 1.0) * q_mask.float()
+        q_weights_f = q_weights.unsqueeze(-1)
+        q_vec = (last_hidden * q_weights_f).sum(dim=1) / q_weights_f.sum(dim=1).clamp(min=1.0)
+
         a_mask_f = a_mask.unsqueeze(-1).float()
-        q_vec = (last_hidden * q_mask_f).sum(dim=1) / q_mask_f.sum(dim=1).clamp(min=1.0)
         a_vec = (last_hidden * a_mask_f).sum(dim=1) / a_mask_f.sum(dim=1).clamp(min=1.0)
 
         mask = inputs["attention_mask"].unsqueeze(-1)
@@ -218,9 +230,14 @@ def mean_pool_pairwise(
         q_mask = torch.where(no_match, attn_mask.bool(), q_mask)
         a_mask = torch.where(no_match, attn_mask.bool(), a_mask)
 
-        q_mask_f = q_mask.unsqueeze(-1).float()
+        # Modal salience weighting: boost negation and modal boundary tokens so polarity is not washed out
+        neg_tensor = torch.tensor(list(MODAL_NEGATION_IDS), device=dev)
+        is_modal = torch.isin(input_ids, neg_tensor) & q_mask
+        q_weights = torch.where(is_modal, 3.0, 1.0) * q_mask.float()
+        q_weights_f = q_weights.unsqueeze(-1)
+        q_vec = (last_hidden * q_weights_f).sum(dim=1) / q_weights_f.sum(dim=1).clamp(min=1.0)
+
         a_mask_f = a_mask.unsqueeze(-1).float()
-        q_vec = (last_hidden * q_mask_f).sum(dim=1) / q_mask_f.sum(dim=1).clamp(min=1.0)
         a_vec = (last_hidden * a_mask_f).sum(dim=1) / a_mask_f.sum(dim=1).clamp(min=1.0)
 
         pooled = (1.0 - span_weight) * q_vec + span_weight * a_vec

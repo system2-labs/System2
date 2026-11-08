@@ -84,7 +84,12 @@ PATTERNS = {
         re.compile(r"(?:\bbash\s+-i\s+>&|/dev/tcp/[0-9.]+|\bnc(?:at)?(?:\.traditional)?\s+-e|\bsocat\s+tcp-connect)", re.IGNORECASE),
         re.compile(r"(?:curl|wget|fetch|busybox\s+wget)\s+[^|;]+\|\s*(?:bash|sh|python|perl)", re.IGNORECASE),
         re.compile(r"(?:/etc/sudoers|/etc/crontab|/etc/cron\.[a-z]+|chmod\s+[u\+]*s\s+/bin/bash|LD_PRELOAD=)", re.IGNORECASE),
-        re.compile(r"(?:rm\s+-(?:rf|fr)\s+(?:/|/\*|~|/etc|/var|/usr|/boot)|mkfs\.[a-z0-9]+\s+/dev/|dd\s+if=/dev/(?:zero|urandom)\s+of=/dev/|:\(\){\s*:\|:&\s*};:)", re.IGNORECASE),
+        re.compile(r"(?:rm(?:\$\{IFS\}|\$IFS|\s)+-(?:rf|fr)\b|mkfs\.[a-z0-9]+\s+/dev/|dd\s+if=/dev/(?:zero|urandom)\s+of=/dev/)", re.IGNORECASE),
+        # Strict self-recursion fork bomb detection: func_name() { ... func_name | ... func_name & }
+        re.compile(r"(?P<fn>[a-zA-Z0-9_:]+)\s*\(\)\s*\{[^}]*\|\s*(?P=fn)(?:\b|(?=[^a-zA-Z0-9_]))[^}]*&", re.IGNORECASE),
+        re.compile(r"\bwhile\s+(?:true|:)\s*;\s*do\s+.*&\s*done\b", re.IGNORECASE),
+        re.compile(r"(?:perl\s+-e\s+['\"].*fork\s+while\s+1|python[23]?\s+-c\s+['\"].*os\.fork)", re.IGNORECASE),
+        re.compile(r"(?:cat\s+/dev/zero\s*>|fallocate\s+-l\s+\d+[GMT]|truncate\s+-s\s+\+?\d+[GMT]|/proc/sysrq-trigger)", re.IGNORECASE),
         re.compile(r"(?:/etc/shadow|\.ssh/id_rsa|\.aws/credentials|\.kube/config|\.docker/config\.json)\s*(?:\||>|--data|curl|nc\b)", re.IGNORECASE),
         re.compile(r"(?:base64\s+-(?:d|-decode)\s*\|\s*(?:bash|sh)|xxd\s+-r\s+-p\s*\|\s*(?:bash|sh)|printf\s+'\\x[0-9a-fA-F]{2})", re.IGNORECASE),
     ],
@@ -105,14 +110,24 @@ PATTERNS = {
 
 
 def scan_lexical_signatures(text: str) -> Optional[Tuple[str, float]]:
-    """Scan prompt against high-precision technical signatures.
+    """Scan prompt against high-precision technical signatures with strict safety precedence.
 
     Returns:
         (track_id, confidence) if a signature is found with score >= 1 and distinct margin.
     """
-    scores: Dict[str, int] = {k: 0 for k in PATTERNS}
+    # --------------------------------------------------------------------------
+    # STAGE 0: Strict Safety Precedence Short-Circuit (< 0.01 ms)
+    # Security threats must never be diluted or out-voted by domain keywords.
+    # --------------------------------------------------------------------------
+    for regex in PATTERNS.get("safety", []):
+        if regex.search(text):
+            return "safety", 0.99
+
+    scores: Dict[str, int] = {k: 0 for k in PATTERNS if k != "safety"}
 
     for domain, regex_list in PATTERNS.items():
+        if domain == "safety":
+            continue
         for regex in regex_list:
             matches = regex.findall(text)
             if matches:
