@@ -177,3 +177,14 @@ Run metric-guarded hyperparameter sweeps across isolated git worktrees with auto
 python3 scripts/run_parallel_sweeps.py --tracks track-h track-i --max-trials 3
 ```
 The runner trains on Apple Silicon MPS, judges on the full held-out test split, and commits if improved or executes `git reset --hard HEAD` if regressed.
+
+### 6. Unified Evaluation & Adversarial Red-Team Suite
+Execute the multi-track evaluation benchmark or the 6-battery adversarial robustness suite:
+```bash
+# Unified 13-Track Evaluation Suite (Oracle & E2E Dynamic Routing):
+python3 scripts/run_eval_suite.py --tracks all --samples-per-track 100 --device mps
+
+# Adversarial Red-Team Stress Battery (Permutation, Sycophancy, Camouflage, Negation, Abstention):
+python3 scripts/run_adversarial_suite.py --device mps --n 50
+```
+For in-depth analysis of accuracy, Brier scores, 10-bin ECE, Guarded metric invariants, and inter-head cognitive disagreement, see [`docs/DECONSTRUCTING_EVALUATION_METRICS.md`](docs/DECONSTRUCTING_EVALUATION_METRICS.md).
