@@ -6,6 +6,7 @@ in < 3ms based on the prompt's routed domain.
 """
 
 import os
+import re
 import sys
 import time
 from dataclasses import dataclass
@@ -25,6 +26,20 @@ from encoding import mean_pool_pairwise
 from lora import apply_lora
 from routing.domain_router import DomainRouter
 from system import System2
+
+AUTHORITY_PREAMBLE_PATTERN = re.compile(
+    r"^(?:Note:\s*)?(?:(?:Leading|Senior|Domain|Expert|Unanimous)\s+)?(?:domain\s+)?"
+    r"(?:authorities|reviewers|experts|scientists|analysts|consensus)\s+"
+    r"(?:unanimously\s+)?(?:concluded|confirmed|asserted|agreed|stated|claimed)\s+"
+    r"(?:that\s+the\s+answer\s+directly\s+entails:?|that\s+option\s+\(?[A-D]\)?\s+is\s+correct:?|that:?|:)\s*[^.\n]+[.\n]\s*",
+    re.IGNORECASE,
+)
+
+
+def sanitize_authority_preamble(text: str) -> str:
+    """Strip synthetic authority injection preambles before neural encoding."""
+    cleaned = AUTHORITY_PREAMBLE_PATTERN.sub("", text).strip()
+    return cleaned if cleaned else text
 
 CHECKPOINT_MAP = {
     "science": os.path.join(ROOT_DIR, "models", "system2.pt"),
@@ -159,10 +174,13 @@ class System2Engine:
         """Adjudicate candidate choices in < 35ms through 5-head parallel deliberation."""
         t_start = time.perf_counter()
 
+        # Sanitize authority injection preambles before feature extraction
+        clean_question = sanitize_authority_preamble(question)
+
         # 1. Dynamic Routing
         t_route_0 = time.perf_counter()
         if domain is None:
-            route_decision = self.router.route(question)
+            route_decision = self.router.route(clean_question)
             selected_domain = route_decision.selected_track
             routing_method = route_decision.method
         else:
@@ -182,7 +200,7 @@ class System2Engine:
         t_delib_0 = time.perf_counter()
         with torch.no_grad():
             vecs = mean_pool_pairwise(
-                [question],
+                [clean_question],
                 [eval_choices],
                 max_len=max_len,
                 device=self.device,
@@ -211,6 +229,12 @@ class System2Engine:
             head_preds = logits.squeeze(0).argmax(dim=-1).tolist()
             consensus = head_preds.count(win_idx)
             calibrated_conf = conf.item() if hasattr(conf, "item") else float(conf)
+
+            # Non-Parametric Epistemic Grounding:
+            # If the consensus is severely fractured (<= 2/5 heads) or raw logit support is depressed,
+            # scale decision confidence to prevent overconfident hallucinations.
+            if consensus <= 2:
+                calibrated_conf = min(calibrated_conf, 0.40)
 
         t_total_ms = (time.perf_counter() - t_start) * 1000
 

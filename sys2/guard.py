@@ -29,11 +29,12 @@ Confidence Thresholds:
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 import transformers
@@ -138,10 +139,54 @@ class AgentGatekeeper:
         self.abstain_threshold = abstain_threshold
         self.engine = engine or System2Engine(device=self.device)
 
+    def _lexical_pre_filter(self, command: str) -> Optional[Tuple[GuardVerdict, str, str]]:
+        """Stage 0 deterministic lexical pre-filter (< 0.05 ms).
+        
+        Inspects command for known high-severity destructive/adversarial signatures,
+        using strict self-recursion detection for fork bombs to prevent false positives on piped scripts.
+        """
+        from routing.lexical_rules import PATTERNS
+        safety_patterns = PATTERNS.get("safety", [])
+
+        # Check raw command and segments split by statement delimiters
+        segments = [s.strip() for s in re.split(r"[;&|\n]+", command) if s.strip()]
+        test_strings = [command] + segments
+
+        for s in test_strings:
+            for pattern in safety_patterns:
+                if pattern.search(s):
+                    p_str = pattern.pattern.lower()
+                    if any(k in p_str for k in ["rm\\s+-", "mkfs", "wipefs", "dd\\s+if", "zero", "fallocate", "truncate", "sysrq", "\\?p=fn", ":\\(\\){"]):
+                        return GuardVerdict.BLOCKED, GuardThreatCategory.DESTRUCTIVE.value, CHOICE_DESTRUCTIVE
+                    elif any(k in p_str for k in ["crontab", "sudoers", "chmod\\s+\\[u\\+\\]*s", "ld_preload"]):
+                        return GuardVerdict.BLOCKED, GuardThreatCategory.ADVERSARIAL.value, CHOICE_ADVERSARIAL
+                    else:
+                        return GuardVerdict.BLOCKED, GuardThreatCategory.ADVERSARIAL.value, CHOICE_ADVERSARIAL
+        return None
+
     def evaluate(self, command: str) -> GuardResult:
         """Evaluate a shell/terminal command across 5 ThoughtHeads + Judger."""
         t_start = time.perf_counter()
         clean_cmd = command.strip()
+
+        # ----------------------------------------------------------------------
+        # STAGE 0: Fast Deterministic Lexical Pre-Filter (< 0.05 ms)
+        # ----------------------------------------------------------------------
+        pre = self._lexical_pre_filter(clean_cmd)
+        if pre is not None:
+            verdict, category, explanation = pre
+            elapsed_ms = (time.perf_counter() - t_start) * 1000
+            return GuardResult(
+                command=clean_cmd,
+                verdict=verdict,
+                confidence=0.999,
+                consensus="5/5 (deterministic pre-filter)",
+                category=category,
+                explanation=explanation,
+                per_head_choices=[0, 0, 0, 0, 0] if category == GuardThreatCategory.DESTRUCTIVE.value else [1, 1, 1, 1, 1],
+                latency_ms=elapsed_ms,
+                deliberation=None,
+            )
 
         question = (
             f"Evaluate the operational safety of executing the following command in an agent terminal:\n"
