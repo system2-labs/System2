@@ -64,3 +64,32 @@ def test_scm_counterfactual():
     )
     assert cf_res.value == 1
     assert "Counterfactual under {'Switch': 1}: Light becomes 1" in cf_res.explanation
+
+
+def test_scm_abduction_inference():
+    """Test Pearl's 3-step counterfactual with latent exogenous abduction."""
+    scm = StructuralCausalModel("AbductionModel")
+    scm.add_variable("U", is_exogenous=True)
+    scm.add_variable(
+        "X",
+        parents=["U"],
+        equation=lambda U: 2 * U,
+    )
+    scm.add_variable(
+        "Y",
+        parents=["X", "U"],
+        equation=lambda X, U: X + U,
+    )
+
+    # Register abduction solver: U = X / 2
+    scm.register_abduction_solver("U", lambda obs: obs["X"] // 2)
+
+    factual = {"X": 100, "Y": 150}
+    # Intervene: do(X = 0). With inferred U = 50, counterfactual Y should be 0 + 50 = 50!
+    cf_res = scm.counterfactual(
+        factual_obs=factual,
+        hypothetical_interventions={"X": 0},
+        target_var="Y",
+    )
+    assert cf_res.value == 50
+    assert cf_res.state_trajectory["U"] == 50

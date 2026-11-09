@@ -5,6 +5,7 @@ Evaluates exact arithmetic equivalence, solves for target variables, and detects
 mathematical contradictions in candidate steps or answers.
 """
 
+import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -39,7 +40,7 @@ class AlgebraVerifier:
 
     def parse(self, expr_str: str) -> Optional[Any]:
         """Safely parse a mathematical expression string into a SymPy expression."""
-        if not self.available:
+        if not self.available or not expr_str:
             return None
         cleaned = expr_str.strip().strip("$").strip()
         cleaned = cleaned.replace("^", "**").replace("×", "*").replace("÷", "/")
@@ -70,13 +71,19 @@ class AlgebraVerifier:
             )
 
         try:
-            diff = sympy.simplify(ea - eb)
-            is_eq = bool(diff == 0 or diff == sympy.S.Zero)
+            # First check ea.equals(eb), which performs symbolic and randomized numerical evaluation
+            is_eq = bool(ea.equals(eb))
+            if not is_eq:
+                diff = sympy.simplify(ea - eb)
+                is_eq = bool(diff == 0 or diff == sympy.S.Zero)
+            else:
+                diff = "0"
+
             return AlgebraVerificationResult(
                 is_valid=is_eq,
                 is_equivalent=is_eq,
                 simplified_difference=str(diff),
-                details=f"Difference: {diff} (Zero: {is_eq})",
+                details=f"Difference: {diff} (Equivalent: {is_eq})",
             )
         except Exception as e:
             return AlgebraVerificationResult(
@@ -95,7 +102,10 @@ class AlgebraVerifier:
                 details="SymPy not available; check bypassed.",
             )
 
-        if "=" in equation_str:
+        if "==" in equation_str:
+            parts = equation_str.split("==")
+            lhs_str, rhs_str = parts[0], parts[1]
+        elif "=" in equation_str:
             parts = equation_str.split("=")
             lhs_str, rhs_str = parts[0], parts[1]
         else:
@@ -114,12 +124,23 @@ class AlgebraVerifier:
 
         try:
             var = sympy.Symbol(variable_str.strip())
+            # Check for identity equation (e.g. x = x)
+            if elhs.equals(erhs):
+                return AlgebraVerificationResult(
+                    is_valid=True,
+                    is_equivalent=True,
+                    solutions=["All real values (identity)"],
+                    details=f"Equation is an identity for {variable_str}.",
+                )
+
             eq = sympy.Eq(elhs, erhs)
             sols = sympy.solve(eq, var)
             sol_strs = [str(s) for s in sols]
+            is_sol_found = len(sol_strs) > 0
+
             return AlgebraVerificationResult(
-                is_valid=len(sol_strs) > 0,
-                is_equivalent=True,
+                is_valid=is_sol_found,
+                is_equivalent=is_sol_found,
                 solutions=sol_strs,
                 details=f"Solutions for {variable_str}: {sol_strs}",
             )

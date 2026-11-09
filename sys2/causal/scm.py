@@ -41,6 +41,7 @@ class StructuralCausalModel:
         self.name = name
         self.nodes: Dict[str, CausalNode] = {}
         self.edges: List[Tuple[str, str]] = []  # (parent, child)
+        self.abduction_solvers: Dict[str, Callable[[Dict[str, Any]], Any]] = {}
 
     def add_variable(
         self,
@@ -49,6 +50,7 @@ class StructuralCausalModel:
         equation: Optional[Callable[..., Any]] = None,
         default_value: Any = None,
         is_exogenous: bool = False,
+        abduction_solver: Optional[Callable[[Dict[str, Any]], Any]] = None,
     ) -> None:
         """Add an endogenous or exogenous causal variable."""
         p_list = parents or []
@@ -61,6 +63,13 @@ class StructuralCausalModel:
         )
         for p in p_list:
             self.edges.append((p, name))
+
+        if abduction_solver is not None:
+            self.abduction_solvers[name] = abduction_solver
+
+    def register_abduction_solver(self, exogenous_var: str, solver: Callable[[Dict[str, Any]], Any]) -> None:
+        """Register an abduction equation to infer an unobserved exogenous variable from factual observations."""
+        self.abduction_solvers[exogenous_var] = solver
 
     def _topological_sort(self, active_parents: Dict[str, List[str]]) -> List[str]:
         """Compute topological ordering of nodes given active parent relationships."""
@@ -153,18 +162,28 @@ class StructuralCausalModel:
     ) -> CausalQueryResult:
         """Execute counterfactual reasoning: 'Given fact F, what would Y have been had we done X=x'?'
 
-        3 Steps (Pearl):
-        1. Abduction: infer exogenous variables U from factual observations.
-        2. Action: apply do(X = x') to the causal model.
-        3. Prediction: compute target in modified model with inferred U.
+        3 Steps (Pearl's Causal Hierarchy - Layer 3):
+        1. Abduction: infer exogenous background variables U from factual observations.
+        2. Action: apply do(X = x') to the causal model (severing incoming arrows).
+        3. Prediction: compute target in modified model using inferred U.
         """
-        # Step 1: Infer exogenous defaults matching observations
+        # Step 1 (Abduction): Infer exogenous background variables from factual observations
         inferred_u = {}
-        for k, v in factual_obs.items():
-            if k in self.nodes and self.nodes[k].is_exogenous:
-                inferred_u[k] = v
+        for name, node in self.nodes.items():
+            if node.is_exogenous:
+                if name in factual_obs:
+                    inferred_u[name] = factual_obs[name]
+                elif name in self.abduction_solvers:
+                    inferred_u[name] = self.abduction_solvers[name](factual_obs)
+                elif node.default_value is not None:
+                    inferred_u[name] = node.default_value
+                else:
+                    raise ValueError(
+                        f"Abduction failure: Exogenous variable '{name}' is unobserved and "
+                        f"unidentifiable from evidence {factual_obs}."
+                    )
 
-        # Step 2 & 3: Simulate under hypothetical intervention
+        # Step 2 & 3: Action (do(X = x')) and Prediction
         cf_state = self.simulate(
             exogenous_values=inferred_u,
             interventions=hypothetical_interventions,
@@ -174,7 +193,7 @@ class StructuralCausalModel:
         fact_val = factual_obs.get(target_var, "unknown")
 
         explanation = (
-            f"Factual: {target_var} was {fact_val}. "
+            f"Factual: {target_var} was {fact_val} (inferred U={inferred_u}). "
             f"Counterfactual under {hypothetical_interventions}: {target_var} becomes {cf_val}."
         )
 

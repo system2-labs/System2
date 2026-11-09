@@ -8,6 +8,7 @@ in < 3ms based on the prompt's routed domain.
 import os
 import re
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
@@ -91,6 +92,7 @@ class System2Engine:
         else:
             self.device = device
 
+        self._lock = threading.RLock()
         print(f"[System2Engine] Initializing on {self.device.upper()}...", file=sys.stderr)
         from transformers import AutoModel, AutoTokenizer
         self.tokenizer = AutoTokenizer.from_pretrained("answerdotai/ModernBERT-Large-Instruct", clean_up_tokenization_spaces=False)
@@ -119,7 +121,7 @@ class System2Engine:
             print(f"[System2Engine warning] Checkpoint {ckpt_path} missing, falling back to {fallback}", file=sys.stderr)
             ckpt_path = fallback
 
-        state = torch.load(ckpt_path, map_location=self.device, weights_only=False)
+        state = torch.load(ckpt_path, map_location=self.device, weights_only=True)
         sys2_state = state["sys2"] if isinstance(state, dict) and "sys2" in state else state
 
         # Extract encoder LoRA parameters if present
@@ -154,15 +156,22 @@ class System2Engine:
         return encoder_state, sys2
 
     def switch_domain(self, domain: str) -> None:
-        """Hot-swap the domain adapter in < 3ms."""
-        if self.current_domain == domain and self.current_sys2 is not None:
-            return
+        """Hot-swap the domain adapter in < 3ms with thread-safe locking."""
+        with self._lock:
+            if self.current_domain == domain and self.current_sys2 is not None:
+                return
 
-        encoder_state, sys2 = self._load_adapter(domain)
-        if encoder_state:
-            self.model.load_state_dict(encoder_state, strict=False)
-        self.current_sys2 = sys2
-        self.current_domain = domain
+            encoder_state, sys2 = self._load_adapter(domain)
+            if encoder_state:
+                self.model.load_state_dict(encoder_state, strict=False)
+            else:
+                # Reset LoRA B parameters to zero so previous domain adapter doesn't leak
+                with torch.no_grad():
+                    for name, param in self.model.named_parameters():
+                        if "lora_B" in name:
+                            param.zero_()
+            self.current_sys2 = sys2
+            self.current_domain = domain
 
     def adjudicate(
         self,
@@ -188,53 +197,54 @@ class System2Engine:
             routing_method = "manual"
         t_route_ms = (time.perf_counter() - t_route_0) * 1000
 
-        # 2. Hot-Swap Adapter
-        self.switch_domain(selected_domain)
+        # 2. Hot-Swap Adapter & Deliberation Forward Pass (Thread-Safe)
+        with self._lock:
+            self.switch_domain(selected_domain)
 
-        num_raw = len(choices)
-        eval_choices = list(choices)
-        while len(eval_choices) < 4:
-            eval_choices.append("N/A")
+            num_raw = len(choices)
+            eval_choices = list(choices)
+            while len(eval_choices) < 4:
+                eval_choices.append("N/A")
 
-        # 3. Deliberation Forward Pass
-        t_delib_0 = time.perf_counter()
-        with torch.no_grad():
-            vecs = mean_pool_pairwise(
-                [clean_question],
-                [eval_choices],
-                max_len=max_len,
-                device=self.device,
-                with_grad=False,
-                asym_spans=True,
-                asym_span_mode="choice_forward",
-                model=self.model,
-                tokenizer=self.tokenizer,
-            )
-            best, conf, pruned, confs, logits, emb, scores, ens_logits = self.current_sys2(vecs)
-            t_delib_ms = (time.perf_counter() - t_delib_0) * 1000
+            # 3. Deliberation Forward Pass
+            t_delib_0 = time.perf_counter()
+            with torch.no_grad():
+                vecs = mean_pool_pairwise(
+                    [clean_question],
+                    [eval_choices],
+                    max_len=max_len,
+                    device=self.device,
+                    with_grad=False,
+                    asym_spans=True,
+                    asym_span_mode="choice_forward",
+                    model=self.model,
+                    tokenizer=self.tokenizer,
+                )
+                best, conf, pruned, confs, logits, emb, scores, ens_logits = self.current_sys2(vecs)
+                t_delib_ms = (time.perf_counter() - t_delib_0) * 1000
 
-            if num_raw < 4:
-                masked_ens = ens_logits.clone()
-                masked_ens[:, num_raw:] = -1e9
-                win_idx = masked_ens.argmax(dim=-1).item()
-                raw_probs = torch.softmax(masked_ens[:, :num_raw], dim=-1).squeeze(0).tolist()
-            else:
-                win_idx = ens_logits[:, :num_raw].argmax(dim=-1).item()
-                raw_probs = torch.softmax(ens_logits[:, :num_raw], dim=-1).squeeze(0).tolist()
+                if num_raw < 4:
+                    masked_ens = ens_logits.clone()
+                    masked_ens[:, num_raw:] = -1e9
+                    win_idx = masked_ens.argmax(dim=-1).item()
+                    raw_probs = torch.softmax(masked_ens[:, :num_raw], dim=-1).squeeze(0).tolist()
+                else:
+                    win_idx = ens_logits[:, :num_raw].argmax(dim=-1).item()
+                    raw_probs = torch.softmax(ens_logits[:, :num_raw], dim=-1).squeeze(0).tolist()
 
-            if isinstance(raw_probs, float):
-                raw_probs = [raw_probs]
-            choice_probs = [round(float(p), 4) for p in raw_probs]
+                if isinstance(raw_probs, float):
+                    raw_probs = [raw_probs]
+                choice_probs = [round(float(p), 4) for p in raw_probs]
 
-            head_preds = logits.squeeze(0).argmax(dim=-1).tolist()
-            consensus = head_preds.count(win_idx)
-            calibrated_conf = conf.item() if hasattr(conf, "item") else float(conf)
+                head_preds = logits.squeeze(0).argmax(dim=-1).tolist()
+                consensus = head_preds.count(win_idx)
+                calibrated_conf = conf.item() if hasattr(conf, "item") else float(conf)
 
-            # Non-Parametric Epistemic Grounding:
-            # If the consensus is severely fractured (<= 2/5 heads) or raw logit support is depressed,
-            # scale decision confidence to prevent overconfident hallucinations.
-            if consensus <= 2:
-                calibrated_conf = min(calibrated_conf, 0.40)
+                # Non-Parametric Epistemic Grounding:
+                # If the consensus is severely fractured (<= 2/5 heads) or raw logit support is depressed,
+                # scale decision confidence to prevent overconfident hallucinations.
+                if consensus <= 2:
+                    calibrated_conf = min(calibrated_conf, 0.40)
 
         t_total_ms = (time.perf_counter() - t_start) * 1000
 
