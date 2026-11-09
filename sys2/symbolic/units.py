@@ -79,6 +79,9 @@ class UnitVerifier:
         if not self.ureg:
             return None
         cleaned = expr_str.strip().strip("$").strip()
+        # Clean LaTeX formatting common in frontier LLM outputs
+        cleaned = re.sub(r"\\text\{([^}]+)\}", r" \1 ", cleaned)
+        cleaned = re.sub(r"[\$,\\]", "", cleaned)
         # Clean common mathematical notation
         cleaned = cleaned.replace("×", "*").replace("·", "*").replace("²", "^2")
 
@@ -208,13 +211,31 @@ class UnitVerifier:
         # Identify requested target concept in question
         target_dim = None
         target_name = None
-        for concept, canonical_unit in self.CONCEPT_DIMENSIONS.items():
-            if re.search(rf"\b{re.escape(concept)}\b", lower_q):
-                target_q = self.parse_quantity(concept)
-                if target_q is not None:
-                    target_dim = target_q.dimensionality
-                    target_name = concept
-                    break
+
+        # Prioritize explicit interrogative target patterns: "what is the [concept]", "calculate [concept]", "find [concept]"
+        target_m = re.search(
+            r"(?:what\s+is\s+the|calculate|find|determine)\s+(?:the\s+)?([a-z\s]+?)(?:\s+of|\s+output|\s+needed|\s+for|\s*[:\?,\.]|$)",
+            lower_q,
+        )
+        if target_m:
+            candidate_phrase = target_m.group(1).strip()
+            for concept in sorted(self.CONCEPT_DIMENSIONS.keys(), key=len, reverse=True):
+                if re.search(rf"\b{re.escape(concept)}\b", candidate_phrase):
+                    target_q = self.parse_quantity(concept)
+                    if target_q is not None:
+                        target_dim = target_q.dimensionality
+                        target_name = concept
+                        break
+
+        if target_dim is None:
+            # Fall back to scanning the full question, matching longest concept first
+            for concept in sorted(self.CONCEPT_DIMENSIONS.keys(), key=len, reverse=True):
+                if re.search(rf"\b{re.escape(concept)}\b", lower_q):
+                    target_q = self.parse_quantity(concept)
+                    if target_q is not None:
+                        target_dim = target_q.dimensionality
+                        target_name = concept
+                        break
 
         if target_dim is None:
             # If no target concept identified, check standard statement equality
