@@ -80,8 +80,8 @@ class DualProcessPipeline:
     def __init__(
         self,
         device: Optional[str] = None,
-        fast_path_threshold: float = 0.85,
-        min_margin_threshold: float = 0.15,
+        fast_path_threshold: float = 0.70,
+        min_margin_threshold: float = 0.25,
     ):
         self.sys1 = System1Engine(device=device)
         self.parser = SemanticParser()
@@ -288,6 +288,18 @@ class DualProcessPipeline:
                 if not res.is_dimensionally_homogeneous:
                     return False, f"Dimensional error: {res.details}"
             if has_equations:
+                q_eq_m = re.search(r"([a-zA-Z0-9_+*^/\s-]+=[a-zA-Z0-9_+*^/\s-]+)", q_text)
+                c_assign = re.match(r"^([a-zA-Z])\s*=\s*([a-zA-Z0-9_.-]+)$", c_text.strip())
+                if q_eq_m and c_assign:
+                    var = c_assign.group(1)
+                    val = c_assign.group(2)
+                    sol_res = self.algebra_verifier.solve_for(q_eq_m.group(1).strip(), var)
+                    if sol_res.solutions:
+                        if val in sol_res.solutions or any(self.algebra_verifier.verify_equivalence(val, s).is_valid for s in sol_res.solutions):
+                            return True, "Valid solution"
+                        else:
+                            return False, f"Invalid solution: {var} = {val}"
+
                 parsed_c_alg = self.parser.parse_algebraic_claims(q_text, [c_text])
                 if parsed_c_alg and parsed_c_alg[0] is not None:
                     alg_res = self.algebra_verifier.verify_equivalence(parsed_c_alg[0].lhs, parsed_c_alg[0].rhs)
