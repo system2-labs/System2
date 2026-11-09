@@ -200,14 +200,19 @@ python3 scripts/benchmark_multidomain_hybrid.py
 | **Code** | `code` | Lexical (0.28 ms) | **(B) ✓ (Conf: 46.2%, 1/5 Heads)** | (A) ✗ *(Rescued by Sys2)* | 1449 ms |
 | **Math** | `math` | Centroid (182 ms) | **(C) ✓ (Conf: 70.8%, 4/5 Heads)** | **(C) ✓** | 1280 ms |
 
-### 4. Running the ML Regression Test Suite
-Verify that all 15 unit tests (checkpoint roundtrips, span pooling, contrastive losses, 5-head deliberation, adapter hot-swapping) pass cleanly:
+### 4. Running the Regression Test Suite
+Verify that all unit and dual-process tests (checkpoint roundtrips, span pooling, contrastive losses, 5-head deliberation, adapter hot-swapping, symbolic solvers, SCMs, and MCTS) pass cleanly:
 ```bash
 pytest tests/
-# -> 15 passed in 8.25s
+# -> 70 passed in ~78s
 ```
 
-### 5. Automated AutoResearch Worktree Sweeps
+### 5. Strategic Training Paths & Frontier Datasets
+For the complete technical blueprint and dataset inventory across **Path A (Semantic Parser)**, **Path B (AutoResearch Expansion for Cyber, Logistics, Tax)**, and **Path C (MCTS Step Generator)**, see:
+- [**True System 2 Architecture: Technical Specification & Path Forward**](docs/TRUE_SYSTEM2_PATH_FORWARD.md#6-the-three-strategic-implementation--training-paths)
+- [**Curated Frontier Enterprise Dataset Inventory**](docs/TRUE_SYSTEM2_PATH_FORWARD.md#7-curated-frontier-enterprise-dataset-inventory)
+
+### 6. Automated AutoResearch Worktree Sweeps
 Run metric-guarded hyperparameter sweeps across isolated git worktrees with automatic rollback on regressions:
 ```bash
 python3 scripts/run_parallel_sweeps.py --tracks track-h track-i --max-trials 3

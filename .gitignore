@@ -35,6 +35,7 @@ __pycache__/
 .DS_Store
 # scratch / cache files
 scratch/
+runs/
 notes_local/
 reports/*.json
 *.pt
