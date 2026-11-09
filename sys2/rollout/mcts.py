@@ -49,6 +49,7 @@ class MCTSSearchResult:
     total_rollouts: int
     search_depth: int
     computation_scaled: bool
+    all_invalid: bool
     audit_trace: List[str]
 
 
@@ -75,9 +76,23 @@ class MCTSDeliberationEngine:
         """Execute dynamic tree search over candidate choices.
 
         Allocates rollouts dynamically based on choice margin / uncertainty.
+        Memoizes external verifications to prevent redundant calls.
         """
+        if not choices:
+            raise ValueError("Cannot perform MCTS deliberation over empty choices.")
+
         root = DeliberationNode(state_desc=f"Root: {question}")
         trace: List[str] = []
+
+        # Normalize prior scores to [0, 1]
+        norm_priors = None
+        if prior_scores is not None and len(prior_scores) == len(choices):
+            min_s = min(prior_scores)
+            max_s = max(prior_scores)
+            if max_s > min_s:
+                norm_priors = [(s - min_s) / (max_s - min_s) for s in prior_scores]
+            else:
+                norm_priors = [1.0 / len(choices)] * len(choices)
 
         # Initialize children for candidate choices
         for idx, choice in enumerate(choices):
@@ -86,18 +101,17 @@ class MCTSDeliberationEngine:
                 parent=root,
                 action=str(idx),
             )
-            # Prior initialization if provided
-            if prior_scores is not None and idx < len(prior_scores):
-                # Scale prior into [0, 1]
-                child.value_sum = float(prior_scores[idx])
+            if norm_priors is not None:
+                child.value_sum = float(norm_priors[idx])
                 child.visits = 1
+                root.visits += 1
             root.children.append(child)
 
         # Dynamic compute scaling: check if top choices are ambiguous
         rollout_budget = self.base_rollouts
         if prior_scores is not None and len(prior_scores) >= 2:
-            sorted_scores = sorted(prior_scores, reverse=True)
-            margin = sorted_scores[0] - sorted_scores[1]
+            sorted_raw = sorted(prior_scores, reverse=True)
+            margin = sorted_raw[0] - sorted_raw[1]
             if margin < 0.15:  # High ambiguity -> scale compute up!
                 rollout_budget = self.max_rollouts
                 trace.append(f"High ambiguity detected (margin {margin:.3f} < 0.15). Scaling rollouts to {rollout_budget}.")
@@ -106,6 +120,9 @@ class MCTSDeliberationEngine:
         else:
             trace.append(f"Defaulting to base rollouts: {rollout_budget}.")
 
+        # Memoization cache for deterministic verifier checks
+        verifier_cache: Dict[int, Tuple[bool, str]] = {}
+
         # Execute MCTS Rollout Loop
         for sim in range(rollout_budget):
             # 1. Selection
@@ -113,15 +130,19 @@ class MCTSDeliberationEngine:
             choice_idx = int(best_node.action)
             candidate_text = choices[choice_idx]
 
-            # 2. External Verification (Grounding)
+            # 2. External Verification (Grounding with memoization)
             reward = 0.5
             if verifier_fn is not None:
-                is_valid, reason = verifier_fn(question, candidate_text)
+                if choice_idx not in verifier_cache:
+                    verifier_cache[choice_idx] = verifier_fn(question, candidate_text)
+
+                is_valid, reason = verifier_cache[choice_idx]
                 if not is_valid:
                     best_node.verified_valid = False
                     best_node.invalidation_reason = reason
                     reward = 0.0
-                    trace.append(f"Sim {sim}: Choice {choice_idx} invalidated by verifier: {reason}")
+                    if f"Choice {choice_idx} invalidated" not in "".join(trace):
+                        trace.append(f"Sim {sim}: Choice {choice_idx} invalidated by verifier: {reason}")
                 else:
                     reward = 1.0
             else:
@@ -140,13 +161,20 @@ class MCTSDeliberationEngine:
             choice_values[idx] = child.q_value
             choice_visits[idx] = child.visits
 
-        # Pick highest visited valid choice (standard MCTS decision rule)
+        # Pick highest visited valid choice
         valid_children = [c for c in root.children if c.verified_valid]
-        if not valid_children:
-            valid_children = root.children
+        all_invalid = (len(valid_children) == 0)
 
-        selected = max(valid_children, key=lambda c: (c.visits, c.q_value))
-        selected_idx = int(selected.action)
+        if not valid_children:
+            # Fall back to prior scores rather than index 0 lock
+            trace.append("WARNING: All candidate choices were invalidated by verifiers!")
+            if norm_priors is not None:
+                selected_idx = max(range(len(choices)), key=lambda i: norm_priors[i])
+            else:
+                selected_idx = 0
+        else:
+            selected = max(valid_children, key=lambda c: (c.visits, c.q_value))
+            selected_idx = int(selected.action)
 
         return MCTSSearchResult(
             best_choice=choices[selected_idx],
@@ -156,5 +184,6 @@ class MCTSDeliberationEngine:
             total_rollouts=root.visits,
             search_depth=2,
             computation_scaled=(rollout_budget > self.base_rollouts),
+            all_invalid=all_invalid,
             audit_trace=trace,
         )

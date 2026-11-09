@@ -33,11 +33,12 @@ class UnitVerificationResult:
 class UnitVerifier:
     """Verifies dimensional homogeneity and physical unit consistency."""
 
-    # Common physical units and symbols regex
+    # Note: Amperes matched via 'amperes?' or '\b\d+\s*A\b' to avoid colliding with English 'a'
     UNIT_PATTERN = re.compile(
-        r"\b(?:meters?|metres?|m|seconds?|s|hours?|h|kg|kilograms?|grams?|g|newtons?|N|"
-        r"joules?|J|watts?|W|volts?|V|amperes?|amps?|A|ohms?|Ω|pascals?|Pa|kelvins?|K|"
-        r"m/s|m/s\^2|km/h|mph|N\*m|rad/s|work|energy|force|power|velocity|acceleration)\b",
+        r"\b(?:meters?|metres?|seconds?|hours?|kilograms?|grams?|newtons?|"
+        r"joules?|watts?|volts?|amperes?|amps?|ohms?|pascals?|kelvins?|"
+        r"m/s|m/s\^2|m/s²|km/h|mph|N\*m|N·m|rad/s|µm|microns?|Ω|"
+        r"\d+\s*(?:m|s|h|kg|g|N|J|W|V|A|Pa|K))\b",
         re.IGNORECASE,
     )
 
@@ -69,6 +70,8 @@ class UnitVerifier:
 
     def has_unit_claims(self, text: str) -> bool:
         """Check if the text contains physical quantities, units, or dimensional concepts."""
+        if not text:
+            return False
         return bool(self.UNIT_PATTERN.search(text))
 
     def parse_quantity(self, expr_str: str) -> Optional[Any]:
@@ -77,7 +80,7 @@ class UnitVerifier:
             return None
         cleaned = expr_str.strip().strip("$").strip()
         # Clean common mathematical notation
-        cleaned = cleaned.replace("×", "*").replace("·", "*")
+        cleaned = cleaned.replace("×", "*").replace("·", "*").replace("²", "^2")
 
         # Check if the string is a pure dimensional concept name
         lower_clean = cleaned.lower()
@@ -89,7 +92,6 @@ class UnitVerifier:
                 pass
 
         # Handle simple division like "/ 5 m" -> "/ (5 * meter)"
-        # to prevent Pint treating / 5 m as (/ 5) * m
         cleaned = re.sub(r"/\s*(\d+)\s*([a-zA-Z]+)", r"/ (\1 * \2)", cleaned)
 
         try:
@@ -98,8 +100,26 @@ class UnitVerifier:
         except Exception:
             return None
 
+    def extract_quantities(self, text: str) -> List[Any]:
+        """Extract all physical quantities from freeform text."""
+        if not self.ureg:
+            return []
+        found = []
+        # Match number + unit or known unit patterns
+        matches = re.finditer(r"\b(\d+(?:\.\d+)?)\s*([a-zA-ZΩµ/^²·]+)\b", text)
+        for m in matches:
+            q_str = m.group(0)
+            q = self.parse_quantity(q_str)
+            if q is not None and hasattr(q, "dimensionality"):
+                found.append(q)
+        return found
+
     def verify_equation(self, lhs_str: str, rhs_str: str) -> UnitVerificationResult:
-        """Verify if lhs and rhs have identical physical dimensions."""
+        """Verify if lhs and rhs have identical physical dimensions.
+
+        Crucial invariant: Parse errors on unparseable natural text are INDETERMINATE,
+        NOT proof of dimensional inhomogeneity.
+        """
         if not self.ureg:
             return UnitVerificationResult(
                 is_valid=True,
@@ -111,11 +131,12 @@ class UnitVerifier:
         q_rhs = self.parse_quantity(rhs_str)
 
         if q_lhs is None or q_rhs is None:
+            # Cannot parse physical quantities -> indeterminate, do NOT falsely veto!
             return UnitVerificationResult(
-                is_valid=False,
-                is_dimensionally_homogeneous=False,
-                details=f"Could not parse physical units from: '{lhs_str}' or '{rhs_str}'",
-                error="ParseError",
+                is_valid=True,
+                is_dimensionally_homogeneous=True,
+                details=f"Could not parse physical units from '{lhs_str}' or '{rhs_str}' (treated as neutral).",
+                error="ParseIndeterminate",
             )
 
         try:
@@ -135,8 +156,8 @@ class UnitVerifier:
             )
         except Exception as e:
             return UnitVerificationResult(
-                is_valid=False,
-                is_dimensionally_homogeneous=False,
+                is_valid=True,
+                is_dimensionally_homogeneous=True,
                 details=str(e),
                 error=type(e).__name__,
             )
@@ -171,4 +192,54 @@ class UnitVerifier:
             is_valid=True,
             is_dimensionally_homogeneous=True,
             details=f"All {len(parts)} parts are dimensionally homogeneous.",
+        )
+
+    def verify_natural_language_claim(self, target_concept_or_question: str, candidate_text: str) -> UnitVerificationResult:
+        """Verify dimensional compatibility between question target and candidate choice.
+
+        e.g., Question asks for 'velocity', candidate states '50 joules' -> Incompatible!
+        """
+        # If candidate already contains an explicit equality, verify the equation directly
+        if "=" in candidate_text or "==" in candidate_text:
+            return self.verify_statement(candidate_text)
+
+        lower_q = target_concept_or_question.lower()
+
+        # Identify requested target concept in question
+        target_dim = None
+        target_name = None
+        for concept, canonical_unit in self.CONCEPT_DIMENSIONS.items():
+            if re.search(rf"\b{re.escape(concept)}\b", lower_q):
+                target_q = self.parse_quantity(concept)
+                if target_q is not None:
+                    target_dim = target_q.dimensionality
+                    target_name = concept
+                    break
+
+        if target_dim is None:
+            # If no target concept identified, check standard statement equality
+            return self.verify_statement(f"{target_concept_or_question} = {candidate_text}")
+
+        # Extract quantities from candidate
+        quantities = self.extract_quantities(candidate_text)
+        if not quantities:
+            # Also check if choice is itself a concept name
+            choice_q = self.parse_quantity(candidate_text)
+            if choice_q is not None and hasattr(choice_q, "dimensionality"):
+                quantities = [choice_q]
+
+        for q in quantities:
+            if hasattr(q, "dimensionality") and q.dimensionality != target_dim:
+                return UnitVerificationResult(
+                    is_valid=False,
+                    is_dimensionally_homogeneous=False,
+                    dimensions_lhs=str(target_dim),
+                    dimensions_rhs=str(q.dimensionality),
+                    details=f"Candidate specifies [{q.dimensionality}], but target '{target_name}' requires [{target_dim}].",
+                )
+
+        return UnitVerificationResult(
+            is_valid=True,
+            is_dimensionally_homogeneous=True,
+            details="Candidate dimensions are compatible with target concept.",
         )

@@ -64,6 +64,26 @@ def test_logic_verifier_entailment_and_counterexample():
     assert res_fallacy.is_valid is False
     assert res_fallacy.counterexample is not None
 
+    # Contradictory premises (ex falso quodlibet): P and Not(P) -> must NOT be accepted as valid entailment
+    premises_contra = [p, z3.Not(p)]
+    res_contra = verifier.verify_entailment(premises_contra, q)
+    assert res_contra.is_valid is False
+    assert "ex falso quodlibet" in res_contra.details
+
+
+def test_logic_verifier_timeout():
+    import z3
+    # Use very short timeout (50ms) to ensure solver does not hang
+    verifier = LogicVerifier(timeout_ms=50)
+    x = z3.Int("x")
+    y = z3.Int("y")
+    z = z3.Int("z")
+    # Non-linear Diophantine constraint
+    constraints = [x > 0, y > 0, z > 0, x*x*x + y*y*y == z*z*z]
+    res = verifier.check_satisfiability(constraints)
+    # Must terminate without hanging indefinitely
+    assert res.is_valid is False or res.is_satisfiable is False
+
 
 def test_logic_verifier_negation_consistency():
     verifier = LogicVerifier()
