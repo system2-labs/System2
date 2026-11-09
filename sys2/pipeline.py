@@ -20,6 +20,13 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from sys1.engine import System1Engine, PerceptionResult
+from sys2.parser import (
+    SemanticParser,
+    PhysicalClaim,
+    AlgebraicClaim,
+    LogicalClaim,
+    CausalClaim,
+)
 from sys2.symbolic.units import UnitVerifier
 from sys2.symbolic.algebra import AlgebraVerifier
 from sys2.symbolic.logic import LogicVerifier
@@ -76,6 +83,7 @@ class DualProcessPipeline:
         min_margin_threshold: float = 0.15,
     ):
         self.sys1 = System1Engine(device=device)
+        self.parser = SemanticParser()
         self.unit_verifier = UnitVerifier()
         self.algebra_verifier = AlgebraVerifier()
         self.logic_verifier = LogicVerifier()
@@ -113,11 +121,33 @@ class DualProcessPipeline:
         sorted_probs = sorted(probs, reverse=True)
         margin = sorted_probs[0] - sorted_probs[1] if len(sorted_probs) > 1 else 1.0
 
+        # Semantic DSL Slot Extraction
+        phys_target, phys_claims = self.parser.parse_physical_claims(question, choices)
+        alg_claims = self.parser.parse_algebraic_claims(question, choices)
+        log_claims = self.parser.parse_logical_claims(question, choices)
+        q_causal, causal_claims = self.parser.parse_causal_claims(question, choices)
+
         # Detect Symbolic & Causal Triggers
-        has_units = self.unit_verifier.has_unit_claims(question) or any(self.unit_verifier.has_unit_claims(c) for c in choices)
-        has_equations = ("=" in question or "==" in question) or any("=" in c or "==" in c for c in choices)
-        has_negation = any(w in question.lower() for w in [" not ", " never ", " cannot ", " except ", " neither "])
-        has_causal = any(w in question.lower() for w in [" cause", " do(", "counterfactual", "intervention"])
+        has_units = (
+            (phys_target is not None)
+            or any(bool(c.target_concept or c.extracted_quantities) for c in phys_claims)
+            or self.unit_verifier.has_unit_claims(question)
+            or any(self.unit_verifier.has_unit_claims(c) for c in choices)
+        )
+        has_equations = (
+            any(c is not None for c in alg_claims)
+            or ("=" in question or "==" in question)
+            or any("=" in c or "==" in c for c in choices)
+        )
+        has_negation = (
+            any(c.has_negation for c in log_claims)
+            or any(w in question.lower() for w in [" not ", " never ", " cannot ", " except ", " neither "])
+        )
+        has_causal = (
+            (q_causal is not None)
+            or any(bool(c.causes or c.effects or c.interventions or c.is_counterfactual) for c in causal_claims)
+            or any(w in question.lower() for w in [" cause", " do(", "counterfactual", "intervention"])
+        )
 
         triggers_active = (
             force_sys2
@@ -159,7 +189,8 @@ class DualProcessPipeline:
         # Verification 1: Physical Dimensional Analysis (Units)
         if has_units:
             for idx, choice in enumerate(choices):
-                unit_res = self.unit_verifier.verify_natural_language_claim(question, choice)
+                norm_choice = self.parser.normalize_units(choice)
+                unit_res = self.unit_verifier.verify_natural_language_claim(question, norm_choice)
                 if not unit_res.is_dimensionally_homogeneous:
                     vetoed_indices.append(idx)
                     adjusted_scores[idx] = -1e9
@@ -168,7 +199,15 @@ class DualProcessPipeline:
         # Verification 2: Mathematical / Algebraic Equivalence (SymPy)
         if has_equations:
             for idx, choice in enumerate(choices):
-                if "=" in choice or "==" in choice:
+                claim = alg_claims[idx] if idx < len(alg_claims) else None
+                if claim is not None:
+                    alg_res = self.algebra_verifier.verify_equivalence(claim.lhs, claim.rhs)
+                    if not alg_res.is_valid and alg_res.error != "ParseError":
+                        if idx not in vetoed_indices:
+                            vetoed_indices.append(idx)
+                        adjusted_scores[idx] = -1e9
+                        audit.append(f"Choice ({letters[idx]}) VETOED by AlgebraVerifier: {alg_res.details}")
+                elif "=" in choice or "==" in choice:
                     alg_res = self.algebra_verifier.verify_equivalence(choice.split("=")[0], choice.split("=")[-1])
                     if not alg_res.is_valid and alg_res.error != "ParseError":
                         if idx not in vetoed_indices:
@@ -209,13 +248,20 @@ class DualProcessPipeline:
         # Verification 4: Dynamic Search / Rollout over candidate hypotheses
         def combined_verifier(q_text: str, c_text: str) -> Tuple[bool, str]:
             if has_units:
-                res = self.unit_verifier.verify_natural_language_claim(q_text, c_text)
+                norm_c = self.parser.normalize_units(c_text)
+                res = self.unit_verifier.verify_natural_language_claim(q_text, norm_c)
                 if not res.is_dimensionally_homogeneous:
                     return False, f"Dimensional error: {res.details}"
-            if has_equations and ("=" in c_text or "==" in c_text):
-                alg_res = self.algebra_verifier.verify_equivalence(c_text.split("=")[0], c_text.split("=")[-1])
-                if not alg_res.is_valid and alg_res.error != "ParseError":
-                    return False, f"Algebraic error: {alg_res.details}"
+            if has_equations:
+                parsed_c_alg = self.parser.parse_algebraic_claims(q_text, [c_text])
+                if parsed_c_alg and parsed_c_alg[0] is not None:
+                    alg_res = self.algebra_verifier.verify_equivalence(parsed_c_alg[0].lhs, parsed_c_alg[0].rhs)
+                    if not alg_res.is_valid and alg_res.error != "ParseError":
+                        return False, f"Algebraic error: {alg_res.details}"
+                elif "=" in c_text or "==" in c_text:
+                    alg_res = self.algebra_verifier.verify_equivalence(c_text.split("=")[0], c_text.split("=")[-1])
+                    if not alg_res.is_valid and alg_res.error != "ParseError":
+                        return False, f"Algebraic error: {alg_res.details}"
             if has_negation:
                 n_res = self.logic_verifier.check_negation_consistency(q_text, c_text)
                 if not n_res.is_valid:
