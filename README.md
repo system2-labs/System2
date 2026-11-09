@@ -10,12 +10,20 @@ A feedforward, non-autoregressive neural perception engine designed to run local
 
 ---
 
-## The Dual-Process Architecture: System 1 + True System 2
+## The Dual-Process Monorepo Architecture: System 1 + True System 2
 
-In modern cognitive AI (dual-process theory; Kahneman; Pearl; LeCun), autonomous decision-making requires two complementary systems:
+In modern cognitive AI (dual-process theory; Kahneman; Pearl; LeCun), autonomous decision-making requires two complementary systems unified in a single monorepo:
 
-1. **System 1 (This Repository):** Fast, non-autoregressive perceptual screening. Evaluates 4 candidate options in parallel in $< 20\text{ ms}$, determines domain track, screens out obviously flawed branches, and computes calibrated perceptual confidence.
-2. **True System 2 (Next-Gen Deliberation Engine):** Asynchronous causal verification. Executes autoregressive MCTS state rollouts, simulates Structural Causal Models (SCMs with $\mathrm{do}(X)$ interventions), and invokes deterministic symbolic solvers (SymPy, Pint, Z3) for mathematical, dimensional, and logical verification.
+$$\text{Output} = \text{Sys2\_Verify}(\text{Sys1\_Screen}(\text{Prompt}, \text{Candidates}))$$
+
+1. **System 1 (`sys1/`):** Fast, non-autoregressive perceptual screening. Evaluates candidate options in parallel in $< 20\text{ ms}$, determines domain track across 13 specialized LoRA adapters, eliminates low-probability outlier branches, and computes calibrated perceptual confidence.
+2. **True System 2 (`sys2/`):** Asynchronous causal & symbolic verification. Executes dynamic test-time compute scaling (MCTS state rollouts), simulates Structural Causal Models (SCMs with Pearl's $\mathrm{do}(X)$ interventions), and invokes deterministic symbolic solvers:
+   - **`sys2.symbolic.units`**: Dimensional analysis & Fourier homogeneity checks (Pint).
+   - **`sys2.symbolic.algebra`**: Exact computer algebra, equivalence checks & equation solving (SymPy).
+   - **`sys2.symbolic.logic`**: Propositional & SMT constraint satisfaction, entailment & negation checks (Z3).
+   - **`sys2.causal`**: DAG Structural Causal Models simulating interventions and counterfactuals.
+   - **`sys2.rollout`**: Dynamic compute scaling via Monte Carlo Tree Search.
+   - **`sys2.pipeline`**: Unified `DualProcessPipeline` coordinating the fast and slow cognitive pathways.
 
 ---
 
@@ -140,24 +148,41 @@ Every specialized track enforces the **Metric Invariant**: all commits must stri
 - PyTorch with Apple Silicon MPS support (`torch.backends.mps.is_available() == True`)
 - Hugging Face `transformers` and `datasets`
 
-### 2. Unified Perception Engine & CLI (`sys2`)
-Execute fast feedforward candidate scoring with automatic dynamic domain routing and in-memory LoRA adapter hot-swapping (< 3 ms) directly from the command line:
+### 2. Dual-Process CLI: System 1 & System 2
+
+#### System 1 Fast Perception CLI (`sys1`)
+Execute fast feedforward candidate scoring (<20ms) with automatic dynamic domain routing and in-memory LoRA adapter hot-swapping (< 3 ms):
 
 ```bash
 # Evaluate a multiple-choice question with 5-head parallel perception:
-python3 -m sys2 "Under contract law, what element creates mutual assent?" \
+python3 -m sys1 "Under contract law, what element creates mutual assent?" \
   --choices "Offer and acceptance" "Unilateral expectation" "Past consideration" "Promissory estoppel"
 # -> Verdict: (A) Offer and acceptance
 # -> Confidence: 78.4% | Consensus: 5/5 Heads
 # -> Domain: [LEGAL] (lexical, route=0.06ms, delib=34.20ms, total=34.26ms)
 
 # Ultra-fast Dynamic Domain Route Only (< 0.1 ms):
-python3 -m sys2 --route "A vehicle triggers DTC code P0300 with active misfire counts."
+python3 -m sys1 --route "A vehicle triggers DTC code P0300 with active misfire counts."
 # -> Routed Domain: [AUTO] (Track E: Automotive & HVAC Diagnostics)
 # -> Method: lexical | Confidence: 99.0% | Latency: 0.061 ms
 
-# Interactive Perception REPL:
-python3 -m sys2 --interactive
+# Agent Command Gatekeeper (< 15 ms):
+python3 -m sys1.guard "rm -rf /"
+# -> BLOCKED (Conf: 89.2%, 5/5 heads)
+```
+
+#### System 2 Dual-Process Verification CLI (`sys2`)
+Execute true deliberative verification combining System 1 fast screening with deterministic symbolic verifiers (Pint, SymPy, Z3) and dynamic MCTS rollouts:
+
+```bash
+# Dual-Process Verification (Sys1 screening + Sys2 symbolic verification):
+python3 -m sys2 "Which option represents valid work or energy?" \
+  --choices "Work = 10 N * 5 m" "Work = 10 N / 5 m" --dual
+
+# Force full System 2 deliberative verification:
+python3 -m sys2 "Under contract law, what element creates mutual assent?" \
+  --choices "Offer and acceptance" "Unilateral expectation" "Past consideration" "Promissory estoppel" \
+  --force-sys2
 ```
 
 ### 3. Multi-Domain Hybrid Adjudication Benchmark
