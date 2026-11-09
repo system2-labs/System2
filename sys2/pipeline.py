@@ -15,6 +15,7 @@ Implements the formal cognitive equation:
   Output = Sys2_Verify(Sys1_Screen(Prompt, Candidates))
 """
 
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
@@ -188,17 +189,51 @@ class DualProcessPipeline:
 
         # Verification 1: Physical Dimensional Analysis (Units)
         if has_units:
+            physics_var_subs = {
+                r"(?<!\d\s)(?<!\d)\bm\b": "kg",
+                r"(?<!\d\s)(?<!\d)\bv\b": "(m/s)",
+                r"(?<!\d\s)(?<!\d)\ba\b": "(m/s^2)",
+                r"(?<!\d\s)(?<!\d)\bt\b": "s",
+                r"(?<!\d\s)(?<!\d)\bF\b": "N",
+            }
             for idx, choice in enumerate(choices):
                 norm_choice = self.parser.normalize_units(choice)
-                unit_res = self.unit_verifier.verify_natural_language_claim(question, norm_choice)
+                subbed_choice = norm_choice
+                # If question defines or asks about physical variables (e.g. mass m, velocity v)
+                if any(k in question.lower() for k in ["mass", "velocity", "acceleration", "force", "energy", "work"]):
+                    for pat, unit_rep in physics_var_subs.items():
+                        subbed_choice = re.sub(pat, unit_rep, subbed_choice)
+
+                unit_res = self.unit_verifier.verify_natural_language_claim(question, subbed_choice)
                 if not unit_res.is_dimensionally_homogeneous:
                     vetoed_indices.append(idx)
                     adjusted_scores[idx] = -1e9
                     audit.append(f"Choice ({letters[idx]}) VETOED: Incompatible physical dimensions ({unit_res.details})")
 
-        # Verification 2: Mathematical / Algebraic Equivalence (SymPy)
+        # Verification 2: Mathematical / Algebraic Equivalence & Solving (SymPy)
         if has_equations:
+            q_eq_match = re.search(r"([a-zA-Z0-9_+*^/\s-]+=[a-zA-Z0-9_+*^/\s-]+)", question)
             for idx, choice in enumerate(choices):
+                # Check for equation solving query: Question has an equation to solve, choice is var = val
+                if q_eq_match:
+                    q_eq = q_eq_match.group(1).strip()
+                    c_assign = re.match(r"^([a-zA-Z])\s*=\s*([a-zA-Z0-9_.-]+)$", choice.strip())
+                    if c_assign:
+                        var = c_assign.group(1)
+                        val = c_assign.group(2)
+                        sol_res = self.algebra_verifier.solve_for(q_eq, var)
+                        if sol_res.solutions:
+                            if val in sol_res.solutions or any(self.algebra_verifier.verify_equivalence(val, s).is_valid for s in sol_res.solutions):
+                                adjusted_scores[idx] += 10.0
+                                audit.append(f"Choice ({letters[idx]}) CONFIRMED as exact solution for {q_eq}: {var} = {val}")
+                                continue
+                            else:
+                                if idx not in vetoed_indices:
+                                    vetoed_indices.append(idx)
+                                adjusted_scores[idx] = -1e9
+                                audit.append(f"Choice ({letters[idx]}) VETOED: {var} = {val} is not a valid solution for {q_eq}")
+                                continue
+
                 claim = alg_claims[idx] if idx < len(alg_claims) else None
                 if claim is not None:
                     alg_res = self.algebra_verifier.verify_equivalence(claim.lhs, claim.rhs)
