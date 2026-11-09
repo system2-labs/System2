@@ -1,16 +1,25 @@
-# System2: Parallel Hypothesis Reasoning Architecture
+# System 1: High-Speed Perception & Candidate Pre-Filtering Engine
 
-> "Small local models have a 15% to 25% stochastic error rate, whether from CoT loops, hallucinated syntax, or formatting quirks. If you run them raw, they break in production. System 2's job is not to magically make a broken model write code; it is to catch those failures in 500ms on Apple Silicon MPS and say: **Certainty is 41.8%, do not run this code.** That is the automated gatekeeper that makes edge AI safe."
+> ⚠️ **ARCHITECTURAL REPOSITIONING (November 2026):**  
+> Following an in-depth multi-agent adversarial audit (`ml-adversary`, `physics-adversary`, `redteam-adversary`), the architecture in this repository has been **officially repositioned as System 1 (Fast Perception, Routing & Candidate Pre-Filtering)**.  
+> - For the complete findings and failure mode analysis, read: [**System 1 Repositioning & Adversarial Audit**](docs/SYSTEM1_REPOSITIONING.md).  
+> - For the technical blueprint of the upcoming deliberative reasoning engine, read: [**True System 2 Architecture: Technical Specification & Path Forward**](docs/TRUE_SYSTEM2_PATH_FORWARD.md).  
+> - For empirical evaluation telemetry across 13 domains, visit: [**system2-eval-reports**](https://github.com/tj-doomer-it/system2-eval-reports).
 
-A system that makes split-second decisions faster than generative AI and admits when it's unsure. Evaluates competing hypotheses across 5 parallel perspectives in < 30ms on-device. No hallucinations. No waiting.
-
-A from-scratch, non-autoregressive "System 2" deliberation architecture designed to run and train locally on Apple Silicon.
-
-System2 generates parallel hypotheses, estimates calibrated confidence for each across asymmetric span formulations, attends across competing candidates with arithmetic centroid contrast, normalizes logit variances in equal standard-deviation currency, and prunes flawed reasoning branches in $<30\text{ ms}$.
+A feedforward, non-autoregressive neural perception engine designed to run locally on Apple Silicon in **`< 20 ms`**. Performs instant sub-millisecond domain routing across 13 specialized tracks, hot-swaps in-memory LoRA adapters in `< 3 ms`, and evaluates multiple-choice candidate options simultaneously via parallel contrastive scoring.
 
 ---
 
-## Architecture Overview
+## The Dual-Process Architecture: System 1 + True System 2
+
+In modern cognitive AI (dual-process theory; Kahneman; Pearl; LeCun), autonomous decision-making requires two complementary systems:
+
+1. **System 1 (This Repository):** Fast, non-autoregressive perceptual screening. Evaluates 4 candidate options in parallel in $< 20\text{ ms}$, determines domain track, screens out obviously flawed branches, and computes calibrated perceptual confidence.
+2. **True System 2 (Next-Gen Deliberation Engine):** Asynchronous causal verification. Executes autoregressive MCTS state rollouts, simulates Structural Causal Models (SCMs with $\mathrm{do}(X)$ interventions), and invokes deterministic symbolic solvers (SymPy, Pint, Z3) for mathematical, dimensional, and logical verification.
+
+---
+
+## System 1 Architecture Overview
 
 ```
                       [Input Prompt / Context]
@@ -35,7 +44,7 @@ System2 generates parallel hypotheses, estimates calibrated confidence for each 
                   [Cross-Attending Judger & Calibrator]
               - Multi-head cross-attention over 5 candidates
               - Coupled decision-level calibration scale τ = exp(log_tau)
-              - Branch pruning & counterfactual elimination
+              - Candidate outlier rejection & confidence calibration
                                  │
                                  ▼
                  [Winning Hypothesis & Calibrated Verdict]
@@ -44,28 +53,28 @@ System2 generates parallel hypotheses, estimates calibrated confidence for each 
 ### Core Design Principles
 1. **Frozen Bidirectional Encoder**: ModernBERT-large / ModernBERT-Large-Instruct (395M) weights remain 100% frozen. Dense bidirectional embeddings eliminate autoregressive drift, sycophancy, and post-hoc RLHF alignment artifacts.
 2. **LoRA Subspace Rank Sweet Spot**: High-capacity low-rank adapters ($r=32, \alpha=32$, ~1.57M params) adapt the top 8 layers (20–27) per domain without warping lower-layer lexical syntax.
-3. **5-Head Deliberation Equilibrium**: 5 full dense parallel ThoughtHeads evaluate candidate choices simultaneously across asymmetric span perspectives (holistic, question-anchored, choice-forward, balanced, extreme-salience).
+3. **5-Perspective Parallel Perception Stack**: 5 parallel ThoughtHead projection stacks evaluate candidate choices simultaneously across asymmetric span weighting profiles (holistic, question-anchored, choice-forward, balanced, extreme-salience). These act as contrastive feature extractors over the question-answer representation space rather than symbolic deliberators.
 4. **Arithmetic Centroid Contrast Invariance**: Candidate vectors are contrasted against the fixed arithmetic mean: $d_i = x_i - \frac{1}{4}\sum_{j=1}^4 x_j$, feeding $[x_i \,\|\, d_i]$ to the scoring MLP. Dynamic attention soft centroids are prohibited as they collapse contrast toward zero on salient options.
-5. **Scale-Invariant Logit Law**: All candidate choice logits are $z$-score standardized per head ($z_{b, h, c} = \frac{l_{b, h, c} - \mu_{b, h}}{\sigma_{b, h} + \epsilon}$) prior to weighted pooling, ensuring every cognitive perspective contributes in equal statistical currency.
-6. **Strictly Non-Autoregressive Feedforward**: Single-pass forward deliberation in $<30\text{ ms}$ on Apple Silicon GPU (`mps`) or $<250\text{ ms}$ on CPU.
+5. **Scale-Invariant Logit Law**: All candidate choice logits are $z$-score standardized per head ($z_{b, h, c} = \frac{l_{b, h, c} - \mu_{b, h}}{\sigma_{b, h} + \epsilon}$) prior to weighted pooling, ensuring every span-weighting perspective contributes in equal statistical currency (standard deviation units).
+6. **Strictly Non-Autoregressive Feedforward**: Single-pass forward perception and scoring in $<30\text{ ms}$ on Apple Silicon GPU (`mps`) or $<250\text{ ms}$ on CPU.
 
 ---
 
 ## Early Stage vs. Architectural Evolution
 
-The table below contrasts the initial canary prototype with the mature System2 multi-track architecture:
+The table below contrasts the initial canary prototype with the mature System 1 multi-track architecture:
 
-| Dimension | Early Stage Prototype (Phase 1) | Architectural Evolution (Current System2) |
+| Dimension | Early Stage Prototype (Phase 1) | Architectural Evolution (Current System 1 Architecture) |
 | :--- | :--- | :--- |
-| **Evaluation Scope** | AG News 4-class topic classification canary | Multi-step reasoning across Science, Code, Medical, Electrical, Auto, and Culinary |
+| **Evaluation Scope** | AG News 4-class topic classification canary | Multiple-choice domain screening across Science, Code, Medical, Electrical, Auto, and Culinary |
 | **Encoder Strategy** | Completely frozen ModernBERT without adapters | Frozen ModernBERT + top-8 layer LoRA subspace adapters ($r=32, \alpha=32$) |
 | **ThoughtHead Structure** | Homogeneous generic pooling | 5 Asymmetric Span Formulations (Holistic, Question-anchored, Choice-forward, Balanced, Extreme-salience) |
 | **Candidate Contrast** | Uncontrasted raw candidate vectors | **Arithmetic Centroid Contrast**: $d_i = x_i - \frac{1}{4}\sum_{j=1}^4 x_j \implies [x_i \,\|\, d_i]$ |
 | **Inter-Head Arbitration** | Raw logit summation (drowned by high-variance heads) | **Scale-Invariant Logit Law**: per-head $z$-score normalization ($z = \frac{l - \mu}{\sigma + \epsilon}$) |
 | **Calibration Method** | Uncalibrated BCE loss | Coupled decision-level calibration gradient with learnable temperature $\tau = \exp(\text{log\_tau})$ |
-| **Domain Architecture** | Monolithic multi-class classifier | **In-Domain Causal Purity**: 6 domain-specialized LoRA + ThoughtHead checkpoints |
+| **Domain Architecture** | Monolithic multi-class classifier | **In-Domain Causal Purity**: Domain-specialized LoRA + ThoughtHead checkpoints |
 | **Prompt Dispatch** | Manual dataset flag required | **Two-Stage Dynamic Domain Router** (Lexical Gate + Dense Centroid Projection in $<0.1\text{ ms}$) |
-| **Inference Integration** | Standalone classification script | **Path B Hybrid Deliberation**: Adjudicates 4 independent zero-knowledge LLM samples |
+| **Inference Integration** | Standalone classification script | **Path B Hybrid Perception**: Adjudicates 4 independent zero-knowledge LLM samples |
 
 ---
 
@@ -86,6 +95,8 @@ Every specialized track enforces the **Metric Invariant**: all commits must stri
 | `finance` | **Track I: Financial Reasoning & Quantitative Analysis** | **`0.8453`** | 79.71% | 0.1065 | 0.1511 | [`models/system2_finance.pt`](file:///Users/thomjames-worrall/System2/models/system2_finance.pt) | Verified |
 | `physics` | **Track J: Classical, Modern Physics & Astrophysics** | **`0.8697`** | 82.56% | 0.0862 | 0.1521 | [`models/system2_physics.pt`](file:///Users/thomjames-worrall/System2/models/system2_physics.pt) | Verified |
 | `safety` | **Track K: Agent Gatekeeper & Command Safety** | **`0.9817`** | 99.50% | 0.0315 | 0.1599 | [`models/system2_safety.pt`](file:///Users/thomjames-worrall/System2/models/system2_safety.pt) | Verified |
+| `eval` | **Track L: Evaluation & Meta-Scoring Benchmarks** | **`0.9856`** | 100.00% | 0.0289 | 0.0289 | [`models/system2_eval.pt`](file:///Users/thomjames-worrall/System2/models/system2_eval.pt) | Verified |
+| `logic` | **Track M: Deductive & Propositional Logic** | **`0.9855`** | 100.00% | 0.0289 | 0.0289 | [`models/system2_logic.pt`](file:///Users/thomjames-worrall/System2/models/system2_logic.pt) | Verified |
 
 ---
 
@@ -98,14 +109,14 @@ Every specialized track enforces the **Metric Invariant**: all commits must stri
   - Implement arithmetic centroid contrast $[x_i \,\|\, d_i]$ and pairwise diversity penalties.
   - Coupled decision-level calibration gradient with learnable $\tau$.
   - Scale-invariant $z$-score logit pooling across asymmetric thought heads.
-- [x] **Phase 2.5: Path B Hybrid LLM Deliberation Benchmark**:
-  - Pair local generative models with System 2 feedforward deliberation.
+- [x] **Phase 2.5: Path B Hybrid Candidate Adjudication Benchmark**:
+  - Pair local generative LLM samples with fast feedforward perception and scoring.
   - Validated across 4 tiers: Gemma-e4b (4B) $\to$ Gemma-12B (12B) $\to$ Qwen-27B $\to$ Qwen-35B.
-  - Proved that an ultra-lightweight 4B/12B model + System 2 achieves **100% accuracy parity** and higher calibrated confidence than a standalone 35B model.
-- [x] **Phase 3: Multi-Step Reasoning Benchmarks**:
+  - Benchmarked small LLM candidate rescue capabilities (e.g. successfully rescuing Code while exhibiting domain-dependent trade-offs on Legal/Med).
+- [x] **Phase 3: Domain Multiple-Choice Benchmarks**:
   - [x] **AI2 ARC (Science)**: Full integration of ARC-Challenge + ARC-Easy in-domain data (`0.7397`).
   - [x] **Polyglot Code Execution (Code)**: Multi-language traces across Python, Rust, C++, C#, Java, SQL, Bash (`0.9010`).
-  - [x] **GSM8K & MATH (Symbolic Reasoning)**: Multi-step mathematical word problems with type-aware distractors (**`0.9462`** guarded metric, **`95.60%`** held-out accuracy).
+  - [x] **GSM8K & MATH Distractor Discriminator**: Multiple-choice candidate discrimination over mathematical word problems with type-aware distractors (**`0.9462`** guarded metric, **`95.60%`** held-out accuracy).
 - [x] **Phase 4: Dynamic Domain Routing & Enterprise Scaling**:
   - Two-stage hierarchical router (Lexical Gate + Dense ModernBERT Centroid Projection).
   - Sub-millisecond dispatch (<0.1 ms) across 11 specialized tracks with **100.0% accuracy** on benchmark test suite.
@@ -129,11 +140,11 @@ Every specialized track enforces the **Metric Invariant**: all commits must stri
 - PyTorch with Apple Silicon MPS support (`torch.backends.mps.is_available() == True`)
 - Hugging Face `transformers` and `datasets`
 
-### 2. Unified Deliberation Engine & CLI (`sys2`)
-Execute full feedforward deliberation with automatic dynamic domain routing and in-memory LoRA adapter hot-swapping (< 3 ms) directly from the command line:
+### 2. Unified Perception Engine & CLI (`sys2`)
+Execute fast feedforward candidate scoring with automatic dynamic domain routing and in-memory LoRA adapter hot-swapping (< 3 ms) directly from the command line:
 
 ```bash
-# Adjudicate a multi-choice question with full 5-head parallel deliberation:
+# Evaluate a multiple-choice question with 5-head parallel perception:
 python3 -m sys2 "Under contract law, what element creates mutual assent?" \
   --choices "Offer and acceptance" "Unilateral expectation" "Past consideration" "Promissory estoppel"
 # -> Verdict: (A) Offer and acceptance
@@ -145,12 +156,12 @@ python3 -m sys2 --route "A vehicle triggers DTC code P0300 with active misfire c
 # -> Routed Domain: [AUTO] (Track E: Automotive & HVAC Diagnostics)
 # -> Method: lexical | Confidence: 99.0% | Latency: 0.061 ms
 
-# Interactive Deliberation REPL:
+# Interactive Perception REPL:
 python3 -m sys2 --interactive
 ```
 
-### 3. Multi-Domain Hybrid Deliberation Benchmark
-Run the end-to-end Path B hybrid deliberation benchmark pairing a small local model (`google/gemma-4-e4b`, 4B) in LM Studio with System 2 feedforward arbitration across 5 distinct domains:
+### 3. Multi-Domain Hybrid Adjudication Benchmark
+Run the end-to-end Path B hybrid benchmark pairing a small local model (`google/gemma-4-e4b`, 4B) in LM Studio with System 1 feedforward arbitration across 5 distinct domains:
 
 ```bash
 python3 scripts/benchmark_multidomain_hybrid.py

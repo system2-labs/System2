@@ -5,7 +5,7 @@ Provides high-performance asynchronous REST endpoints:
   2. POST /route      : Ultra-fast two-stage domain routing (< 0.1ms lexical, < 1ms centroid)
   3. POST /guard      : Non-autoregressive agent command safety gatekeeper
   4. GET  /health     : Server liveness, memory status, and track inventory
-  5. GET  /tracks     : Metadata inventory across all 11 specialized tracks
+  5. GET  /tracks     : Metadata inventory across all 13 specialized tracks
   6. POST /v1/systemone : Jev / TypeSafe AI decision endpoint compatibility
   7. POST /v1/decisions : OpenAI-compatible structured decision endpoint compatibility
   8. Reverse-proxy    : Transparently proxies generative LLM routes (/v1/chat/completions) if upstream-llm configured
