@@ -113,3 +113,53 @@ True System 2 acts as an inline intercept for generative LLMs:
 | **Phase 3** | **Causal DAG Extractor** | Implement premise-to-DAG parser extracting directed causal mechanisms. |
 | **Phase 4** | **Adversarial AutoResearch** | Deploy co-evolutionary AutoResearch with paired negation/counterfactual probes. |
 | **Phase 5** | **Unified Intercept Gateway** | Deploy production middleware intercepting LLM outputs with calibrated pass/fail gating. |
+
+---
+
+## 6. The Three Strategic Implementation & Training Paths
+
+Following the initial stabilization of the dual-process core, three distinct paths define our implementation and training trajectory:
+
+### Path A: The Semantic Parser / DSL Extractor (The Bridge to System 2)
+* **What it is**: Currently, `sys2` uses structured pattern-matching to extract equations, units, and negation statements from prompts. The single biggest bottleneck in symbolic AI is translating raw natural language into formal logic / equation ASTs.
+* **Architecture & Training Task**: Train a fast token-classification or slot-filling adapter on ModernBERT to extract:
+  1. **Target Physical Dimensions (for Pint)**: Extract target concept (`"velocity"` $\to$ `[length]/[time]`) and claimed quantities (`"50 J"`, `"10 m/s"`).
+  2. **Clean Algebraic Expressions (for SymPy)**: Parse natural equations (*"force equals mass times acceleration"*) into symbolic ASTs (`Eq(F, m*a)`).
+  3. **Propositional Clauses (for Z3)**: Extract structured tuples `(Variable, Negated, Relation)` to evaluate non-trivial entailment without substring collisions.
+  4. **Causal Edges (for SCM)**: Extract directed causal mechanisms `(Cause, Effect, Direction)` to construct DAGs dynamically.
+
+### Path B: System 1 AutoResearch Expansion
+* **What it is**: Run the autonomous `runner.sh` AutoResearch loop to train higher capacity, expand to new enterprise domains, and maximize calibrated held-out accuracy across the fast perception stack.
+* **Target Enterprise Tracks**:
+  - **Track N: Cyber Threat Intelligence (`cyber`)**: ATT&CK technique extraction, CVSS vulnerability severity, and command safety.
+  - **Track O: Supply Chain & Operations Research (`logistics`)**: Network routing, multi-echelon inventory policies, and disruption shock prediction.
+  - **Track P: Tax Compliance & Statutory Accounting (`tax`)**: Statutory deduction logic, IRC code interpretation, and regulatory thresholds.
+
+### Path C: MCTS Intermediate Hypothesis Generator
+* **What it is**: Train a compact 1B–3B generative model (or value function) to propose candidate intermediate reasoning steps (premises, lemmas, and derivation actions).
+* **Role in Pipeline**: The generator proposes step-by-step reasoning branches, while the deterministic `sys2` verifiers check each step in real time, enabling test-time compute scaling without unconstrained hallucinations.
+
+---
+
+## 7. Curated Frontier Enterprise Dataset Inventory
+
+To support **Path B (AutoResearch Expansion)** and ground the **Path A Semantic Parser**, the following frontier datasets are cataloged:
+
+### 1. Cyber Threat Intelligence & Security
+- **`RISys-Lab/Benchmarks_CyberSec_CTI-Bench`** (NeurIPS): MITRE ATT&CK technique extraction from unstructured incident reports.
+- **`ismailtasdelen/mitre-attack-techniques-qa`**: Scenario-based QA mapped across enterprise ATT&CK tactics (Persistence, Defense Evasion, Exfiltration).
+- **`zefang-liu/secqa`**: Multiple-choice computer systems security reasoning benchmark with graduated complexity tiers (v1 and v2).
+- **`tuandunghcmut/combine-llm-security-benchmark`**: CVE-to-CWE mapping, CVSS vulnerability severity scoring, and attack technique classification.
+
+### 2. Supply Chain, Logistics & Operations Research
+- **`Cainiao-AI/LaDe`** (Alibaba): 10.6M real-world package delivery events across 21k couriers and multi-city hubs; spatio-temporal route optimization.
+- **`Isomorph2026/isomorph-supply-chain-benchmark`**: Digital twin simulator for multi-echelon supply networks and disruption management; ideal for causal SCM intervention queries ($\mathrm{do}(\text{disruption} = \text{port\_strike})$).
+- **`Jacoblian/RetailOpt-190`**: Operations research optimization instances testing linear programming and inventory constraint satisfaction.
+- **`LightningRodLabs/supply-chain-predictions`**: Global trade flow disruption and macroeconomic shock forecasting.
+
+### 3. Tax Compliance & Statutory Regulatory Reasoning
+- **`intelligenceconsortium/TaxBench`** (Stanford / CMU): Comprehensive benchmark for personal, corporate, estate, international, and crypto tax compliance.
+- **`cfosilvia/silvia-tax-bench`**: Verifies guidance reliability against primary tax authorities (IRC statutory sections, Treasury regulations, IRS publications).
+- **`isaacus/australian-tax-guidance-retrieval`**: Real taxpayer queries paired with official Australian Taxation Office (ATO) rulings and guidance.
+- **`nguha/legalbench`** (Tax subset): Statutory rule application and Canadian Tax Court case disposition reasoning.
+
