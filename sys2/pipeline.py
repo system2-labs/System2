@@ -350,3 +350,55 @@ class DualProcessPipeline:
             latency_ms=t_total,
             routed_domain=s1_res.domain,
         )
+
+    def parse_annotated_prompt(self, raw_text: str) -> Tuple[str, List[str], List[Dict[str, Any]]]:
+        """Parse benchmark prompt formatted with QUESTION: and annotated choices [A] [XX tok] Choice."""
+        lines = raw_text.strip().split("\n")
+        q_lines = []
+        choice_matches = []
+        in_question = False
+
+        choice_pattern = re.compile(
+            r"^\s*\[?([A-Z0-9]+)\]?\s*(?:\[(\d+)\s*(?:tok|tokens?)\])?\s*(.+)$",
+            re.IGNORECASE,
+        )
+
+        for line in lines:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("---") or stripped.startswith("==="):
+                continue
+            if stripped.upper().startswith("QUESTION:"):
+                in_question = True
+                q_lines.append(stripped[len("QUESTION:"):].strip())
+                continue
+
+            m = choice_pattern.match(stripped)
+            if m:
+                in_question = False
+                choice_matches.append(m)
+            elif in_question:
+                q_lines.append(stripped)
+
+        question = " ".join(q_lines).strip()
+        choices = []
+        metadata = []
+        for m in choice_matches:
+            letter = m.group(1).upper()
+            tokens = int(m.group(2)) if m.group(2) else None
+            clean_text = m.group(3).strip()
+            choices.append(clean_text)
+            metadata.append({"letter": letter, "tokens": tokens, "clean_text": clean_text})
+
+        return question, choices, metadata
+
+    def evaluate_annotated_prompt(
+        self,
+        raw_text: str,
+        domain: Optional[str] = None,
+        force_sys2: bool = False,
+    ) -> DualProcessResult:
+        """Evaluate a raw benchmark prompt with QUESTION: and [A] [XX tok] annotations."""
+        q, choices, meta = self.parse_annotated_prompt(raw_text)
+        if not choices:
+            raise ValueError(f"Could not parse any valid candidate choices from raw prompt:\n{raw_text}")
+        return self.evaluate(question=q, choices=choices, domain=domain, force_sys2=force_sys2)
