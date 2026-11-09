@@ -352,40 +352,59 @@ class DualProcessPipeline:
         )
 
     def parse_annotated_prompt(self, raw_text: str) -> Tuple[str, List[str], List[Dict[str, Any]]]:
-        """Parse benchmark prompt formatted with QUESTION: and annotated choices [A] [XX tok] Choice."""
+        """Parse benchmark prompt formatted with QUESTION: and annotated choices [A] [XX tok] Choice.
+        
+        Strictly protects code blocks (```...```) and inline code structures from false-positive
+        matching on assignment statements (e.g. x = 10), returns, or list indexing.
+        """
         lines = raw_text.strip().split("\n")
         q_lines = []
         choice_matches = []
         in_question = False
+        in_code_block = False
 
+        # Requires explicit choice labeling: [A], (A), A), A., or A: (1-2 chars)
         choice_pattern = re.compile(
-            r"^\s*\[?([A-Z0-9]+)\]?\s*(?:\[(\d+)\s*(?:tok|tokens?)\])?\s*(.+)$",
-            re.IGNORECASE,
+            r"^\s*(?:\[([A-Za-z]|\d{1,2})\]|\(([A-Za-z]|\d{1,2})\)|([A-Za-z]|\d{1,2})[).:])\s*(?:\[(\d+)\s*(?:tok|tokens?)\])?\s*(.+)$"
         )
 
         for line in lines:
             stripped = line.strip()
+
+            # 1. Code block fence tracking - preserve code blocks entirely
+            if stripped.startswith("```"):
+                in_code_block = not in_code_block
+                q_lines.append(line)
+                continue
+            if in_code_block:
+                q_lines.append(line)
+                continue
+
+            # 2. Skip horizontal dividers and empty lines
             if not stripped or stripped.startswith("---") or stripped.startswith("==="):
                 continue
+
+            # 3. Detect QUESTION: header
             if stripped.upper().startswith("QUESTION:"):
                 in_question = True
                 q_lines.append(stripped[len("QUESTION:"):].strip())
                 continue
 
+            # 4. Check for choice match
             m = choice_pattern.match(stripped)
             if m:
                 in_question = False
                 choice_matches.append(m)
             elif in_question:
-                q_lines.append(stripped)
+                q_lines.append(line)
 
-        question = " ".join(q_lines).strip()
+        question = "\n".join(q_lines).strip()
         choices = []
         metadata = []
         for m in choice_matches:
-            letter = m.group(1).upper()
-            tokens = int(m.group(2)) if m.group(2) else None
-            clean_text = m.group(3).strip()
+            letter = (m.group(1) or m.group(2) or m.group(3)).upper()
+            tokens = int(m.group(4)) if m.group(4) else None
+            clean_text = m.group(5).strip()
             choices.append(clean_text)
             metadata.append({"letter": letter, "tokens": tokens, "clean_text": clean_text})
 
