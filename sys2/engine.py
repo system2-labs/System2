@@ -88,7 +88,7 @@ class System2Engine:
 
     def __init__(self, device: Optional[str] = None):
         if device is None:
-            self.device = "cpu"
+            self.device = "mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu")
         else:
             self.device = device
 
