@@ -28,6 +28,8 @@ data/legal_expanded
 data/legal_multi_expanded
 data/electrical_expanded
 data/finance_expanded
+data/frontier/
+data/frontier
 data/physics_grounded_expanded
 .fujimoto.yaml
 __pycache__/
