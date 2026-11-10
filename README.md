@@ -1,11 +1,19 @@
-# System2: Sovereign Dual-Process Cognitive AI Architecture
+<p align="center">
+  <img src="assets/system2_logo.png" alt="System2 Logo" width="460">
+</p>
 
-> *"Remember, your data lives with you now."*
+<h1 align="center">System2: Sovereign Dual-Process Cognitive AI Architecture</h1>
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![GitHub: pi-system2](https://img.shields.io/badge/Harness-pi--system2-orange.svg)](https://github.com/tj-doomer-it/pi)
-[![Hugging Face: System2-Online](https://img.shields.io/badge/Hugging%20Face-System2--Online-yellow.svg)](https://huggingface.co/System2-Online)
-[![Code Review: Claude 3.7 Audit](https://img.shields.io/badge/Claude%203.7%20Audit-10%2F10%20(27%2F27%20Pass)-brightgreen.svg)](https://github.com/tj-doomer-it/System2)
+<p align="center">
+  <em>"Remember, your data lives with you now."</em>
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License: Apache 2.0"></a>
+  <a href="https://github.com/tj-doomer-it/pi"><img src="https://img.shields.io/badge/Harness-pi--system2-orange.svg" alt="GitHub: pi-system2"></a>
+  <a href="https://huggingface.co/System2-Online"><img src="https://img.shields.io/badge/Hugging%20Face-System2--Online-yellow.svg" alt="Hugging Face: System2-Online"></a>
+  <a href="https://github.com/tj-doomer-it/System2"><img src="https://img.shields.io/badge/Claude%203.7%20Audit-10%2F10%20(27%2F27%20Pass)-brightgreen.svg" alt="Claude 3.7 Audit: 10/10"></a>
+</p>
 
 ---
 
