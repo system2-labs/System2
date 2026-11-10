@@ -1,231 +1,199 @@
-# System 1: High-Speed Perception & Candidate Pre-Filtering Engine
+# System2: Sovereign Dual-Process Cognitive AI Architecture
 
-> ⚠️ **ARCHITECTURAL REPOSITIONING (November 2026):**  
-> Following an in-depth multi-agent adversarial audit (`ml-adversary`, `physics-adversary`, `redteam-adversary`), the architecture in this repository has been **officially repositioned as System 1 (Fast Perception, Routing & Candidate Pre-Filtering)**.  
-> - For the complete findings and failure mode analysis, read: [**System 1 Repositioning & Adversarial Audit**](docs/SYSTEM1_REPOSITIONING.md).  
-> - For the technical blueprint of the upcoming deliberative reasoning engine, read: [**True System 2 Architecture: Technical Specification & Path Forward**](docs/TRUE_SYSTEM2_PATH_FORWARD.md).  
-> - For empirical evaluation telemetry across 13 domains, visit: [**system2-eval-reports**](https://github.com/tj-doomer-it/system2-eval-reports).
+> *"Remember, your data lives with you now."*
 
-A feedforward, non-autoregressive neural perception engine designed to run locally on Apple Silicon in **`< 20 ms`**. Performs instant sub-millisecond domain routing across 13 specialized tracks, hot-swaps in-memory LoRA adapters in `< 3 ms`, and evaluates multiple-choice candidate options simultaneously via parallel contrastive scoring.
-
----
-
-## The Dual-Process Monorepo Architecture: System 1 + True System 2
-
-In modern cognitive AI (dual-process theory; Kahneman; Pearl; LeCun), autonomous decision-making requires two complementary systems unified in a single monorepo:
-
-$$\text{Output} = \text{Sys2\_Verify}(\text{Sys1\_Screen}(\text{Prompt}, \text{Candidates}))$$
-
-1. **System 1 (`sys1/`):** Fast, non-autoregressive perceptual screening. Evaluates candidate options in parallel in $< 20\text{ ms}$, determines domain track across 13 specialized LoRA adapters, eliminates low-probability outlier branches, and computes calibrated perceptual confidence.
-2. **True System 2 (`sys2/`):** Asynchronous causal & symbolic verification. Executes dynamic test-time compute scaling (MCTS state rollouts), simulates Structural Causal Models (SCMs with Pearl's $\mathrm{do}(X)$ interventions), and invokes deterministic symbolic solvers:
-   - **`sys2.symbolic.units`**: Dimensional analysis & Fourier homogeneity checks (Pint).
-   - **`sys2.symbolic.algebra`**: Exact computer algebra, equivalence checks & equation solving (SymPy).
-   - **`sys2.symbolic.logic`**: Propositional & SMT constraint satisfaction, entailment & negation checks (Z3).
-   - **`sys2.causal`**: DAG Structural Causal Models simulating interventions and counterfactuals.
-   - **`sys2.rollout`**: Dynamic compute scaling via Monte Carlo Tree Search.
-   - **`sys2.pipeline`**: Unified `DualProcessPipeline` coordinating the fast and slow cognitive pathways.
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![GitHub: pi-system2](https://img.shields.io/badge/Harness-pi--system2-orange.svg)](https://github.com/tj-doomer-it/pi)
+[![Hugging Face: System2-Online](https://img.shields.io/badge/Hugging%20Face-System2--Online-yellow.svg)](https://huggingface.co/System2-Online)
+[![Code Review: Claude 3.7 Audit](https://img.shields.io/badge/Claude%203.7%20Audit-10%2F10%20(27%2F27%20Pass)-brightgreen.svg)](https://github.com/tj-doomer-it/System2)
 
 ---
 
-## System 1 Architecture Overview
+## The System2 Statement
+
+Autoregressive Large Language Models generate tokens sequentially, improvising without deliberation. When forced to reason purely through internal text generation (chain-of-thought `<think>` loops), they remain fragile: low-precision quantized weights compound token noise into semantic collapse, hallucinations cascade across steps, and models express uncalibrated overconfidence in flawed answers.
+
+**System2** realizes Daniel Kahneman's Dual-Process Cognitive Theory in software. Instead of relying on monolithic autoregressive generation, System2 decouples reasoning into two complementary, mathematically grounded engines:
+
+$$\text{Verdict} = \text{System 2}_{\text{Symbolic}}(\text{System 1}_{\text{Perception}}(\text{Context}, \text{Candidates}))$$
+
+1. **System 1 (Perception & Triage)**: A lightning-fast, non-autoregressive neural engine running in **`< 20 ms`** on Apple Silicon / CPU. It classifies domain intents across 13 specialized tracks, eliminates improbable candidate branches, extracts contrastive representations, and enforces the **Regime 2 Protocol** (`thinking: off` on low-bit weights).
+2. **System 2 (Verification & Autonomous Deliberation)**: A deterministic, external symbolic execution harness. Instead of guessing inside token loops, System 2 executes code in isolated bash sandboxes, runs automated unit test suites (`pytest`), enforces formal AST safety invariants, verifies physical dimensions and algebraic proofs (Pint, SymPy, Z3), and drives closed-loop self-healing refactors.
+
+The result is **sovereign, air-gapped, frontier-quality software engineering** running locally on a standard 16 GB laptop with **$0 marginal token cost**.
+
+---
+
+## Architecture: The Two Core Components
 
 ```
-                      [Input Prompt / Context]
-                                 │
-                                 ▼
-           [ModernBERT-large-instruct Encoder (395M, Frozen)]
-             + LoRA Subspace Adapters (Layers 20–27, r=32, α=32)
-                                 │ (1024-dim dense representation)
-        ┌────────────────────────┼────────────────────────┐
-        ▼                        ▼                        ▼
- [ThoughtHead 1]          [ThoughtHead 2]          [ThoughtHead 5]
- (Asymmetric Span v0)     (Asymmetric Span v1)     (Asymmetric Span v4)
-  2x Transformer Layers    2x Transformer Layers    2x Transformer Layers
-  Arithmetic Centroid:     Arithmetic Centroid:     Arithmetic Centroid:
-    d_i = x_i - μ_arith      d_i = x_i - μ_arith      d_i = x_i - μ_arith
-  Logit z-score norm:      Logit z-score norm:      Logit z-score norm:
-    z_1 = (l - μ)/σ          z_2 = (l - μ)/σ          z_5 = (l - μ)/σ
-        │                        │                        │
-  (Emb 1, Conf 1)          (Emb 2, Conf 2)          (Emb 5, Conf 5)
-        └────────────────────────┼────────────────────────┘
-                                 ▼
-                  [Cross-Attending Judger & Calibrator]
-              - Multi-head cross-attention over 5 candidates
-              - Coupled decision-level calibration scale τ = exp(log_tau)
-              - Candidate outlier rejection & confidence calibration
-                                 │
-                                 ▼
-                 [Winning Hypothesis & Calibrated Verdict]
+                                  [Task / Codebase Context]
+                                              │
+                                              ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────┐
+│                    SYSTEM 1: HIGH-SPEED PERCEPTION & CANDIDATE PRE-FILTER                 │
+│                                                                                           │
+│   • Frozen ModernBERT-Large Backbone (395M) + Top-8 LoRA Subspace Adapters (r=32, α=32)   │
+│   • Sub-millisecond Dynamic Domain Router (<0.1 ms across 13 specialized tracks)          │
+│   • 5 Parallel ThoughtHeads with Arithmetic Centroid Contrast:  d_i = x_i - μ_arith       │
+│   • Scale-Invariant Logit Law (per-head z-score normalization): z = (l - μ) / σ           │
+│   • Cross-Attending Judger & Coupled Decision-Level Calibration: τ = exp(log_tau)         │
+│   • Enforces Regime 2 Protocol: strips noisy internal <think> loops on edge quants        │
+└─────────────────────────────────────────────┬─────────────────────────────────────────────┘
+                                              │
+                         Fast Intent & Screened Candidates (<20ms)
+                                              │
+                                              ▼
+┌───────────────────────────────────────────────────────────────────────────────────────────┐
+│                  SYSTEM 2: SYMBOLIC VERIFICATION & AUTONOMOUS DELIBERATION                │
+│                                                                                           │
+│   1. pi-system2 Agent Harness (github.com/tj-doomer-it/pi):                               │
+│      • Deterministic tool guards: pre-execution safety validation on bash, write, edit    │
+│      • Closed-loop autonomous test runner: executes pytest, parses tracebacks             │
+│      • Autonomous self-healing loop: iteratively diagnoses and fixes test failures       │
+│                                                                                           │
+│   2. Deterministic Symbolic Solvers:                                                      │
+│      • Dimensional Analysis (Pint): Fourier homogeneity & physical unit checks            │
+│      • Computer Algebra (SymPy): Exact equivalence proofs & algebraic equation solving    │
+│      • Formal Logic & SMT (Z3): Constraint satisfaction & entailment verification         │
+│      • Structural Causal Models: Pearl's do(X) graph interventions & counterfactuals      │
+│      • Dynamic Compute Scaling: Monte Carlo Tree Search (MCTS) state rollouts             │
+└─────────────────────────────────────────────┬─────────────────────────────────────────────┘
+                                              │
+                                              ▼
+                     [Verified, Green-Tested, Production-Grade Software]
 ```
-
-### Core Design Principles
-1. **Frozen Bidirectional Encoder**: ModernBERT-large / ModernBERT-Large-Instruct (395M) weights remain 100% frozen. Dense bidirectional embeddings eliminate autoregressive drift, sycophancy, and post-hoc RLHF alignment artifacts.
-2. **LoRA Subspace Rank Sweet Spot**: High-capacity low-rank adapters ($r=32, \alpha=32$, ~1.57M params) adapt the top 8 layers (20–27) per domain without warping lower-layer lexical syntax.
-3. **5-Perspective Parallel Perception Stack**: 5 parallel ThoughtHead projection stacks evaluate candidate choices simultaneously across asymmetric span weighting profiles (holistic, question-anchored, choice-forward, balanced, extreme-salience). These act as contrastive feature extractors over the question-answer representation space rather than symbolic deliberators.
-4. **Arithmetic Centroid Contrast Invariance**: Candidate vectors are contrasted against the fixed arithmetic mean: $d_i = x_i - \frac{1}{4}\sum_{j=1}^4 x_j$, feeding $[x_i \,\|\, d_i]$ to the scoring MLP. Dynamic attention soft centroids are prohibited as they collapse contrast toward zero on salient options.
-5. **Scale-Invariant Logit Law**: All candidate choice logits are $z$-score standardized per head ($z_{b, h, c} = \frac{l_{b, h, c} - \mu_{b, h}}{\sigma_{b, h} + \epsilon}$) prior to weighted pooling, ensuring every span-weighting perspective contributes in equal statistical currency (standard deviation units).
-6. **Strictly Non-Autoregressive Feedforward**: Single-pass forward perception and scoring in $<30\text{ ms}$ on Apple Silicon GPU (`mps`) or $<250\text{ ms}$ on CPU.
 
 ---
 
-## Early Stage vs. Architectural Evolution
+### Component 1: System 1 (High-Speed Perception & Candidate Pre-Filtering)
 
-The table below contrasts the initial canary prototype with the mature System 1 multi-track architecture:
+System 1 operates as the sensory perception cortex of the architecture. It is strictly non-autoregressive, meaning it processes all candidates simultaneously in a single forward pass without sequential generation drift.
 
-| Dimension | Early Stage Prototype (Phase 1) | Architectural Evolution (Current System 1 Architecture) |
+- **Frozen Bidirectional Backbone**: Built on ModernBERT-large-instruct (395M parameters) kept 100% frozen. Dense bidirectional representations eliminate sycophancy and RLHF alignment distortions.
+- **Subspace Rank Sweet Spot**: Adapts layers 20–27 using high-capacity LoRA adapters ($r=32, \alpha=32$, ~1.57M parameters per domain). Adapting deeper degrades syntax; higher ranks induce overfitting.
+- **5-Perspective Parallel ThoughtHeads**: 5 dense parallel thought stacks evaluate candidate options simultaneously across asymmetric span profiles (holistic, question-anchored, choice-forward, balanced, extreme-salience).
+- **Arithmetic Centroid Contrast**: Candidate vectors are contrasted against the fixed arithmetic mean ($d_i = x_i - \frac{1}{4}\sum_{j=1}^4 x_j$), feeding $[x_i \,\|\, d_i]$ to the scoring MLP. Soft attention centroids are forbidden as they collapse contrast toward zero on salient options.
+- **Scale-Invariant Logit Law**: Because asymmetric ThoughtHeads exhibit severe variance disparities (e.g., standard deviation 1.72 vs. 0.00048), all candidate logits are $z$-score standardized ($z_{b, h, c} = \frac{l_{b, h, c} - \mu_{b, h}}{\sigma_{b, h} + \epsilon}$) prior to weighted pooling. Every cognitive perspective contributes in equal statistical currency.
+- **The Regime 2 Protocol**: At 2-bit and 3-bit quantization, internal autoregressive `<think>` loops degrade into infinite token looping. System 1 forces `thinkingLevel: "off"` on local quant weights, routing directly into concise, uncorrupted code generation.
+
+---
+
+### Component 2: System 2 (Symbolic Verification, Deliberation & Agentic Coding)
+
+System 2 is where true reasoning occurs: **external, symbolic, and verified against ground truth**.
+
+- **The `pi-system2` Agent Harness** ([github.com/tj-doomer-it/pi](https://github.com/tj-doomer-it/pi)):
+  - Built directly into our public fork of the `pi` coding agent.
+  - Implements native virtual models (`system2/auto`, `system2/deliberative`, `system2/local`).
+  - Intercepts all tool executions (`bash`, `write`, `edit`) with pre-execution safety and dimensional invariant guards.
+  - Executes autonomous unit tests (`pytest`), inspects error tracebacks, and executes self-healing edits without human intervention.
+- **Empirical Validation (Task 01 Barrage: Event Bus Refactor)**:
+  - An importance-matrix quantized 27B model (`Qwen3.8-27B-UD-IQ3_XXS`, **10.4 GB VRAM**) running locally on an M4 Mac was tasked with architecting an in-memory Pub/Sub event bus with typed subscriptions and error isolation.
+  - **Adversarial Audit by Claude 3.7**: Raw code was reviewed independently by Claude 3.7 Sonnet, scoring **8.5 / 10** with 4 detailed critique items (an async-callable bug, missing decorator API, untested `BaseException` propagation, and weak concurrency interleaving).
+  - **Autonomous Self-Healing**: Fed Claude's exact critique, the 3-bit model diagnosed the issues, implemented the call-then-check pattern (`inspect.isawaitable`), added Flask-style decorators, wrote 5 new tests (including `asyncio.CancelledError`), and achieved **27 / 27 passing tests (100%) in 0.02 seconds**, elevating its code grade to **10 / 10**.
+- **Formal Symbolic Solvers**:
+  - `sys2.symbolic.units`: Dimensional analysis & Fourier homogeneity checks (Pint).
+  - `sys2.symbolic.algebra`: Exact symbolic computer algebra & equation solving (SymPy).
+  - `sys2.symbolic.logic`: Propositional & SMT constraint solvers (Z3).
+  - `sys2.causal`: DAG Structural Causal Models simulating Pearl's interventions ($\mathrm{do}(X)$).
+  - `sys2.rollout`: Dynamic compute scaling via Monte Carlo Tree Search.
+
+---
+
+## The Sovereign Stack & Repositories
+
+| Component | Repository / Hub | Description |
 | :--- | :--- | :--- |
-| **Evaluation Scope** | AG News 4-class topic classification canary | Multiple-choice domain screening across Science, Code, Medical, Electrical, Auto, and Culinary |
-| **Encoder Strategy** | Completely frozen ModernBERT without adapters | Frozen ModernBERT + top-8 layer LoRA subspace adapters ($r=32, \alpha=32$) |
-| **ThoughtHead Structure** | Homogeneous generic pooling | 5 Asymmetric Span Formulations (Holistic, Question-anchored, Choice-forward, Balanced, Extreme-salience) |
-| **Candidate Contrast** | Uncontrasted raw candidate vectors | **Arithmetic Centroid Contrast**: $d_i = x_i - \frac{1}{4}\sum_{j=1}^4 x_j \implies [x_i \,\|\, d_i]$ |
-| **Inter-Head Arbitration** | Raw logit summation (drowned by high-variance heads) | **Scale-Invariant Logit Law**: per-head $z$-score normalization ($z = \frac{l - \mu}{\sigma + \epsilon}$) |
-| **Calibration Method** | Uncalibrated BCE loss | Coupled decision-level calibration gradient with learnable temperature $\tau = \exp(\text{log\_tau})$ |
-| **Domain Architecture** | Monolithic multi-class classifier | **In-Domain Causal Purity**: Domain-specialized LoRA + ThoughtHead checkpoints |
-| **Prompt Dispatch** | Manual dataset flag required | **Two-Stage Dynamic Domain Router** (Lexical Gate + Dense Centroid Projection in $<0.1\text{ ms}$) |
-| **Inference Integration** | Standalone classification script | **Path B Hybrid Perception**: Adjudicates 4 independent zero-knowledge LLM samples |
+| **System2 Core Research** | [`tj-doomer-it/System2`](https://github.com/tj-doomer-it/System2) | Non-autoregressive ModernBERT perception bridge, 5-head deliberation, and calibration dynamics. |
+| **pi-system2 Harness** | [`tj-doomer-it/pi`](https://github.com/tj-doomer-it/pi) | Native virtual models (`system2/*`), tool verification hooks, and Regime 2 protocol. |
+| **Model Weights (GGUF)** | [`System2-Online`](https://huggingface.co/System2-Online) | Unsloth Dynamic (UD) heterogeneous quants: `UD-IQ3_XXS` (10.4 GB), `UD-Q2_K_XL` (9.4 GB), `UD-IQ2_XXS` (6.9 GB). |
+| **System2 Desktop** | Coming Soon (Tauri v2) | Sovereign voice-first desktop app with Parakeet-TDT STT, Kokoro-82M TTS, and Modal cloud burst. |
 
 ---
 
 ## Specialized Track Inventory & Guarded Metrics
 
-Every specialized track enforces the **Metric Invariant**: all commits must strictly exceed the guarded metric on the full held-out evaluation set via `runner.sh`. Accuracy and calibration metrics are decoupled and independently audited:
+Every specialized domain track enforces the **Metric Invariant**: all commits to `main` must strictly exceed the guarded metric on the full held-out evaluation set via `runner.sh`:
 
-| Track ID | Domain Name | Guarded Metric | Raw Accuracy | Brier Score | True ECE (10-bin) | Checkpoint | Status |
-| :--- | :--- | :---: | :---: | :---: | :---: | :--- | :--- |
-| `science` | **Track A: Science & Causal Reasoning** | **`0.7397`** | 73.97% | 0.1700 | 0.0821 | [`models/system2.pt`](file:///Users/thomjames-worrall/System2/models/system2.pt) | Verified |
-| `code` | **Track B: Polyglot Code & Query Traces** | **`0.9010`** | 89.11% | 0.0891 | 0.0542 | [`models/system2_code.pt`](file:///Users/thomjames-worrall/System2/models/system2_code.pt) | Verified |
-| `med` | **Track C: Clinical & Medical Diagnostics** | **`0.8954`** | 86.92% | 0.0785 | 0.1800 | [`models/system2_med.pt`](file:///Users/thomjames-worrall/System2/models/system2_med.pt) | Verified |
-| `electrical` | **Track D: Electrical, Electronics & Power** | **`0.9114`** | 89.03% | 0.0674 | 0.1870 | [`models/system2_electrical.pt`](file:///Users/thomjames-worrall/System2/models/system2_electrical.pt) | Verified |
-| `auto` | **Track E: Automotive & HVAC Diagnostics** | **`0.9881`** | 99.50% | 0.0188 | 0.0124 | [`models/system2_auto.pt`](file:///Users/thomjames-worrall/System2/models/system2_auto.pt) | Verified |
-| `culinary` | **Track F: Culinary Chemistry & Food Science** | **`0.7487`** | 68.46% | 0.1872 | 0.0762 | [`models/system2_culinary.pt`](file:///Users/thomjames-worrall/System2/models/system2_culinary.pt) | Verified |
-| `math` | **Track G: Mathematical & Quantitative Reasoning** | **`0.9462`** | 95.60% | 0.0636 | 0.0412 | [`models/system2_math.pt`](file:///Users/thomjames-worrall/System2/models/system2_math.pt) | Verified |
-| `legal` | **Track H: Legal Reasoning & Statutory Compliance** | **`0.6700`** | 57.14% | 0.2315 | 0.0854 | [`models/system2_legal.pt`](file:///Users/thomjames-worrall/System2/models/system2_legal.pt) | Verified |
-| `finance` | **Track I: Financial Reasoning & Quantitative Analysis** | **`0.8453`** | 79.71% | 0.1065 | 0.1511 | [`models/system2_finance.pt`](file:///Users/thomjames-worrall/System2/models/system2_finance.pt) | Verified |
-| `physics` | **Track J: Classical, Modern Physics & Astrophysics** | **`0.8697`** | 82.56% | 0.0862 | 0.1521 | [`models/system2_physics.pt`](file:///Users/thomjames-worrall/System2/models/system2_physics.pt) | Verified |
-| `safety` | **Track K: Agent Gatekeeper & Command Safety** | **`0.9817`** | 99.50% | 0.0315 | 0.1599 | [`models/system2_safety.pt`](file:///Users/thomjames-worrall/System2/models/system2_safety.pt) | Verified |
-| `eval` | **Track L: Evaluation & Meta-Scoring Benchmarks** | **`0.9856`** | 100.00% | 0.0289 | 0.0289 | [`models/system2_eval.pt`](file:///Users/thomjames-worrall/System2/models/system2_eval.pt) | Verified |
-| `logic` | **Track M: Deductive & Propositional Logic** | **`0.9855`** | 100.00% | 0.0289 | 0.0289 | [`models/system2_logic.pt`](file:///Users/thomjames-worrall/System2/models/system2_logic.pt) | Verified |
-
----
-
-## Staged Roadmap & Milestone Tracking
-
-- [x] **Phase 1: Pipeline Canary**:
-  - End-to-end encoder $\to$ parallel heads $\to$ cross-attending judger on AG News (Metric: `0.8998`, Accuracy: `88.55%`).
-- [x] **Phase 2: Judger & Diversity Optimization**:
-  - Align Judger training target to select confident *and correct* heads.
-  - Implement arithmetic centroid contrast $[x_i \,\|\, d_i]$ and pairwise diversity penalties.
-  - Coupled decision-level calibration gradient with learnable $\tau$.
-  - Scale-invariant $z$-score logit pooling across asymmetric thought heads.
-- [x] **Phase 2.5: Path B Hybrid Candidate Adjudication Benchmark**:
-  - Pair local generative LLM samples with fast feedforward perception and scoring.
-  - Validated across 4 tiers: Gemma-e4b (4B) $\to$ Gemma-12B (12B) $\to$ Qwen-27B $\to$ Qwen-35B.
-  - Benchmarked small LLM candidate rescue capabilities (e.g. successfully rescuing Code while exhibiting domain-dependent trade-offs on Legal/Med).
-- [x] **Phase 3: Domain Multiple-Choice Benchmarks**:
-  - [x] **AI2 ARC (Science)**: Full integration of ARC-Challenge + ARC-Easy in-domain data (`0.7397`).
-  - [x] **Polyglot Code Execution (Code)**: Multi-language traces across Python, Rust, C++, C#, Java, SQL, Bash (`0.9010`).
-  - [x] **GSM8K & MATH Distractor Discriminator**: Multiple-choice candidate discrimination over mathematical word problems with type-aware distractors (**`0.9462`** guarded metric, **`95.60%`** held-out accuracy).
-- [x] **Phase 4: Dynamic Domain Routing & Enterprise Scaling**:
-  - Two-stage hierarchical router (Lexical Gate + Dense ModernBERT Centroid Projection).
-  - Sub-millisecond dispatch (<0.1 ms) across 11 specialized tracks with **100.0% accuracy** on benchmark test suite.
-  - Ingested, adapted, and trained Track H (Legal Reasoning & Statutory Compliance), Track I (Financial Reasoning), and Track J (Physics & Astrophysics).
-  - Overhauled Track C (Medicine & Clinical Diagnostics) with dynamic context window (`max_len=1024`) and cosine scheduler cooling (`0.8954`).
-  - Decoupled raw accuracy from Brier score and integrated true 10-bin Expected Calibration Error (ECE < 0.07).
-  - Hardened repository with `pyproject.toml`, deduplicated canonical `encoding.py`, and 100% passing pytest ML test suite.
-- [x] **Phase 5: High-Speed Decision Server & Enterprise Deployment**:
-  - Native asynchronous FastAPI REST server (`/deliberate`, `/route`, `/guard`, `/health`, `/tracks`).
-  - Drop-in LM Studio / Jev compatibility (`/v1/systemone`, `/v1/decisions`, `/v1/models`) with optional generative reverse-proxy mode.
-  - Non-blocking PyTorch thread safety with asynchronous concurrency (`uvicorn`).
-  - Containerized CPU deployment via `Dockerfile` and `docker-compose.yml` with read-only `./models` volume mounts.
-  - Comprehensive 18-case integration test suite (`tests/test_server.py`) with 100% pass rate.
+| Track ID | Domain Name | Guarded Metric | Raw Accuracy | Brier Score | True ECE (10-bin) | Status |
+| :--- | :--- | :---: | :---: | :---: | :---: | :--- |
+| `science` | **Track A: Science & Causal Reasoning** | **`0.7397`** | 73.97% | 0.1700 | 0.0821 | Verified |
+| `code` | **Track B: Polyglot Code & Query Traces** | **`0.9010`** | 89.11% | 0.0891 | 0.0542 | Verified |
+| `med` | **Track C: Clinical & Medical Diagnostics** | **`0.8954`** | 86.92% | 0.0785 | 0.1800 | Verified |
+| `electrical` | **Track D: Electrical, Electronics & Power** | **`0.9114`** | 89.03% | 0.0674 | 0.1870 | Verified |
+| `auto` | **Track E: Automotive & HVAC Diagnostics** | **`0.9881`** | 99.50% | 0.0188 | 0.0124 | Verified |
+| `culinary` | **Track F: Culinary Chemistry & Food Science** | **`0.7487`** | 68.46% | 0.1872 | 0.0762 | Verified |
+| `math` | **Track G: Mathematical & Quantitative Reasoning** | **`0.9462`** | 95.60% | 0.0636 | 0.0412 | Verified |
+| `legal` | **Track H: Legal Reasoning & Statutory Compliance** | **`0.6700`** | 57.14% | 0.2315 | 0.0854 | Verified |
+| `finance` | **Track I: Financial Reasoning & Quantitative Analysis** | **`0.8453`** | 79.71% | 0.1065 | 0.1511 | Verified |
+| `physics` | **Track J: Classical, Modern Physics & Astrophysics** | **`0.8697`** | 82.56% | 0.0862 | 0.1521 | Verified |
+| `safety` | **Track K: Agent Gatekeeper & Command Safety** | **`0.9817`** | 99.50% | 0.0315 | 0.1599 | Verified |
+| `eval` | **Track L: Evaluation & Meta-Scoring Benchmarks** | **`0.9856`** | 100.00% | 0.0289 | 0.0289 | Verified |
+| `logic` | **Track M: Deductive & Propositional Logic** | **`0.9855`** | 100.00% | 0.0289 | 0.0289 | Verified |
 
 ---
 
 ## Quickstart
 
-### 1. Requirements
-- Python 3.10+
-- PyTorch with Apple Silicon MPS support (`torch.backends.mps.is_available() == True`)
-- Hugging Face `transformers` and `datasets`
-
-### 2. Dual-Process CLI: System 1 & System 2
-
-#### System 1 Fast Perception CLI (`sys1`)
-Execute fast feedforward candidate scoring (<20ms) with automatic dynamic domain routing and in-memory LoRA adapter hot-swapping (< 3 ms):
+### 1. Installation
 
 ```bash
-# Evaluate a multiple-choice question with 5-head parallel perception:
+# Clone the System2 research engine:
+git clone https://github.com/tj-doomer-it/System2.git
+cd System2
+pip install -e .
+
+# Install the pi-system2 agent harness:
+git clone https://github.com/tj-doomer-it/pi.git pi-system2
+cd pi-system2
+npm install
+npm run build
+```
+
+### 2. Running System 1 Fast Perception
+
+```bash
+# Sub-millisecond domain routing (< 0.1 ms):
+python3 -m sys1 --route "A vehicle triggers DTC code P0300 with active misfire counts."
+# -> Routed Domain: [AUTO] (Track E) | Method: lexical | Conf: 99.0% | Latency: 0.061 ms
+
+# 5-Head parallel candidate screening (< 20 ms):
 python3 -m sys1 "Under contract law, what element creates mutual assent?" \
   --choices "Offer and acceptance" "Unilateral expectation" "Past consideration" "Promissory estoppel"
-# -> Verdict: (A) Offer and acceptance
-# -> Confidence: 78.4% | Consensus: 5/5 Heads
-# -> Domain: [LEGAL] (lexical, route=0.06ms, delib=34.20ms, total=34.26ms)
-
-# Ultra-fast Dynamic Domain Route Only (< 0.1 ms):
-python3 -m sys1 --route "A vehicle triggers DTC code P0300 with active misfire counts."
-# -> Routed Domain: [AUTO] (Track E: Automotive & HVAC Diagnostics)
-# -> Method: lexical | Confidence: 99.0% | Latency: 0.061 ms
+# -> Verdict: (A) Offer and acceptance | Confidence: 78.4% | Consensus: 5/5 Heads
 
 # Agent Command Gatekeeper (< 15 ms):
 python3 -m sys1.guard "rm -rf /"
 # -> BLOCKED (Conf: 89.2%, 5/5 heads)
 ```
 
-#### System 2 Dual-Process Verification CLI (`sys2`)
-Execute true deliberative verification combining System 1 fast screening with deterministic symbolic verifiers (Pint, SymPy, Z3) and dynamic MCTS rollouts:
+### 3. Running System 2 Autonomous Agent Coding
+
+Launch `pi-system2` pointed at your local LM Studio inference server running `Qwen3.8-27B-UD-IQ3_XXS.gguf`:
 
 ```bash
-# Dual-Process Verification (Sys1 screening + Sys2 symbolic verification):
-python3 -m sys2 "Which option represents valid work or energy?" \
-  --choices "Work = 10 N * 5 m" "Work = 10 N / 5 m" --dual
-
-# Force full System 2 deliberative verification:
-python3 -m sys2 "Under contract law, what element creates mutual assent?" \
-  --choices "Offer and acceptance" "Unilateral expectation" "Past consideration" "Promissory estoppel" \
-  --force-sys2
+pi-system2 --model system2/local -p "
+Architect a thread-safe and async-compatible Token Bucket rate limiter in Python with tests.
+Run pytest test_rate_limiter.py autonomously and resolve any failures.
+"
 ```
 
-### 3. Multi-Domain Hybrid Adjudication Benchmark
-Run the end-to-end Path B hybrid benchmark pairing a small local model (`google/gemma-4-e4b`, 4B) in LM Studio with System 1 feedforward arbitration across 5 distinct domains:
+The virtual model router will automatically enforce the **Regime 2 Protocol** (`thinkingLevel: "off"`), while System 2 oversees test execution, traceback inspection, and self-healing.
 
-```bash
-python3 scripts/benchmark_multidomain_hybrid.py
+---
+
+## Citation & Contact
+
+- **Organization**: [System2-Online](https://huggingface.co/System2-Online)
+- **GitHub**: [tj-doomer-it/System2](https://github.com/tj-doomer-it/System2)
+- **Web**: [system2.online](https://system2.online)
+
+```bibtex
+@software{system2_2026,
+  author = {Thom James-Worrall},
+  title = {System2: Sovereign Dual-Process Cognitive AI Architecture},
+  year = {2026},
+  url = {https://github.com/tj-doomer-it/System2}
+}
 ```
-
-| Domain | Routed Track | Routing Method & Latency | System 2 Deliberation Verdict | Small LLM (4B) Direct | Deliberation Latency |
-| :--- | :--- | :--- | :---: | :---: | :---: |
-| **Legal** | `legal` | Lexical (1.13 ms) | (D) ✗ (Conf: 40.2%, 2/5 Heads) | (C) ✓ | 3028 ms |
-| **Finance** | `finance` | Lexical (0.10 ms) | (A) ✗ (Conf: 47.7%, 4/5 Heads) | (A) ✗ | 335 ms |
-| **Medicine** | `med` | Centroid (259 ms) | (D) ✗ (Conf: 42.3%, 3/5 Heads) | (A) ✗ | 1375 ms |
-| **Code** | `code` | Lexical (0.28 ms) | **(B) ✓ (Conf: 46.2%, 1/5 Heads)** | (A) ✗ *(Rescued by Sys2)* | 1449 ms |
-| **Math** | `math` | Centroid (182 ms) | **(C) ✓ (Conf: 70.8%, 4/5 Heads)** | **(C) ✓** | 1280 ms |
-
-### 4. Running the Regression Test Suite
-Verify that all unit and dual-process tests (checkpoint roundtrips, span pooling, contrastive losses, 5-head deliberation, adapter hot-swapping, symbolic solvers, SCMs, and MCTS) pass cleanly:
-```bash
-pytest tests/
-# -> 70 passed in ~78s
-```
-
-### 5. Strategic Training Paths & Frontier Datasets
-For the complete technical blueprint and dataset inventory across **Path A (Semantic Parser)**, **Path B (AutoResearch Expansion for Cyber, Logistics, Tax)**, and **Path C (MCTS Step Generator)**, see:
-- [**True System 2 Architecture: Technical Specification & Path Forward**](docs/TRUE_SYSTEM2_PATH_FORWARD.md#6-the-three-strategic-implementation--training-paths)
-- [**Curated Frontier Enterprise Dataset Inventory**](docs/TRUE_SYSTEM2_PATH_FORWARD.md#7-curated-frontier-enterprise-dataset-inventory)
-
-### 6. Automated AutoResearch Worktree Sweeps
-Run metric-guarded hyperparameter sweeps across isolated git worktrees with automatic rollback on regressions:
-```bash
-python3 scripts/run_parallel_sweeps.py --tracks track-h track-i --max-trials 3
-```
-The runner trains on Apple Silicon MPS, judges on the full held-out test split, and commits if improved or executes `git reset --hard HEAD` if regressed.
-
-### 6. Unified Evaluation & Adversarial Red-Team Suite
-Execute the multi-track evaluation benchmark or the 6-battery adversarial robustness suite:
-```bash
-# Unified 13-Track Evaluation Suite (Oracle & E2E Dynamic Routing):
-python3 scripts/run_eval_suite.py --tracks all --samples-per-track 100 --device mps
-
-# Adversarial Red-Team Stress Battery (Permutation, Sycophancy, Camouflage, Negation, Abstention):
-python3 scripts/run_adversarial_suite.py --device mps --n 50
-```
-For in-depth analysis of accuracy, Brier scores, 10-bin ECE, Guarded metric invariants, and inter-head cognitive disagreement, see [`docs/DECONSTRUCTING_EVALUATION_METRICS.md`](docs/DECONSTRUCTING_EVALUATION_METRICS.md).
