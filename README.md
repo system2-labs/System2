@@ -191,6 +191,27 @@ The virtual model router will automatically enforce the **Regime 2 Protocol** (`
 
 ---
 
+## Licensing & Enterprise Deployment (Open-Core)
+
+System2 is developed under a dual-tier **Open-Core** model:
+
+### 1. Open Source Community Edition (Apache 2.0)
+- The core research architecture, `pi-system2` agent harness, and public edge weights are **100% free and open-source under the Apache 2.0 license**.
+- Free for individual developers, hackers, researchers, and open-source projects.
+- Perpetual, air-gapped, zero telemetry.
+
+### 2. Commercial Enterprise Tier
+While the open-source code is provided *"AS IS"* without warranty, enterprise engineering teams deploying System2 at scale require commercial guarantees, custom training, and governance:
+- **Commercial Indemnification & SLAs**: Enterprise legal compliance, guaranteed uptime, and dedicated security SLAs.
+- **Custom In-Domain ModernBERT Weights**: Fine-tuned on your organization's private proprietary codebases, monorepos, and internal APIs.
+- **Fleet Governance & Policy Enforcement**: Centralized administrative dashboard to audit agent tool calls, whitelist allowed bash operations, and enforce corporate security policies across hundreds of local developer machines.
+- **Air-Gapped VPC & Defense Packaging**: Turnkey containerized deployments for classified, defense, healthcare (HIPAA), and financial (SOC 2) environments.
+
+For commercial licensing, enterprise proofs-of-concept, and custom training agreements:
+👉 Contact: **`enterprise@system2.online`** or visit **[system2.online/enterprise](https://system2.online)**
+
+---
+
 ## Citation & Contact
 
 - **Organization**: [System2-Online](https://huggingface.co/System2-Online)
