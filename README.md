@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License: Apache 2.0"></a>
-  <a href="https://github.com/system2-labs/pi"><img src="https://img.shields.io/badge/Harness-pi--system2-orange.svg" alt="GitHub: pi-system2"></a>
+  <a href="https://github.com/system2-labs/system2-agent"><img src="https://img.shields.io/badge/Harness-system2--agent-orange.svg" alt="GitHub: system2-agent"></a>
   <a href="https://huggingface.co/System2-Online"><img src="https://img.shields.io/badge/Hugging%20Face-System2--Online-yellow.svg" alt="Hugging Face: System2-Online"></a>
   <a href="https://github.com/system2-labs/System2"><img src="https://img.shields.io/badge/Claude%203.7%20Audit-10%2F10%20(27%2F27%20Pass)-brightgreen.svg" alt="Claude 3.7 Audit: 10/10"></a>
 </p>
@@ -55,7 +55,7 @@ The result is **sovereign, air-gapped, frontier-quality software engineering** r
 ┌───────────────────────────────────────────────────────────────────────────────────────────┐
 │                  SYSTEM 2: SYMBOLIC VERIFICATION & AUTONOMOUS DELIBERATION                │
 │                                                                                           │
-│   1. pi-system2 Agent Harness (github.com/system2-labs/pi):                               │
+│   1. system2-agent Harness (github.com/system2-labs/system2-agent):                       │
 │      • Deterministic tool guards: pre-execution safety validation on bash, write, edit    │
 │      • Closed-loop autonomous test runner: executes pytest, parses tracebacks             │
 │      • Autonomous self-healing loop: iteratively diagnoses and fixes test failures       │
@@ -91,8 +91,8 @@ System 1 operates as the sensory perception cortex of the architecture. It is st
 
 System 2 is where true reasoning occurs: **external, symbolic, and verified against ground truth**.
 
-- **The `pi-system2` Agent Harness** ([github.com/system2-labs/pi](https://github.com/system2-labs/pi)):
-  - Built directly into our public fork of the `pi` coding agent.
+- **The `system2-agent` Harness** ([github.com/system2-labs/system2-agent](https://github.com/system2-labs/system2-agent)):
+  - Built directly into our public agent fork.
   - Implements native virtual models (`system2/auto`, `system2/deliberative`, `system2/local`).
   - Intercepts all tool executions (`bash`, `write`, `edit`) with pre-execution safety and dimensional invariant guards.
   - Executes autonomous unit tests (`pytest`), inspects error tracebacks, and executes self-healing edits without human intervention.
@@ -114,7 +114,7 @@ System 2 is where true reasoning occurs: **external, symbolic, and verified agai
 | Component | Repository / Hub | Description |
 | :--- | :--- | :--- |
 | **System2 Core Research** | [`system2-labs/System2`](https://github.com/system2-labs/System2) | Non-autoregressive ModernBERT perception bridge, 5-head deliberation, and calibration dynamics. |
-| **pi-system2 Harness** | [`system2-labs/pi`](https://github.com/system2-labs/pi) | Native virtual models (`system2/*`), tool verification hooks, and Regime 2 protocol. |
+| **system2-agent Harness** | [`system2-labs/system2-agent`](https://github.com/system2-labs/system2-agent) | Native virtual models (`system2/*`), tool verification hooks, and Regime 2 protocol. |
 | **Model Weights (GGUF)** | [`System2-Online`](https://huggingface.co/System2-Online) | Unsloth Dynamic (UD) heterogeneous quants: `UD-IQ3_XXS` (10.4 GB), `UD-Q2_K_XL` (9.4 GB), `UD-IQ2_XXS` (6.9 GB). |
 | **System2 Desktop** | Coming Soon (Tauri v2) | Sovereign voice-first desktop app with Parakeet-TDT STT, Kokoro-82M TTS, and Modal cloud burst. |
 
@@ -152,9 +152,9 @@ git clone https://github.com/system2-labs/System2.git
 cd System2
 pip install -e .
 
-# Install the pi-system2 agent harness:
-git clone https://github.com/system2-labs/pi.git pi-system2
-cd pi-system2
+# Install the system2-agent harness:
+git clone https://github.com/system2-labs/system2-agent.git
+cd system2-agent
 npm install
 npm run build
 ```
