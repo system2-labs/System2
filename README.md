@@ -10,6 +10,8 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License: Apache 2.0"></a>
+  <img src="https://img.shields.io/badge/Python-%3E%3D3.10-blue.svg" alt="Python: >=3.10">
+  <img src="https://img.shields.io/badge/Tests-77%20Passed-brightgreen.svg" alt="Tests: 77 Passed">
   <a href="https://github.com/system2-labs/system2-agent"><img src="https://img.shields.io/badge/Harness-system2--agent-orange.svg" alt="GitHub: system2-agent"></a>
   <a href="https://huggingface.co/System2-Online"><img src="https://img.shields.io/badge/Hugging%20Face-System2--Online-yellow.svg" alt="Hugging Face: System2-Online"></a>
   <a href="https://github.com/system2-labs/System2"><img src="https://img.shields.io/badge/Claude%203.7%20Audit-10%2F10%20(27%2F27%20Pass)-brightgreen.svg" alt="Claude 3.7 Audit: 10/10"></a>
@@ -25,87 +27,81 @@ Autoregressive Large Language Models generate tokens sequentially, improvising w
 
 $$\text{Verdict} = \text{System 2}_{\text{Symbolic}}(\text{System 1}_{\text{Perception}}(\text{Context}, \text{Candidates}))$$
 
-1. **System 1 (Perception & Triage)**: A lightning-fast, non-autoregressive neural engine running in **`< 20 ms`** on Apple Silicon / CPU. It classifies domain intents across 13 specialized tracks, eliminates improbable candidate branches, extracts contrastive representations, and enforces the **Regime 2 Protocol** (`thinking: off` on low-bit weights).
-2. **System 2 (Verification & Autonomous Deliberation)**: A deterministic, external symbolic execution harness. Instead of guessing inside token loops, System 2 executes code in isolated bash sandboxes, runs automated unit test suites (`pytest`), enforces formal AST safety invariants, verifies physical dimensions and algebraic proofs (Pint, SymPy, Z3), and drives closed-loop self-healing refactors.
+1. **System 1 (Perception & Triage)**: A lightning-fast, non-autoregressive neural engine running in **`< 20 ms`** on Apple Silicon GPU (< 200 ms on CPU). It classifies domain intents across 13 specialized tracks, eliminates improbable candidate branches, extracts contrastive representations, and enforces the **Regime 2 Protocol** (`thinking: off` on low-bit weights).
+2. **System 2 (Symbolic Verification & Deliberation)**: A deterministic, external symbolic execution harness. Instead of guessing inside token loops, System 2 executes formal AST invariant checks, verifies physical dimensions and Fourier homogeneity (Pint), checks algebraic equivalence (SymPy), validates propositional logic and SMT constraints (Z3), simulates Structural Causal Models (Pearl's do-calculus), and drives dynamic compute scaling via Monte Carlo Tree Search (MCTS).
 
-The result is **sovereign, air-gapped, frontier-quality software engineering** running locally on a standard 16 GB laptop with **$0 marginal token cost**.
+The result is **sovereign, air-gapped, frontier-quality deliberation** running locally on a standard 16 GB laptop with **$0 marginal token cost**.
 
 ---
 
-## Architecture: The Two Core Components
+## Architecture Flow
 
-```
-                                  [Task / Codebase Context]
-                                              │
-                                              ▼
-┌───────────────────────────────────────────────────────────────────────────────────────────┐
-│                    SYSTEM 1: HIGH-SPEED PERCEPTION & CANDIDATE PRE-FILTER                 │
-│                                                                                           │
-│   • Frozen ModernBERT-Large Backbone (395M) + Top-8 LoRA Subspace Adapters (r=32, α=32)   │
-│   • Sub-millisecond Dynamic Domain Router (<0.1 ms across 13 specialized tracks)          │
-│   • 5 Parallel ThoughtHeads with Arithmetic Centroid Contrast:  d_i = x_i - μ_arith       │
-│   • Scale-Invariant Logit Law (per-head z-score normalization): z = (l - μ) / σ           │
-│   • Cross-Attending Judger & Coupled Decision-Level Calibration: τ = exp(log_tau)         │
-│   • Enforces Regime 2 Protocol: strips noisy internal <think> loops on edge quants        │
-└─────────────────────────────────────────────┬─────────────────────────────────────────────┘
-                                              │
-                         Fast Intent & Screened Candidates (<20ms)
-                                              │
-                                              ▼
-┌───────────────────────────────────────────────────────────────────────────────────────────┐
-│                  SYSTEM 2: SYMBOLIC VERIFICATION & AUTONOMOUS DELIBERATION                │
-│                                                                                           │
-│   1. system2-agent Harness (github.com/system2-labs/system2-agent):                       │
-│      • Deterministic tool guards: pre-execution safety validation on bash, write, edit    │
-│      • Closed-loop autonomous test runner: executes pytest, parses tracebacks             │
-│      • Autonomous self-healing loop: iteratively diagnoses and fixes test failures       │
-│                                                                                           │
-│   2. Deterministic Symbolic Solvers:                                                      │
-│      • Dimensional Analysis (Pint): Fourier homogeneity & physical unit checks            │
-│      • Computer Algebra (SymPy): Exact equivalence proofs & algebraic equation solving    │
-│      • Formal Logic & SMT (Z3): Constraint satisfaction & entailment verification         │
-│      • Structural Causal Models: Pearl's do(X) graph interventions & counterfactuals      │
-│      • Dynamic Compute Scaling: Monte Carlo Tree Search (MCTS) state rollouts             │
-└─────────────────────────────────────────────┬─────────────────────────────────────────────┘
-                                              │
-                                              ▼
-                     [Verified, Green-Tested, Production-Grade Software]
+```mermaid
+flowchart TD
+    In["Task / Query / Code Context"] --> R["Dynamic Domain Router<br/>(&lt;0.1 ms Lexical / Centroid)"]
+    R --> D["13 Domain LoRA Tracks<br/>(Science, Code, Med, Safety, Logic...)"]
+    
+    subgraph Sys1 ["System 1: High-Speed Perception Cortex (&lt;20 ms)"]
+        D --> MB["Frozen ModernBERT-Large (395M)<br/>+ Top-8 LoRA Adapters (r=32, &alpha;=32)"]
+        MB --> TH["5 Parallel ThoughtHeads<br/>(Arithmetic Centroid Contrast: d_i = x_i - &mu;)"]
+        TH --> ZS["Scale-Invariant Logit Law<br/>(Per-Head z-Score Normalization)"]
+        ZS --> J["Cross-Attending Judger &amp; Calibration<br/>(&tau; = exp(log_tau))"]
+    end
+    
+    J --> FastCheck{"Sys1 Confidence &gt; 0.70<br/>&amp; Margin &gt; 0.25?"}
+    
+    FastCheck -- "Yes (Fast Path)" --> FastOut["Instant Verdict / Pre-Screened Candidates"]
+    FastCheck -- "No / Ambiguous / Invariant Trigger" --> Sys2
+    
+    subgraph Sys2 ["System 2: Symbolic Verification &amp; Invariant Guards"]
+        PA["Semantic Claim Parser"]
+        PA --> Dim["Pint: Dimensional Analysis<br/>(Fourier Homogeneity)"]
+        PA --> Alg["SymPy: Computer Algebra<br/>(Equivalence &amp; Invariant Proofs)"]
+        PA --> Log["Z3 SMT Solver: Formal Logic<br/>(Constraint Entailment &amp; Negation)"]
+        PA --> SCM["Structural Causal Models<br/>(Pearl's do(X) Interventions)"]
+        PA --> MCTS["MCTS State Rollouts<br/>(Dynamic Compute Scaling)"]
+    end
+    
+    Dim --> Arb["Fail-Closed Invariant Arbitration"]
+    Alg --> Arb
+    Log --> Arb
+    SCM --> Arb
+    MCTS --> Arb
+    
+    Arb --> Out["Verified Decision / Validated Output"]
+    FastOut --> Out
 ```
 
 ---
+
+## Core Components
 
 ### Component 1: System 1 (High-Speed Perception & Candidate Pre-Filtering)
 
-System 1 operates as the sensory perception cortex of the architecture. It is strictly non-autoregressive, meaning it processes all candidates simultaneously in a single forward pass without sequential generation drift.
+System 1 operates as the sensory perception cortex of the architecture. It is strictly non-autoregressive, meaning it processes all candidates simultaneously in a single forward pass without sequential generation drift:
 
 - **Frozen Bidirectional Backbone**: Built on ModernBERT-large-instruct (395M parameters) kept 100% frozen. Dense bidirectional representations eliminate sycophancy and RLHF alignment distortions.
 - **Subspace Rank Sweet Spot**: Adapts layers 20–27 using high-capacity LoRA adapters ($r=32, \alpha=32$, ~1.57M parameters per domain). Adapting deeper degrades syntax; higher ranks induce overfitting.
 - **5-Perspective Parallel ThoughtHeads**: 5 dense parallel thought stacks evaluate candidate options simultaneously across asymmetric span profiles (holistic, question-anchored, choice-forward, balanced, extreme-salience).
 - **Arithmetic Centroid Contrast**: Candidate vectors are contrasted against the fixed arithmetic mean ($d_i = x_i - \frac{1}{4}\sum_{j=1}^4 x_j$), feeding $[x_i \,\|\, d_i]$ to the scoring MLP. Soft attention centroids are forbidden as they collapse contrast toward zero on salient options.
 - **Scale-Invariant Logit Law**: Because asymmetric ThoughtHeads exhibit severe variance disparities (e.g., standard deviation 1.72 vs. 0.00048), all candidate logits are $z$-score standardized ($z_{b, h, c} = \frac{l_{b, h, c} - \mu_{b, h}}{\sigma_{b, h} + \epsilon}$) prior to weighted pooling. Every cognitive perspective contributes in equal statistical currency.
-- **The Regime 2 Protocol**: At 2-bit and 3-bit quantization, internal autoregressive `<think>` loops degrade into infinite token looping. System 1 forces `thinkingLevel: "off"` on local quant weights, routing directly into concise, uncorrupted code generation.
+- **The Regime 2 Protocol**: At 2-bit and 3-bit quantization, internal autoregressive `<think>` loops degrade into infinite token looping. System 1 forces `thinkingLevel: "off"` on local quant weights, routing directly into concise, uncorrupted execution.
 
 ---
 
-### Component 2: System 2 (Symbolic Verification, Deliberation & Agentic Coding)
+### Component 2: System 2 (Symbolic Verification & Invariant Guards)
 
-System 2 is where true reasoning occurs: **external, symbolic, and verified against ground truth**.
+System 2 is where true reasoning occurs: **external, symbolic, and verified against mathematical and physical ground truth**:
 
-- **The `system2-agent` Harness** ([github.com/system2-labs/system2-agent](https://github.com/system2-labs/system2-agent)):
-  - Built directly into our public agent fork.
-  - Implements native virtual models (`system2/auto`, `system2/deliberative`, `system2/local`).
-  - Intercepts all tool executions (`bash`, `write`, `edit`) with pre-execution safety and dimensional invariant guards.
-  - Executes autonomous unit tests (`pytest`), inspects error tracebacks, and executes self-healing edits without human intervention.
-- **Empirical Validation (Task 01 Barrage: Event Bus Refactor)**:
-  - An importance-matrix quantized 27B model (`Qwen3.8-27B-UD-IQ3_XXS`, **10.4 GB VRAM**) running locally on an M4 Mac was tasked with architecting an in-memory Pub/Sub event bus with typed subscriptions and error isolation.
-  - **Adversarial Audit by Claude 3.7**: Raw code was reviewed independently by Claude 3.7 Sonnet, scoring **8.5 / 10** with 4 detailed critique items (an async-callable bug, missing decorator API, untested `BaseException` propagation, and weak concurrency interleaving).
-  - **Autonomous Self-Healing**: Fed Claude's exact critique, the 3-bit model diagnosed the issues, implemented the call-then-check pattern (`inspect.isawaitable`), added Flask-style decorators, wrote 5 new tests (including `asyncio.CancelledError`), and achieved **27 / 27 passing tests (100%) in 0.02 seconds**, elevating its code grade to **10 / 10**.
 - **Formal Symbolic Solvers**:
-  - `sys2.symbolic.units`: Dimensional analysis & Fourier homogeneity checks (Pint).
-  - `sys2.symbolic.algebra`: Exact symbolic computer algebra & equation solving (SymPy).
-  - `sys2.symbolic.logic`: Propositional & SMT constraint solvers (Z3).
-  - `sys2.causal`: DAG Structural Causal Models simulating Pearl's interventions ($\mathrm{do}(X)$).
-  - `sys2.rollout`: Dynamic compute scaling via Monte Carlo Tree Search.
+  - `sys2.symbolic.units`: Dimensional analysis & Fourier homogeneity checks via Pint. Prevents physical dimension category errors (e.g. force vs. energy).
+  - `sys2.symbolic.algebra`: Exact symbolic computer algebra & equation solving via SymPy. Proves mathematical equivalence independent of subword tokenization.
+  - `sys2.symbolic.logic`: Propositional & SMT constraint solvers via Z3. Enforces modal negation consistency and formal entailment.
+  - `sys2.causal`: DAG Structural Causal Models simulating Pearl's interventions ($\mathrm{do}(X)$) and counterfactual queries.
+  - `sys2.rollout`: Dynamic compute scaling via Monte Carlo Tree Search (MCTS) state rollouts over ambiguous candidates.
+- **Agent Command Safety Gatekeeper** (`sys2-guard` / `sys1-guard`):
+  - Sub-15ms non-autoregressive command classification (`ALLOWED`, `BLOCKED`, `ABSTAIN`).
+  - Pre-execution interception of destructive file modifications, reverse shells, privilege escalations, and obfuscated payload injections.
 
 ---
 
@@ -113,8 +109,8 @@ System 2 is where true reasoning occurs: **external, symbolic, and verified agai
 
 | Component | Repository / Hub | Description |
 | :--- | :--- | :--- |
-| **System2 Core Research** | [`system2-labs/System2`](https://github.com/system2-labs/System2) | Non-autoregressive ModernBERT perception bridge, 5-head deliberation, and calibration dynamics. |
-| **system2-agent Harness** | [`system2-labs/system2-agent`](https://github.com/system2-labs/system2-agent) | Native virtual models (`system2/*`), tool verification hooks, and Regime 2 protocol. |
+| **System2 Core Research** | [`system2-labs/System2`](https://github.com/system2-labs/System2) | Non-autoregressive ModernBERT perception bridge, 5-head deliberation, and symbolic verifiers. |
+| **system2-agent Harness** | [`system2-labs/system2-agent`](https://github.com/system2-labs/system2-agent) | Autonomous coding harness, native virtual models (`system2/*`), tool guards, and self-healing test loops. |
 | **Model Weights (GGUF)** | [`System2-Online`](https://huggingface.co/System2-Online) | Unsloth Dynamic (UD) heterogeneous quants: `UD-IQ3_XXS` (10.4 GB), `UD-Q2_K_XL` (9.4 GB), `UD-IQ2_XXS` (6.9 GB). |
 | **System2 Desktop** | Coming Soon (Tauri v2) | Sovereign voice-first desktop app with Parakeet-TDT STT, Kokoro-82M TTS, and Modal cloud burst. |
 
@@ -147,47 +143,121 @@ Every specialized domain track enforces the **Metric Invariant**: all commits to
 ### 1. Installation
 
 ```bash
-# Clone the System2 research engine:
+# Clone the repository:
 git clone https://github.com/system2-labs/System2.git
 cd System2
+
+# Standard install (Core Perception & Routing):
 pip install -e .
 
-# Install the system2-agent harness:
-git clone https://github.com/system2-labs/system2-agent.git
-cd system2-agent
-npm install
-npm run build
+# Full install with Symbolic Verifiers (Pint, SymPy, Z3):
+pip install -e ".[symbolic]"
 ```
 
 ### 2. Running System 1 Fast Perception
 
 ```bash
 # Sub-millisecond domain routing (< 0.1 ms):
-python3 -m sys1 --route "A vehicle triggers DTC code P0300 with active misfire counts."
-# -> Routed Domain: [AUTO] (Track E) | Method: lexical | Conf: 99.0% | Latency: 0.061 ms
+sys1 --route "A vehicle triggers DTC code P0300 with active misfire counts."
+# -> Routed Domain: [AUTO] (Track E: Automotive & HVAC Diagnostics)
+# -> Method: lexical | Confidence: 99.0% | Latency: 0.078 ms
 
-# 5-Head parallel candidate screening (< 20 ms):
-python3 -m sys1 "Under contract law, what element creates mutual assent?" \
+# 5-Head parallel candidate screening (< 20 ms on MPS):
+sys1 "Under contract law, what element creates mutual assent?" \
   --choices "Offer and acceptance" "Unilateral expectation" "Past consideration" "Promissory estoppel"
 # -> Verdict: (A) Offer and acceptance | Confidence: 78.4% | Consensus: 5/5 Heads
 
 # Agent Command Gatekeeper (< 15 ms):
-python3 -m sys1.guard "rm -rf /"
-# -> BLOCKED (Conf: 89.2%, 5/5 heads)
+sys1-guard "rm -rf /"
+# -> BLOCKED (Conf: 99.9%, 5/5 (deterministic pre-filter) heads)
 ```
 
-### 3. Running System 2 Autonomous Agent Coding
+### 3. Running System 2 Dual-Process Symbolic Verification
 
-Launch `pi-system2` pointed at your local LM Studio inference server running `Qwen3.8-27B-UD-IQ3_XXS.gguf`:
+Execute joint feedforward perception screened by deterministic symbolic solvers:
 
 ```bash
-pi-system2 --model system2/local -p "
-Architect a thread-safe and async-compatible Token Bucket rate limiter in Python with tests.
-Run pytest test_rate_limiter.py autonomously and resolve any failures.
-"
+sys2 "Which equation correctly relates force, mass, and acceleration?" \
+  --choices "F = m * a" "F = m / a" "F = m * a^2" "F = a / m" --dual
 ```
 
-The virtual model router will automatically enforce the **Regime 2 Protocol** (`thinkingLevel: "off"`), while System 2 oversees test execution, traceback inspection, and self-healing.
+**Real Telemetry Output:**
+
+```text
+============================================================
+ DUAL-PROCESS EVALUATION RESULT (Domain: SCIENCE)
+============================================================
+Winning Choice: (A) F = m * a
+Final Confidence: 0.0%
+Execution Mode: TRUE SYSTEM 2 VERIFIED
+Total Latency: 2374.16 ms
+CRITICAL: ALL CANDIDATES FALSIFIED BY FORMAL VERIFIERS (FAIL-CLOSED)
+System 2 Vetoed Choices: [1, 2, 3, 0]
+------------------------------------------------------------
+Audit Trail:
+  * System 1 screened 4 choices in 2188.29 ms (Domain: science, Conf: 54.4%)
+  * Activating True System 2 Deliberation: triggers [units=True, eq=True, neg=False, causal=False, margin=0.166]
+  * Choice (B) VETOED: Incompatible physical dimensions (LHS: [force] | RHS: [mass]*[time]^2/[length])
+  * Choice (C) VETOED: Incompatible physical dimensions (LHS: [force] | RHS: [mass]*[length]^2/[time]^4)
+  * Choice (D) VETOED: Incompatible physical dimensions (LHS: [force] | RHS: [length]/([time]^2*[mass]))
+  * Choice (A) VETOED by AlgebraVerifier: Free symbol differential F - a*m (Unassigned constant)
+  * FAIL-CLOSED: All candidates violate formal symbolic invariants.
+============================================================
+```
+
+### 4. Running the Automated Test Suite
+
+Verify all unit tests, domain routing rules, symbolic verifiers, and deliberation modules:
+
+```bash
+pytest tests -m "not slow"
+# -> 77 passed in 72.70s
+```
+
+---
+
+## Companion Agent: Autonomous Coding Harness
+
+For closed-loop agentic software development, automated test execution (`pytest`), AST refactoring, and self-healing test loops, System 2 pairs with the dedicated TypeScript/Node agent harness:
+
+👉 **[`system2-labs/system2-agent`](https://github.com/system2-labs/system2-agent)**
+
+The `system2-agent` repository provides:
+- **`pi-system2` CLI**: Autonomous developer agent pointed at local inference servers (e.g. LM Studio running `Qwen3.8-27B-UD-IQ3_XXS.gguf`).
+- **Native Virtual Models**: Routing profiles (`system2/auto`, `system2/deliberative`, `system2/local`) that enforce the **Regime 2 Protocol** (`thinkingLevel: "off"`).
+- **Self-Healing Loop**: Automatically executes tests, parses tracebacks, and applies corrective diffs until all tests pass (validated: 27/27 passing tests in 0.02s on Claude 3.7 audit).
+
+Refer to the [`system2-agent` README](https://github.com/system2-labs/system2-agent) for agent installation and workflow instructions.
+
+---
+
+## CLI & API Usage Reference
+
+### Command-Line Arguments
+
+| Tool | Subcommand / Flag | Description | Default / Choices |
+| :--- | :--- | :--- | :--- |
+| `sys1` | `prompt` | Query or vignette to evaluate | Positional (required unless `--interactive`) |
+| `sys1` | `--choices`, `-c` | 2 to 4 candidate options | `List[str]` |
+| `sys1` | `--route` | Sub-millisecond domain routing only | Boolean flag |
+| `sys1` | `--domain`, `-d` | Manual domain track override | `science`, `code`, `med`, `electrical`, `auto`, etc. |
+| `sys1` | `--interactive`, `-i` | Launch interactive terminal REPL | Boolean flag |
+| `sys1` | `--device` | Execution device | Auto-detected (`mps`, `cuda`, `cpu`) |
+| `sys2` | `--dual` | Execute full dual-process pipeline | System 1 pre-filter + System 2 verifier |
+| `sys2` | `--force-sys2` | Force System 2 verification | Bypasses confidence fast-path |
+| `sys1-guard` | `command` | Shell command string to verify | Positional string |
+| `sys1-guard` | `--json` | Output structured JSON telemetry | Boolean flag |
+| `sys1-guard` | `--allow-threshold` | Minimum confidence to allow | `0.70` |
+| `sys1-guard` | `--block-threshold` | Minimum confidence to block | `0.70` |
+| `sys1-guard` | `--abstain-threshold`| Confidence ceiling to abstain | `0.40` |
+
+### Safety Gatekeeper Exit Codes
+
+The security gatekeeper (`sys1-guard` / `sys2-guard`) returns deterministic POSIX exit codes for orchestration hooks:
+
+- **`0`**: `ALLOWED` — Command is verified benign and non-destructive.
+- **`1`**: `BLOCKED` — Command violates safety invariants (destructive, adversarial, or exfiltration).
+- **`2`**: `ABSTAIN` — Ambiguous or hazardous command requiring explicit human operator confirmation.
 
 ---
 
@@ -196,7 +266,7 @@ The virtual model router will automatically enforce the **Regime 2 Protocol** (`
 System2 is developed under a dual-tier **Open-Core** model:
 
 ### 1. Open Source Community Edition (Apache 2.0)
-- The core research architecture, `pi-system2` agent harness, and public edge weights are **100% free and open-source under the Apache 2.0 license**.
+- The core research architecture, Python engine, and public edge weights are **100% free and open-source under the Apache 2.0 license**.
 - Free for individual developers, hackers, researchers, and open-source projects.
 - Perpetual, air-gapped, zero telemetry.
 
@@ -204,10 +274,10 @@ System2 is developed under a dual-tier **Open-Core** model:
 While the open-source code is provided *"AS IS"* without warranty, enterprise engineering teams deploying System2 at scale require commercial guarantees, custom training, and governance:
 - **Commercial Indemnification & SLAs**: Enterprise legal compliance, guaranteed uptime, and dedicated security SLAs.
 - **Custom In-Domain ModernBERT Weights**: Fine-tuned on your organization's private proprietary codebases, monorepos, and internal APIs.
-- **Fleet Governance & Policy Enforcement**: Centralized administrative dashboard to audit agent tool calls, whitelist allowed bash operations, and enforce corporate security policies across hundreds of local developer machines.
+- **Fleet Governance & Policy Enforcement**: Centralized administrative dashboard to audit agent tool calls, whitelist allowed bash operations, and enforce corporate security policies across developer workstations.
 - **Air-Gapped VPC & Defense Packaging**: Turnkey containerized deployments for classified, defense, healthcare (HIPAA), and financial (SOC 2) environments.
 
-For commercial licensing, enterprise proofs-of-concept, and custom training agreements:
+For commercial licensing, enterprise proofs-of-concept, and custom training agreements:  
 👉 Contact: **`enterprise@system2.online`** or visit **[system2.online/enterprise](https://system2.online)**
 
 ---

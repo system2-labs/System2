@@ -42,6 +42,9 @@ notes_local/
 reports/*.json
 *.pt
 *.log
+*.egg-info/
+build/
+dist/
 # NOTE: .best_metric is intentionally TRACKED - it is the loop's memory.
 data/med_grounded_expanded
 data/eval

@@ -29,6 +29,7 @@ RUN pip install --no-cache-dir \
     pydantic>=2.0.0
 
 # Copy System2 application source code
+COPY sys1 /app/sys1
 COPY sys2 /app/sys2
 COPY routing /app/routing
 COPY bert.py /app/bert.py

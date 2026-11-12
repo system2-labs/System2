@@ -28,7 +28,7 @@ pipeline_tag: text-classification
 - **Base Architecture:** `answerdotai/ModernBERT-Large-Instruct` (395M, frozen) + LoRA subspace adapters ($r=32, \alpha=32$ across layers 20-27) + 5 ThoughtHeads + Cross-attending Judger.
 - **Guarded Metric (Code Traces):** `0.9010` (89.11% accuracy, 0.0891 Brier score, 0.0542 true 10-bin ECE).
 - **Official Website:** [system2.online](https://system2.online)
-- **GitHub Repository:** [github.com/tj-doomer-it/System2](https://github.com/tj-doomer-it/System2)
+- **GitHub Repository:** [github.com/system2-labs/System2](https://github.com/system2-labs/System2)
 
 ---
 

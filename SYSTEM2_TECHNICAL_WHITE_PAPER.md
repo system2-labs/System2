@@ -4,8 +4,8 @@
 **Authors:** Thom James-Worrall / Antigravity Research
 **License of reference implementation:** Apache 2.0
 **Live assets:**
-- Hugging Face model: https://huggingface.co/tjdoomer/system2-code
-- GitHub repository: https://github.com/tj-doomer-it/System2
+- Hugging Face model: https://huggingface.co/System2-Online
+- GitHub repository: https://github.com/system2-labs/System2
 - Website: https://system2.online
 
 **Evaluation hardware (all benchmarks):** Apple MacBook Pro (Mac16,6), Apple M4 Max, 128 GB Unified Memory, LM Studio / `llama.cpp` and Inco AI Splash runtimes, System 2 on PyTorch MPS.
@@ -273,7 +273,7 @@ Developers and security teams will not place a closed-source binary between thei
 | Component | Description |
 | :--- | :--- |
 | **Python SDK** (`pip install system2`) | `load_system2`, `mean_pool_pairwise`, five ThoughtHeads, pairwise cosine consensus and epistemic drift detection. Auto-detects `mps`, `cuda` or `cpu`. |
-| **Flagship checkpoint** (`system2_code.pt`) | 143 MB code-track weights on Hugging Face: https://huggingface.co/tjdoomer/system2-code. Covers polyglot code, syntax validation, algorithm traces and unit-test gating. |
+| **Flagship checkpoint** (`system2_code.pt`) | 143 MB code-track weights on Hugging Face: https://huggingface.co/System2-Online. Covers polyglot code, syntax validation, algorithm traces and unit-test gating. |
 | **Drop-in OpenAI-compatible proxy** | FastAPI server on `localhost:8000` (`python3 -m sys2.server --port 8000`). Point Cursor, Windsurf, Claude Code, Cline, Continue.dev, LangChain, LangGraph or AutoGen at `http://localhost:8000/v1`. |
 | **Developer CLI** | `sys2` (deliberation, routing) and `sys2-guard` (command safety gate). |
 

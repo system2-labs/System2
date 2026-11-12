@@ -31,6 +31,8 @@ dependencies = [
 ]
 
 [project.scripts]
+sys1 = "sys1.__main__:main"
+sys1-guard = "sys1.guard:main"
 sys2 = "sys2.__main__:main"
 sys2-guard = "sys2.guard:main"
 sys2-server = "sys2.server:main"
@@ -42,14 +44,25 @@ server = [
     "httpx>=0.25.0",
     "pydantic>=2.0.0",
 ]
+symbolic = [
+    "pint>=0.23",
+    "sympy>=1.12",
+    "z3-solver>=4.12.0",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.1.0",
     "ruff>=0.3.0",
+    "pint>=0.23",
+    "sympy>=1.12",
+    "z3-solver>=4.12.0",
 ]
 
+[tool.setuptools]
+py-modules = ["bert", "encoding", "heads", "lora", "system", "load_system2"]
+
 [tool.setuptools.packages.find]
-include = ["sys2*"]
+include = ["sys2*", "sys1*", "routing*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
