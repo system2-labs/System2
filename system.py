@@ -1,7 +1,6 @@
 import math
 import torch
 import torch.nn as nn
-from bert import encode
 from heads import ThoughtHead
 
 
@@ -353,6 +352,9 @@ class System2(nn.Module):
 
 
 if __name__ == '__main__':
+    # Demo-only import: keeps `import system` free of any ModernBERT load.
+    from bert import encode
+
     torch.manual_seed(0)
     sys2 = System2(num_heads=5)
     vec = encode('Is this ticket about billing?')

@@ -18,9 +18,14 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from bert import get_bert, model as default_bert_model, tokenizer as default_tokenizer
+from bert import get_bert
 from lora import apply_lora
 from system import System2
+
+# Overridden by load_system2() once a LoRA-adapted backbone is built; None means
+# "resolve lazily via get_bert()" so importing this module never loads ModernBERT.
+default_bert_model = None
+default_tokenizer = None
 
 
 def extract_config(state: Any) -> Tuple[Dict[str, Any], Dict[str, torch.Tensor]]:
@@ -155,7 +160,12 @@ def encode(text: str, device: Optional[torch.device] = None, model_name: Optiona
     Returns:
         Mean-pooled hidden vector of shape (1, 1024) placed on target device.
     """
-    tok, mod = get_bert(model_name) if model_name else (default_tokenizer, default_bert_model)
+    if model_name:
+        tok, mod = get_bert(model_name)
+    elif default_bert_model is None or default_tokenizer is None:
+        tok, mod = get_bert()
+    else:
+        tok, mod = default_tokenizer, default_bert_model
     mod_dev = next(mod.parameters()).device
     inputs = tok(text, return_tensors="pt").to(mod_dev)
     with torch.no_grad():

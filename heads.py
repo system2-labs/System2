@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from bert import tokenizer, model
 
 
 class ThoughtHead(nn.Module):
@@ -78,6 +77,9 @@ class ThoughtHead(nn.Module):
 
 # --- demo ---
 if __name__ == "__main__":
+    # Demo-only: import here so `import heads` / `import system` never load ModernBERT.
+    from bert import tokenizer, model
+
     inputs = tokenizer("Is this ticket about billing?", return_tensors="pt")
     last_hidden = model(**inputs).last_hidden_state
     mask = inputs["attention_mask"].unsqueeze(-1)

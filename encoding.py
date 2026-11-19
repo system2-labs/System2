@@ -9,7 +9,24 @@ import sys
 import torch
 import torch.nn.functional as F
 
-from bert import get_bert, model as default_model, tokenizer as default_tokenizer
+from bert import get_bert
+
+# Kept as module attributes for anything that inspects them. They stay None: the
+# default backbone is resolved lazily through get_bert() so importing this module
+# never triggers a ModernBERT load.
+default_model = None
+default_tokenizer = None
+
+
+def _resolve_backbone(model, tokenizer):
+    """Return (model, tokenizer), filling gaps from the shared bert.get_bert() cache."""
+    if model is None or tokenizer is None:
+        default_tok, default_mod = get_bert()
+        # get_bert returns (tokenizer, model); mix-and-match so a caller passing
+        # only one of the two keeps theirs.
+        model = model if model is not None else default_mod
+        tokenizer = tokenizer if tokenizer is not None else default_tok
+    return model, tokenizer
 
 
 # ModernBERT subword token IDs for modal negation, exceptions, and boundary operators
@@ -40,8 +57,7 @@ def mean_pool_texts(
     Returns:
         Tensor of shape (N, 1024).
     """
-    m = model if model is not None else default_model
-    tok = tokenizer if tokenizer is not None else default_tokenizer
+    m, tok = _resolve_backbone(model, tokenizer)
     dev = device if device is not None else next(m.parameters()).device
 
     ceiling = getattr(m.config, "max_position_embeddings", 8192)
@@ -98,8 +114,7 @@ def mean_pool_pairwise(
         max_len = device
         device = None
 
-    m = model if model is not None else default_model
-    tok = tokenizer if tokenizer is not None else default_tokenizer
+    m, tok = _resolve_backbone(model, tokenizer)
     dev = device if device is not None else next(m.parameters()).device
 
     b = len(questions)

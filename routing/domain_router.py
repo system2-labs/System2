@@ -18,6 +18,8 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
+from bert import DEFAULT_BACKBONE, get_bert
+from lora import disable_lora
 from routing.lexical_rules import scan_lexical_signatures
 
 DEFAULT_CENTROIDS_PATH = os.path.join(ROOT_DIR, "routing", "domain_centroids.pt")
@@ -80,20 +82,31 @@ class DomainRouter:
     def _ensure_bert(self):
         """Lazy load ModernBERT if needed for Stage 2 dense routing."""
         if self.bert_model is None or self.tokenizer is None:
-            from bert import get_bert
-            self.tokenizer, self.bert_model = get_bert("answerdotai/ModernBERT-Large-Instruct")
-            self.bert_model.to(self.device)
+            # Shared process-wide cache: if System2Engine already loaded the backbone
+            # this is the same object, not a second 395M copy. Deliberately NOT moved
+            # to self.device here - the shared model may already live on MPS/CUDA
+            # (placed by the engine) and yanking it to CPU would break the engine.
+            # encode_text() follows the model's own device instead.
+            self.tokenizer, self.bert_model = get_bert(DEFAULT_BACKBONE)
             self.bert_model.eval()
 
     def encode_text(self, text: str) -> torch.Tensor:
         """Encode single text into L2-normalized 1024-dim embedding on CPU."""
         self._ensure_bert()
-        inputs = self.tokenizer([text], return_tensors="pt", padding=True, truncation=True, max_length=256).to(self.device)
-        with torch.no_grad():
+        # Inputs go to the backbone's device (may differ from self.device when the
+        # backbone is shared with an engine on MPS/CUDA); the tiny (1, 1024) result
+        # is moved to self.device below, where self.centroids lives.
+        model_device = next(self.bert_model.parameters()).device
+        inputs = self.tokenizer([text], return_tensors="pt", padding=True, truncation=True, max_length=256).to(model_device)
+        # Centroids were computed from the frozen base backbone. The shared backbone
+        # may carry a domain LoRA adapter, which would drift embeddings away from
+        # the centroids and make routing depend on the previously active domain, so
+        # bypass LoRA for this forward pass.
+        with torch.no_grad(), disable_lora(self.bert_model):
             last_hidden = self.bert_model(**inputs).last_hidden_state
             mask = inputs["attention_mask"].unsqueeze(-1)
             pooled = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
-            return F.normalize(pooled, p=2, dim=1)  # (1, 1024)
+            return F.normalize(pooled, p=2, dim=1).to(self.device)  # (1, 1024)
 
     def route(
         self,

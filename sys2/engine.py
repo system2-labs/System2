@@ -15,14 +15,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 import torch
-import transformers
-transformers.logging.set_verbosity_error()
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from bert import get_bert
+from bert import DEFAULT_BACKBONE, get_bert
 from encoding import mean_pool_pairwise
 from lora import apply_lora
 from routing.domain_router import DomainRouter
@@ -94,16 +92,23 @@ class System2Engine:
 
         self._lock = threading.RLock()
         print(f"[System2Engine] Initializing on {self.device.upper()}...", file=sys.stderr)
-        from transformers import AutoModel, AutoTokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained("answerdotai/ModernBERT-Large-Instruct", clean_up_tokenization_spaces=False)
-        self.model = AutoModel.from_pretrained("answerdotai/ModernBERT-Large-Instruct").to(self.device)
+        # Deferred from module level: importing transformers costs seconds, and the
+        # env var above is not re-read if something imported it first.
+        import transformers
+        transformers.logging.set_verbosity_error()
+
+        # One resident backbone for the whole process: bert.get_bert() owns the cache,
+        # and the router below reuses this exact object instead of loading its own.
+        self.tokenizer, self.model = get_bert(DEFAULT_BACKBONE)
+        self.model.to(self.device)
         self.model.eval()
 
         # Inject LoRA scaffolding into top 8 layers
         apply_lora(self.model, r=32, alpha=32, num_layers=8)
 
-        # Dynamic Router (runs on CPU)
-        self.router = DomainRouter(device="cpu")
+        # Dynamic Router: centroids live on CPU, but the backbone is shared with this
+        # engine (and its LoRA layers are bypassed during routing via disable_lora).
+        self.router = DomainRouter(device="cpu", bert_model=self.model, tokenizer=self.tokenizer)
 
         # In-memory adapter cache: domain -> (encoder_state, sys2_instance)
         self.adapters: Dict[str, Tuple[Dict[str, torch.Tensor], System2]] = {}
@@ -189,7 +194,10 @@ class System2Engine:
         # 1. Dynamic Routing
         t_route_0 = time.perf_counter()
         if domain is None:
-            route_decision = self.router.route(clean_question)
+            # Routing flips LoRA enabled-flags on the shared backbone; hold the engine
+            # lock (re-entrant) so it cannot interleave with switch_domain/forward.
+            with self._lock:
+                route_decision = self.router.route(clean_question)
             selected_domain = route_decision.selected_track
             routing_method = route_decision.method
         else:

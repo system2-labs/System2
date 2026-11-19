@@ -36,9 +36,10 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
+# Env var only: it is honoured whenever transformers is first imported (System2Engine
+# does that lazily and also calls set_verbosity_error), whereas a top-level
+# `import transformers` here cost ~3-5s on every `import sys2`.
 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
-import transformers
-transformers.logging.set_verbosity_error()
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
