@@ -71,6 +71,41 @@ class StructuralCausalModel:
         """Register an abduction equation to infer an unobserved exogenous variable from factual observations."""
         self.abduction_solvers[exogenous_var] = solver
 
+    def ancestors(self, var: str) -> Set[str]:
+        """Return all strict upstream ancestors of `var` in the un-intervened DAG.
+
+        Used to enforce Pearl's edge-cutting invariant: applying do(var = x) severs all
+        incoming edges PA_var -> var, so no node in ancestors(var) can change as a result
+        of the intervention.
+        """
+        if var not in self.nodes:
+            return set()
+        visited: Set[str] = set()
+        stack = list(self.nodes[var].parents)
+        while stack:
+            curr = stack.pop()
+            if curr not in visited:
+                visited.add(curr)
+                if curr in self.nodes:
+                    stack.extend(self.nodes[curr].parents)
+        return visited
+
+    def descendants(self, var: str) -> Set[str]:
+        """Return all strict downstream descendants of `var` in the DAG."""
+        if var not in self.nodes:
+            return set()
+        children_map: Dict[str, List[str]] = {}
+        for parent, child in self.edges:
+            children_map.setdefault(parent, []).append(child)
+        visited: Set[str] = set()
+        stack = list(children_map.get(var, []))
+        while stack:
+            curr = stack.pop()
+            if curr not in visited:
+                visited.add(curr)
+                stack.extend(children_map.get(curr, []))
+        return visited
+
     def _topological_sort(self, active_parents: Dict[str, List[str]]) -> List[str]:
         """Compute topological ordering of nodes given active parent relationships."""
         in_degree = {n: len(active_parents.get(n, [])) for n in self.nodes}
