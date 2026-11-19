@@ -194,8 +194,8 @@ class System2Engine:
         # 1. Dynamic Routing
         t_route_0 = time.perf_counter()
         if domain is None:
-            # Routing flips LoRA enabled-flags on the shared backbone; hold the engine
-            # lock (re-entrant) so it cannot interleave with switch_domain/forward.
+            # Serialize routing with adapter switching and forward passes on the
+            # shared backbone (self._lock is re-entrant).
             with self._lock:
                 route_decision = self.router.route(clean_question)
             selected_domain = route_decision.selected_track

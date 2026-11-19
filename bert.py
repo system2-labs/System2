@@ -7,8 +7,10 @@ to run three times over (bert.py, engine, router) on every `import`.
 """
 
 import os
+import threading
 
 _cached_models = {}
+_cache_lock = threading.Lock()
 
 # Instruct is what every models/*.pt checkpoint records in `bert_model` and what
 # routing/domain_centroids.pt was computed against (routing/compute_centroids.py).
@@ -19,15 +21,21 @@ DEFAULT_BACKBONE = os.environ.get("BERT_MODEL", "answerdotai/ModernBERT-Large-In
 def get_bert(model_name=None):
     """Fetch cached (tokenizer, model) pair for the given backbone name (default: DEFAULT_BACKBONE)."""
     model_name = model_name or DEFAULT_BACKBONE
-    if model_name not in _cached_models:
-        # Deferred import: `import transformers` + AutoModel/AutoTokenizer resolution
-        # costs seconds on its own, so pay it only when a backbone is really needed.
-        from transformers import AutoModel, AutoTokenizer
+    cached = _cached_models.get(model_name)
+    if cached is not None:
+        return cached
+    # Serialize cold-cache initialization so concurrent callers never load two
+    # 395M copies for the same backbone name.
+    with _cache_lock:
+        if model_name not in _cached_models:
+            # Deferred import: `import transformers` + AutoModel/AutoTokenizer resolution
+            # costs seconds on its own, so pay it only when a backbone is really needed.
+            from transformers import AutoModel, AutoTokenizer
 
-        tok = AutoTokenizer.from_pretrained(model_name, clean_up_tokenization_spaces=False)
-        mod = AutoModel.from_pretrained(model_name)
-        _cached_models[model_name] = (tok, mod)
-    return _cached_models[model_name]
+            tok = AutoTokenizer.from_pretrained(model_name, clean_up_tokenization_spaces=False)
+            mod = AutoModel.from_pretrained(model_name)
+            _cached_models[model_name] = (tok, mod)
+        return _cached_models[model_name]
 
 
 def __getattr__(name):
@@ -46,10 +54,13 @@ def __getattr__(name):
 def encode(text, model_name=None):
     """text -> mean-pooled (1, 1024) tensor."""
     tok, mod = get_bert(model_name)
-    inputs = tok(text, return_tensors="pt")
+    # The shared backbone may live on MPS/CUDA after System2Engine moves it;
+    # place inputs on the model's device to prevent CPU/accelerator mismatch.
+    model_device = next(mod.parameters()).device
+    inputs = tok(text, return_tensors="pt").to(model_device)
     last_hidden = mod(**inputs).last_hidden_state
     mask = inputs["attention_mask"].unsqueeze(-1)
-    return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1)
+    return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
 
 
 if __name__ == "__main__":

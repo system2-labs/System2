@@ -1,7 +1,21 @@
 from contextlib import contextmanager
+import threading
 
 import torch
 import torch.nn as nn
+
+# Thread-local disable depth per LoRALinear (keyed by id(module)). Kept at module
+# level rather than on each LoRALinear instance so modules stay picklable and
+# deepcopy-able, and concurrent threads never clobber shared `m.enabled`.
+_disable_state = threading.local()
+
+
+def _get_disabled_depths():
+    depths = getattr(_disable_state, "depths", None)
+    if depths is None:
+        depths = {}
+        _disable_state.depths = depths
+    return depths
 
 
 class LoRALinear(nn.Module):
@@ -31,7 +45,8 @@ class LoRALinear(nn.Module):
 
     def forward(self, x):
         base = self.original(x)
-        if not self.enabled:
+        depths = getattr(_disable_state, "depths", None)
+        if not self.enabled or (depths and depths.get(id(self), 0) > 0):
             # Bypass the delta entirely: exact frozen-base output, no extra matmuls.
             return base
         lora = (self.dropout(x) @ self.lora_A.T @ self.lora_B.T) * self.scaling
@@ -40,24 +55,28 @@ class LoRALinear(nn.Module):
 
 @contextmanager
 def disable_lora(model):
-    """Temporarily bypass every LoRALinear in `model`, restoring prior states on exit.
+    """Temporarily bypass every LoRALinear in `model` on the calling thread.
 
     Lets a LoRA-adapted shared backbone emit pure frozen-base embeddings (e.g. for
     the domain router's centroids, which were computed without any adapter) without
-    allocating a second 395M model. Per-module previous states are restored, so
-    nesting and already-disabled modules behave. NOT thread-safe on its own: it
-    flips shared module state, so callers sharing the backbone across threads must
-    hold the same lock that guards adapter switching (see System2Engine._lock).
+    allocating a second 395M model. Tracks per-thread nesting depth rather than
+    mutating shared `m.enabled`, so overlapping calls across threads never bleed
+    disabled state into concurrent forwards or leave layers stuck disabled.
     """
     layers = [m for m in model.modules() if isinstance(m, LoRALinear)]
-    prior = [m.enabled for m in layers]
-    for m in layers:
-        m.enabled = False
+    depths = _get_disabled_depths()
+    layer_ids = [id(m) for m in layers]
+    for lid in layer_ids:
+        depths[lid] = depths.get(lid, 0) + 1
     try:
         yield model
     finally:
-        for m, was_enabled in zip(layers, prior):
-            m.enabled = was_enabled
+        for lid in layer_ids:
+            new_depth = depths.get(lid, 1) - 1
+            if new_depth <= 0:
+                depths.pop(lid, None)
+            else:
+                depths[lid] = new_depth
 
 
 def apply_lora(model, r=16, alpha=16, num_layers=4, train_norms=False, dropout=0.0):

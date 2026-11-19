@@ -20,6 +20,8 @@ default_tokenizer = None
 
 def _resolve_backbone(model, tokenizer):
     """Return (model, tokenizer), filling gaps from the shared bert.get_bert() cache."""
+    model = model if model is not None else default_model
+    tokenizer = tokenizer if tokenizer is not None else default_tokenizer
     if model is None or tokenizer is None:
         default_tok, default_mod = get_bert()
         # get_bert returns (tokenizer, model); mix-and-match so a caller passing
@@ -58,7 +60,10 @@ def mean_pool_texts(
         Tensor of shape (N, 1024).
     """
     m, tok = _resolve_backbone(model, tokenizer)
-    dev = device if device is not None else next(m.parameters()).device
+    # Run inputs on the backbone's device (it may have been moved to MPS/CUDA by
+    # System2Engine) and move the pooled output to the caller's requested device.
+    model_dev = next(m.parameters()).device
+    out_dev = torch.device(device) if device is not None else model_dev
 
     ceiling = getattr(m.config, "max_position_embeddings", 8192)
     if max_len > ceiling:
@@ -68,7 +73,7 @@ def mean_pool_texts(
         )
         max_len = ceiling
 
-    inputs = tok(texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(dev)
+    inputs = tok(texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(model_dev)
 
     if with_grad:
         last_hidden = m(**inputs).last_hidden_state
@@ -77,7 +82,8 @@ def mean_pool_texts(
             last_hidden = m(**inputs).last_hidden_state
 
     mask = inputs["attention_mask"].unsqueeze(-1)
-    return (last_hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
+    pooled = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
+    return pooled.to(out_dev) if pooled.device != out_dev else pooled
 
 
 def mean_pool_pairwise(
@@ -115,7 +121,10 @@ def mean_pool_pairwise(
         device = None
 
     m, tok = _resolve_backbone(model, tokenizer)
-    dev = device if device is not None else next(m.parameters()).device
+    # Run inputs on the backbone's device and move the pooled output to the
+    # caller's requested device so CPU callers don't fail on an MPS-resident backbone.
+    dev = next(m.parameters()).device
+    out_dev = torch.device(device) if device is not None else dev
 
     b = len(questions)
     ceiling = getattr(m.config, "max_position_embeddings", 8192)
@@ -226,7 +235,7 @@ def mean_pool_pairwise(
 
         multi_head_vecs = torch.stack([v0, v1, v2, v3, v4], dim=1)  # (B*4, 5, 1024)
         multi_head_vecs = multi_head_vecs.view(b, 4, 5, -1).permute(0, 2, 1, 3)  # (B, 5, 4, 1024)
-        return multi_head_vecs
+        return multi_head_vecs.to(out_dev) if multi_head_vecs.device != out_dev else multi_head_vecs
 
     if span_pooling:
         input_ids = inputs["input_ids"]
@@ -256,9 +265,11 @@ def mean_pool_pairwise(
         a_vec = (last_hidden * a_mask_f).sum(dim=1) / a_mask_f.sum(dim=1).clamp(min=1.0)
 
         pooled = (1.0 - span_weight) * q_vec + span_weight * a_vec
-        return pooled.view(b, 4, -1)
+        out = pooled.view(b, 4, -1)
+        return out.to(out_dev) if out.device != out_dev else out
 
     # Standard whole-sequence mean pooling
     mask = inputs["attention_mask"].unsqueeze(-1)
     pooled = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
-    return pooled.view(b, 4, -1)
+    out = pooled.view(b, 4, -1)
+    return out.to(out_dev) if out.device != out_dev else out

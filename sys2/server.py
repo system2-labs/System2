@@ -224,7 +224,12 @@ def create_app(
 
     def get_router() -> DomainRouter:
         if state["router"] is None:
-            state["router"] = DomainRouter(device="cpu")
+            if state["engine"] is not None:
+                # Reuse the engine's router so /route shares its wired backbone
+                # and avoids loading a duplicate centroid copy.
+                state["router"] = state["engine"].router
+            else:
+                state["router"] = DomainRouter(device="cpu")
         return state["router"]
 
     def get_gatekeeper(
@@ -304,8 +309,10 @@ def create_app(
         if len(choices) < 2:
             raise HTTPException(status_code=400, detail="At least 2 choices required for deliberation.")
 
-        eng = get_engine()
+        # Hold state["lock"] across lazy engine init as well as inference so a
+        # cold .to(device)/apply_lora cannot race an in-flight /route call.
         async with state["lock"]:
+            eng = await asyncio.to_thread(get_engine)
             res = await asyncio.to_thread(
                 eng.adjudicate,
                 req.question,
@@ -332,8 +339,11 @@ def create_app(
 
     @app.post("/route", response_model=RouteResponse)
     async def route_prompt(req: RouteRequest):
-        rtr = get_router()
-        decision = await asyncio.to_thread(rtr.route, req.prompt)
+        # Serialize with deliberation and lazy engine init: /route shares the
+        # cached ModernBERT backbone with System2Engine.
+        async with state["lock"]:
+            rtr = await asyncio.to_thread(get_router)
+            decision = await asyncio.to_thread(rtr.route, req.prompt)
         track_name = DomainRouter.TRACK_NAMES.get(decision.selected_track, decision.selected_track.upper())
 
         return RouteResponse(
@@ -347,13 +357,13 @@ def create_app(
 
     @app.post("/guard", response_model=GuardResponse)
     async def guard_command(req: GuardRequest):
-        gk = get_gatekeeper(
-            allow_th=req.allow_threshold or 0.70,
-            block_th=req.block_threshold or 0.70,
-            abstain_th=req.abstain_threshold or 0.40,
-        )
-
         async with state["lock"]:
+            gk = await asyncio.to_thread(
+                get_gatekeeper,
+                allow_th=req.allow_threshold or 0.70,
+                block_th=req.block_threshold or 0.70,
+                abstain_th=req.abstain_threshold or 0.40,
+            )
             res = await asyncio.to_thread(gk.evaluate, req.command)
 
         return GuardResponse(
@@ -372,7 +382,8 @@ def create_app(
     # -------------------------------------------------------------------------
     @app.post("/v1/systemone", response_model=SystemOneResponse)
     async def handle_systemone(req: SystemOneRequest):
-        eng = get_engine()
+        async with state["lock"]:
+            eng = await asyncio.to_thread(get_engine)
         state_str = json.dumps(req.state) if not isinstance(req.state, str) else req.state
         answers: Dict[str, Any] = {}
 
@@ -445,7 +456,8 @@ def create_app(
     # -------------------------------------------------------------------------
     @app.post("/v1/decisions", response_model=DecisionResponse)
     async def handle_decisions(req: DecisionRequest):
-        eng = get_engine()
+        async with state["lock"]:
+            eng = await asyncio.to_thread(get_engine)
         inp_str = json.dumps(req.input) if not isinstance(req.input, str) else req.input
         answers: List[Dict[str, Any]] = []
 
