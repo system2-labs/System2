@@ -241,6 +241,59 @@ def test_system2_padding_invariance_and_valid_count_one(dev):
         model_cpu(torch.randn(1, 5, 4, 1024), choice_mask=torch.zeros(1, 4, dtype=torch.bool))
 
 
+@pytest.mark.parametrize("dev", DEVICES)
+def test_system2_valid_count_one_backward_finite_grads(dev):
+    """Verify backward() produces strictly finite gradients for valid_count==1 and zero-variance rows."""
+    configs = [
+        dict(
+            head_norm_logits=True,
+            margin_features=True,
+            judger_soft_emb=True,
+            decision_conf=True,
+            decision_conf_mode="softmax",
+        ),
+        dict(
+            head_norm_logits=True,
+            consensus_features=True,
+            judger_win_emb=True,
+            prob_margin_gamma=0.4,
+            prob_ensemble=True,
+            decision_conf=True,
+            decision_conf_mode="margin",
+        ),
+        dict(
+            head_norm_logits=True,
+            margin_features=True,
+            veto_blend=0.2,
+            decision_conf=True,
+            decision_conf_mode="hybrid",
+        ),
+    ]
+    for idx, cfg in enumerate(configs):
+        torch.manual_seed(200 + idx)
+        model = System2(num_heads=5, num_classes=1, pairwise=True, diff_features=True, head_layers=2, **cfg).to(dev)
+        model.train()
+        inp = torch.randn(3, 5, 4, 1024, device=dev, requires_grad=True)
+        cm = torch.tensor(
+            [
+                [True, False, False, False],
+                [True, True, False, False],
+                [True, True, True, False],
+            ],
+            device=dev,
+        )
+        _, conf, _, _, logits, _, _, ens = model(inp, choice_mask=cm)
+        loss = ens[cm].sum() + logits[:, :, 0].sum() + conf.sum()
+        loss.backward()
+
+        assert inp.grad is not None and torch.isfinite(inp.grad).all(), f"Non-finite inp.grad on {dev} cfg={idx}"
+        # Padded input slots must receive exact zero gradient.
+        assert (inp.grad[~cm.unsqueeze(1).expand(-1, 5, -1)] == 0).all()
+        for name, param in model.named_parameters():
+            if param.grad is not None:
+                assert torch.isfinite(param.grad).all(), f"Non-finite grad for {name} on {dev} cfg={idx}"
+
+
 def test_engine_adjudicate_empty_raises(cpu_engine):
     """Empty choices list must raise ValueError immediately."""
     with pytest.raises(ValueError, match="non-empty"):

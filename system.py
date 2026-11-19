@@ -36,7 +36,9 @@ def _masked_mean_std(
     # Use (count - 1).clamp(min=1) to match PyTorch's unbiased std for count >= 2
     # while yielding 0 variance (clamped to 1e-5 std) without NaN when count == 1.
     denom = (count - 1.0).clamp(min=1.0)
-    std = torch.sqrt(sq_diff.sum(dim=dim, keepdim=True) / denom).clamp(min=1e-5)
+    # Clamp variance BEFORE sqrt so zero-variance / valid_count==1 rows do not evaluate
+    # d/dx sqrt(0) = inf in backward() and poison gradients with 0 * inf = NaN.
+    std = torch.sqrt((sq_diff.sum(dim=dim, keepdim=True) / denom).clamp(min=1e-10))
     return mean, std
 
 
