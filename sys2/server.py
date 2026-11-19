@@ -24,6 +24,7 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import sys
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Literal, Optional, Union
@@ -488,15 +489,10 @@ def create_app(
                 )
 
             if req.domain == "algebra":
-                if "==" in expr or "=" in expr:
-                    parts = expr.split("==") if "==" in expr else expr.split("=")
-                    if len(parts) < 2:
-                        return VerifyResponse(
-                            valid=False,
-                            code="ALGEBRA_PARSE_ERROR",
-                            reason=f"Invalid algebraic equation: '{expr}'",
-                            error="ParseError",
-                        )
+                # Split only on standalone '=' / '==' so relational operators like '>='
+                # or '<=' are never torn into invalid fragments.
+                parts = re.split(r"(?<![!<>:=])==?(?![=>])", expr)
+                if len(parts) >= 2:
                     last_details = ""
                     for i in range(len(parts) - 1):
                         alg_res = algebra_verifier.verify_equivalence(parts[i], parts[i + 1])
@@ -534,7 +530,14 @@ def create_app(
                         reason=f"Failed to parse algebraic expression: '{expr}'",
                         error="ParseError",
                     )
-                if req.context and algebra_verifier.parse(req.context) is not None:
+                if req.context and req.context.strip():
+                    if algebra_verifier.parse(req.context) is None:
+                        return VerifyResponse(
+                            valid=False,
+                            code="ALGEBRA_PARSE_ERROR",
+                            reason=f"Failed to parse algebraic context: '{req.context}'",
+                            error="ParseError",
+                        )
                     alg_res = algebra_verifier.verify_equivalence(req.context, expr)
                     if not alg_res.is_valid:
                         return VerifyResponse(

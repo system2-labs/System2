@@ -7,7 +7,7 @@ mathematical contradictions in candidate steps or answers.
 
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 try:
     import sympy
@@ -35,8 +35,70 @@ class AlgebraVerificationResult:
 class AlgebraVerifier:
     """Verifies mathematical equivalence and algebraic solutions using SymPy."""
 
+    _ALLOWED_EXPR_RE = re.compile(r"^[A-Za-z0-9_+\-*/().,\s]+$")
+    # Disallow leading underscores / dunders (e.g. __import__, _x, 1.__class__)
+    _UNDERSCORE_PREFIX_RE = re.compile(r"(?:^|[^A-Za-z0-9])_|__")
+    # Disallow attribute access or malformed dots while preserving floats like 3.14, .5, 2.
+    _BAD_DOT_RE = re.compile(r"[A-Za-z_]\s*\.|\.\s*[A-Za-z_]|\.\.|(?:^|[^0-9])\.(?![0-9])")
+    # Disallow space-separated multi-letter English/unit words (e.g. "meter per second")
+    # so natural prose is not tokenized into single-letter symbol products.
+    _MULTIWORD_PROSE_RE = re.compile(r"\b[A-Za-z]{2,}\s+[A-Za-z]{2,}\b")
+    _CALL_RE = re.compile(r"([A-Za-z][A-Za-z0-9_]*)\s*\(")
+    _SAFE_FUNC_NAMES = frozenset({
+        "sin", "cos", "tan", "csc", "sec", "cot",
+        "asin", "acos", "atan", "sinh", "cosh", "tanh",
+        "exp", "log", "ln", "sqrt", "cbrt", "abs", "Abs",
+        "floor", "ceiling", "ceil", "factorial", "gamma",
+        "Max", "Min", "max", "min",
+    })
+
     def __init__(self):
         self.available = _SYMPY_AVAILABLE
+        if _SYMPY_AVAILABLE:
+            # Lock down SymPy's parse_expr namespace: disable __builtins__ completely and
+            # expose only internal AST-builder classes plus allowlisted math functions/constants.
+            self._safe_globals: Dict[str, Any] = {
+                "__builtins__": {},
+                "Symbol": sympy.Symbol,
+                "Integer": sympy.Integer,
+                "Float": sympy.Float,
+                "Rational": sympy.Rational,
+                "sin": sympy.sin,
+                "cos": sympy.cos,
+                "tan": sympy.tan,
+                "csc": sympy.csc,
+                "sec": sympy.sec,
+                "cot": sympy.cot,
+                "asin": sympy.asin,
+                "acos": sympy.acos,
+                "atan": sympy.atan,
+                "sinh": sympy.sinh,
+                "cosh": sympy.cosh,
+                "tanh": sympy.tanh,
+                "exp": sympy.exp,
+                "log": sympy.log,
+                "ln": sympy.log,
+                "sqrt": sympy.sqrt,
+                "cbrt": sympy.cbrt,
+                "abs": sympy.Abs,
+                "Abs": sympy.Abs,
+                "floor": sympy.floor,
+                "ceiling": sympy.ceiling,
+                "ceil": sympy.ceiling,
+                "factorial": sympy.factorial,
+                "gamma": sympy.gamma,
+                "Max": sympy.Max,
+                "Min": sympy.Min,
+                "max": sympy.Max,
+                "min": sympy.Min,
+                "pi": sympy.pi,
+                "E": sympy.E,
+                "I": sympy.I,
+                "N": sympy.N,
+                "oo": sympy.oo,
+            }
+        else:
+            self._safe_globals = {}
 
     def parse(self, expr_str: str) -> Optional[Any]:
         """Safely parse a mathematical expression string into a SymPy expression."""
@@ -44,9 +106,31 @@ class AlgebraVerifier:
             return None
         cleaned = expr_str.strip().strip("$").strip()
         cleaned = cleaned.replace("^", "**").replace("×", "*").replace("÷", "/")
+
+        # Reject non-math syntax (quotes, brackets, braces, semicolons, etc.),
+        # dunders/leading underscores, attribute dots, multi-word prose, and unknown
+        # function calls before invoking SymPy's parse_expr (which calls eval()).
+        if not cleaned or not self._ALLOWED_EXPR_RE.match(cleaned):
+            return None
+        if self._UNDERSCORE_PREFIX_RE.search(cleaned):
+            return None
+        if self._BAD_DOT_RE.search(cleaned):
+            return None
+        if self._MULTIWORD_PROSE_RE.search(cleaned):
+            return None
+        for call_match in self._CALL_RE.finditer(cleaned):
+            if call_match.group(1) not in self._SAFE_FUNC_NAMES:
+                return None
+
         try:
             transformations = standard_transformations + (implicit_multiplication_application,)
-            return parse_expr(cleaned, transformations=transformations, evaluate=True)
+            return parse_expr(
+                cleaned,
+                local_dict={},
+                global_dict=self._safe_globals,
+                transformations=transformations,
+                evaluate=True,
+            )
         except Exception:
             return None
 

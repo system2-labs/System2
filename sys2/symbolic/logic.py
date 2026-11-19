@@ -448,16 +448,22 @@ class LogicVerifier:
             if not neg_res.is_valid:
                 return neg_res
 
-            # If both context and expression parse as formal Z3 formulas, check strict
-            # entailment (context |= expression) rather than stopping at keyword heuristics.
+            # If both context and expression parse as formal Z3 formulas, infer variable
+            # sorts jointly across all clauses and verify strict entailment (context |= expr).
             try:
-                symtab: Dict[str, Any] = {}
                 ctx_parts = _split_top_level(context, separators=(",", ";", "\n"))
                 if ctx_parts:
-                    ctx_formulas = [_parse_logic_formula(p, symtab) for p in ctx_parts]
-                    conclusion = _parse_logic_formula(expr_text, symtab)
-                    if all(z3.is_bool(f) for f in ctx_formulas) and z3.is_bool(conclusion):
-                        return self.verify_entailment(ctx_formulas, conclusion)
+                    ctx_asts = [_parse_logic_ast(p) for p in ctx_parts]
+                    expr_ast = _parse_logic_ast(expr_text)
+                    ctx_formulas, expr_formulas = _compile_ast_groups([ctx_asts, [expr_ast]])
+                    return self.verify_entailment(ctx_formulas, expr_formulas[0])
+            except _LogicSortError as exc:
+                return LogicVerificationResult(
+                    is_valid=False,
+                    is_satisfiable=False,
+                    details=str(exc),
+                    error="LogicTypeError",
+                )
             except (ValueError, z3.Z3Exception):
                 # Natural language context/claim that does not parse as formal syntax;
                 # fall back to the negation consistency verdict above.
@@ -471,18 +477,18 @@ class LogicVerifier:
         if turnstile_split is not None:
             premises_raw, conclusion_raw = turnstile_split
             try:
-                symtab = {}
                 prem_parts = _split_top_level(premises_raw, separators=(",", ";", "\n")) if premises_raw.strip() else []
-                premises = [_parse_logic_formula(p, symtab) for p in prem_parts]
-                conclusion = _parse_logic_formula(conclusion_raw, symtab)
-                if not all(z3.is_bool(p) for p in premises) or not z3.is_bool(conclusion):
-                    return LogicVerificationResult(
-                        is_valid=False,
-                        is_satisfiable=False,
-                        details="Entailment premises and conclusion must be boolean formulas.",
-                        error="LogicTypeError",
-                    )
-                return self.verify_entailment(premises, conclusion)
+                prem_asts = [_parse_logic_ast(p) for p in prem_parts]
+                concl_ast = _parse_logic_ast(conclusion_raw)
+                premises, conclusions = _compile_ast_groups([prem_asts, [concl_ast]])
+                return self.verify_entailment(premises, conclusions[0])
+            except _LogicSortError as exc:
+                return LogicVerificationResult(
+                    is_valid=False,
+                    is_satisfiable=False,
+                    details=str(exc),
+                    error="LogicTypeError",
+                )
             except (ValueError, z3.Z3Exception) as exc:
                 return LogicVerificationResult(
                     is_valid=False,
@@ -492,7 +498,6 @@ class LogicVerifier:
                 )
 
         try:
-            symtab = {}
             parts = _split_top_level(expr_text, separators=(",", ";", "\n"))
             if not parts:
                 return LogicVerificationResult(
@@ -501,15 +506,16 @@ class LogicVerifier:
                     details="Empty logical expression.",
                     error="LogicParseError",
                 )
-            constraints = [_parse_logic_formula(p, symtab) for p in parts]
-            if not all(z3.is_bool(c) for c in constraints):
-                return LogicVerificationResult(
-                    is_valid=False,
-                    is_satisfiable=False,
-                    details="Logical constraints must evaluate to boolean formulas.",
-                    error="LogicTypeError",
-                )
+            clause_asts = [_parse_logic_ast(p) for p in parts]
+            (constraints,) = _compile_ast_groups([clause_asts])
             return self.check_satisfiability(constraints)
+        except _LogicSortError as exc:
+            return LogicVerificationResult(
+                is_valid=False,
+                is_satisfiable=False,
+                details=str(exc),
+                error="LogicTypeError",
+            )
         except (ValueError, z3.Z3Exception) as exc:
             return LogicVerificationResult(
                 is_valid=False,
@@ -653,32 +659,46 @@ def _split_top_level_turnstile(text: str) -> Optional[Tuple[str, str]]:
     return None
 
 
-def _infer_int_symbols(tokens: List[Tuple[str, str]]) -> set:
-    """Identify variables participating in arithmetic or inequality operators."""
-    int_ops = {"INT", "LT", "LE", "GT", "GE", "PLUS", "MINUS", "MUL"}
-    int_vars = set()
-    for idx, (kind, val) in enumerate(tokens):
-        if kind != "IDENT":
-            continue
-        prev_kind = tokens[idx - 1][0] if idx > 0 else None
-        next_kind = tokens[idx + 1][0] if idx + 1 < len(tokens) else None
-        if prev_kind in int_ops or next_kind in int_ops:
-            int_vars.add(val)
-        elif next_kind in ("EQ", "NE") and idx + 2 < len(tokens) and tokens[idx + 2][0] == "INT":
-            int_vars.add(val)
-        elif prev_kind in ("EQ", "NE") and idx >= 2 and tokens[idx - 2][0] == "INT":
-            int_vars.add(val)
-    return int_vars
+class _LogicSortError(Exception):
+    """Raised when variables or equality operands have incompatible Bool/Int sorts."""
+
+
+@dataclass(frozen=True)
+class _LitNode:
+    sort: str
+    value: Any
+
+
+@dataclass(frozen=True)
+class _VarNode:
+    name: str
+
+
+@dataclass(frozen=True)
+class _UnaryNode:
+    op: str
+    operand: Any
+
+
+@dataclass(frozen=True)
+class _BinNode:
+    op: str
+    left: Any
+    right: Any
+
+
+@dataclass(frozen=True)
+class _CallNode:
+    fn: str
+    args: List[Any]
 
 
 class _LogicFormulaParser:
-    """Recursive-descent parser converting logic tokens into Z3 expressions."""
+    """Recursive-descent parser converting logic tokens into a typed AST."""
 
-    def __init__(self, tokens: List[Tuple[str, str]], symtab: Dict[str, Any]):
+    def __init__(self, tokens: List[Tuple[str, str]]):
         self.tokens = tokens
         self.pos = 0
-        self.symtab = symtab
-        self.int_vars = _infer_int_symbols(tokens)
 
     def _peek(self) -> Optional[Tuple[str, str]]:
         return self.tokens[self.pos] if self.pos < len(self.tokens) else None
@@ -705,7 +725,7 @@ class _LogicFormulaParser:
         while self._peek() and self._peek()[0] == "BICOND":
             self._consume()
             right = self._parse_implies()
-            left = left == right
+            left = _BinNode("BICOND", left, right)
         return left
 
     def _parse_implies(self) -> Any:
@@ -713,7 +733,7 @@ class _LogicFormulaParser:
         if self._peek() and self._peek()[0] in ("IMPLIES", "DIMPLIES"):
             self._consume()
             right = self._parse_implies()  # right-associative
-            return z3.Implies(left, right)
+            return _BinNode("IMPLIES", left, right)
         return left
 
     def _parse_or(self) -> Any:
@@ -721,7 +741,7 @@ class _LogicFormulaParser:
         while self._peek() and self._peek()[0] == "OR":
             self._consume()
             right = self._parse_xor()
-            left = z3.Or(left, right)
+            left = _BinNode("OR", left, right)
         return left
 
     def _parse_xor(self) -> Any:
@@ -729,7 +749,7 @@ class _LogicFormulaParser:
         while self._peek() and self._peek()[0] == "XOR":
             self._consume()
             right = self._parse_and()
-            left = z3.Xor(left, right)
+            left = _BinNode("XOR", left, right)
         return left
 
     def _parse_and(self) -> Any:
@@ -737,13 +757,13 @@ class _LogicFormulaParser:
         while self._peek() and self._peek()[0] == "AND":
             self._consume()
             right = self._parse_not()
-            left = z3.And(left, right)
+            left = _BinNode("AND", left, right)
         return left
 
     def _parse_not(self) -> Any:
         if self._peek() and self._peek()[0] == "NOT":
             self._consume()
-            return z3.Not(self._parse_not())
+            return _UnaryNode("NOT", self._parse_not())
         return self._parse_cmp()
 
     def _parse_cmp(self) -> Any:
@@ -752,17 +772,7 @@ class _LogicFormulaParser:
         if tok and tok[0] in ("EQ", "NE", "LT", "LE", "GT", "GE"):
             op = self._consume()[0]
             right = self._parse_add()
-            if op == "EQ":
-                return left == right
-            if op == "NE":
-                return left != right
-            if op == "LT":
-                return left < right
-            if op == "LE":
-                return left <= right
-            if op == "GT":
-                return left > right
-            return left >= right
+            return _BinNode(op, left, right)
         return left
 
     def _parse_add(self) -> Any:
@@ -770,7 +780,7 @@ class _LogicFormulaParser:
         while self._peek() and self._peek()[0] in ("PLUS", "MINUS"):
             op = self._consume()[0]
             right = self._parse_mul()
-            left = left + right if op == "PLUS" else left - right
+            left = _BinNode(op, left, right)
         return left
 
     def _parse_mul(self) -> Any:
@@ -778,13 +788,13 @@ class _LogicFormulaParser:
         while self._peek() and self._peek()[0] == "MUL":
             self._consume()
             right = self._parse_unary_arith()
-            left = left * right
+            left = _BinNode("MUL", left, right)
         return left
 
     def _parse_unary_arith(self) -> Any:
         if self._peek() and self._peek()[0] == "MINUS":
             self._consume()
-            return -self._parse_unary_arith()
+            return _UnaryNode("NEG", self._parse_unary_arith())
         return self._parse_atom()
 
     def _parse_atom(self) -> Any:
@@ -800,23 +810,18 @@ class _LogicFormulaParser:
             return inner
         if kind == "TRUE":
             self._consume()
-            return z3.BoolVal(True)
+            return _LitNode("bool", True)
         if kind == "FALSE":
             self._consume()
-            return z3.BoolVal(False)
+            return _LitNode("bool", False)
         if kind == "INT":
             self._consume()
-            return z3.IntVal(int(val))
+            return _LitNode("int", int(val))
         if kind == "IDENT":
             self._consume()
             if self._peek() and self._peek()[0] == "LPAREN":
                 return self._parse_call(val)
-            existing = self.symtab.get(val)
-            if existing is not None:
-                return existing
-            sym = z3.Int(val) if val in self.int_vars else z3.Bool(val)
-            self.symtab[val] = sym
-            return sym
+            return _VarNode(val)
 
         raise ValueError(f"Unexpected token '{val}'")
 
@@ -831,21 +836,194 @@ class _LogicFormulaParser:
         self._consume("RPAREN")
 
         fname = fn_name.lower()
-        if fname == "and" and len(args) >= 1:
-            return z3.And(*args) if len(args) > 1 else args[0]
-        if fname == "or" and len(args) >= 1:
-            return z3.Or(*args) if len(args) > 1 else args[0]
+        if fname in ("and", "or") and len(args) >= 1:
+            return _CallNode(fname, args)
         if fname == "not" and len(args) == 1:
-            return z3.Not(args[0])
-        if fname == "implies" and len(args) == 2:
-            return z3.Implies(args[0], args[1])
-        if fname == "xor" and len(args) == 2:
-            return z3.Xor(args[0], args[1])
-        if fname in ("equiv", "iff") and len(args) == 2:
-            return args[0] == args[1]
+            return _CallNode(fname, args)
+        if fname in ("implies", "xor", "equiv", "iff") and len(args) == 2:
+            return _CallNode(fname, args)
         raise ValueError(f"Unsupported logical function '{fn_name}' with {len(args)} argument(s)")
 
 
-def _parse_logic_formula(text: str, symtab: Dict[str, Any]) -> Any:
-    tokens = _tokenize_logic(text)
-    return _LogicFormulaParser(tokens, symtab).parse()
+def _parse_logic_ast(text: str) -> Any:
+    return _LogicFormulaParser(_tokenize_logic(text)).parse()
+
+
+def _collect_vars(node: Any, out: set) -> None:
+    if isinstance(node, _VarNode):
+        out.add(node.name)
+    elif isinstance(node, _UnaryNode):
+        _collect_vars(node.operand, out)
+    elif isinstance(node, _BinNode):
+        _collect_vars(node.left, out)
+        _collect_vars(node.right, out)
+    elif isinstance(node, _CallNode):
+        for arg in node.args:
+            _collect_vars(arg, out)
+
+
+def _resolve_ast_sorts(asts: List[Any]) -> Dict[str, str]:
+    """Infer Bool/Int variable sorts across all clauses via fixed-point propagation."""
+    var_sorts: Dict[str, str] = {}
+    changed = True
+
+    def bind(name: str, sort: str) -> None:
+        nonlocal changed
+        prev = var_sorts.get(name)
+        if prev is not None and prev != sort:
+            raise _LogicSortError(f"Variable '{name}' used inconsistently as both {prev} and {sort}.")
+        if prev is None:
+            var_sorts[name] = sort
+            changed = True
+
+    def constrain(node: Any, expected: Optional[str]) -> Optional[str]:
+        if isinstance(node, _LitNode):
+            if expected is not None and node.sort != expected:
+                raise _LogicSortError(f"Expected {expected} expression, got {node.sort} literal '{node.value}'.")
+            return node.sort
+
+        if isinstance(node, _VarNode):
+            if expected is not None:
+                bind(node.name, expected)
+            return var_sorts.get(node.name)
+
+        if isinstance(node, _UnaryNode):
+            node_sort = "bool" if node.op == "NOT" else "int"
+            if expected is not None and node_sort != expected:
+                raise _LogicSortError(f"Expected {expected} expression, got {node_sort} operator '{node.op}'.")
+            constrain(node.operand, node_sort)
+            return node_sort
+
+        if isinstance(node, _CallNode):
+            if expected is not None and expected != "bool":
+                raise _LogicSortError(f"Expected {expected} expression, got bool function '{node.fn}'.")
+            for arg in node.args:
+                constrain(arg, "bool")
+            return "bool"
+
+        if isinstance(node, _BinNode):
+            if node.op in ("BICOND", "IMPLIES", "OR", "XOR", "AND"):
+                if expected is not None and expected != "bool":
+                    raise _LogicSortError(f"Expected {expected} expression, got bool operator '{node.op}'.")
+                constrain(node.left, "bool")
+                constrain(node.right, "bool")
+                return "bool"
+
+            if node.op in ("PLUS", "MINUS", "MUL"):
+                if expected is not None and expected != "int":
+                    raise _LogicSortError(f"Expected {expected} expression, got int operator '{node.op}'.")
+                constrain(node.left, "int")
+                constrain(node.right, "int")
+                return "int"
+
+            if node.op in ("LT", "LE", "GT", "GE"):
+                if expected is not None and expected != "bool":
+                    raise _LogicSortError(f"Expected {expected} expression, got bool comparison '{node.op}'.")
+                constrain(node.left, "int")
+                constrain(node.right, "int")
+                return "bool"
+
+            if node.op in ("EQ", "NE"):
+                if expected is not None and expected != "bool":
+                    raise _LogicSortError(f"Expected {expected} expression, got bool comparison '{node.op}'.")
+                ls = constrain(node.left, None)
+                rs = constrain(node.right, None)
+                if ls is not None and rs is not None and ls != rs:
+                    raise _LogicSortError(f"Incompatible operand sorts for '{node.op}': {ls} vs {rs}.")
+                if ls is not None and rs is None:
+                    constrain(node.right, ls)
+                elif rs is not None and ls is None:
+                    constrain(node.left, rs)
+                return "bool"
+
+        raise ValueError(f"Unsupported AST node: {node!r}")
+
+    # Propagate sort constraints across all clauses until fixed point so cross-clause
+    # equalities (e.g. "x == y, x > 5") resolve every linked variable to Int.
+    while changed:
+        changed = False
+        for ast in asts:
+            constrain(ast, "bool")
+
+    # Variables untouched by integer/arithmetic constraints default to Bool.
+    all_vars: set = set()
+    for ast in asts:
+        _collect_vars(ast, all_vars)
+    for name in all_vars:
+        var_sorts.setdefault(name, "bool")
+
+    # Re-verify every AST with concrete sorts to catch any residual Bool/Int mismatch.
+    for ast in asts:
+        constrain(ast, "bool")
+
+    return var_sorts
+
+
+def _lower_ast(node: Any, var_sorts: Dict[str, str], symtab: Dict[str, Any]) -> Any:
+    if isinstance(node, _LitNode):
+        return z3.BoolVal(node.value) if node.sort == "bool" else z3.IntVal(node.value)
+
+    if isinstance(node, _VarNode):
+        sym = symtab.get(node.name)
+        if sym is None:
+            sym = z3.Int(node.name) if var_sorts[node.name] == "int" else z3.Bool(node.name)
+            symtab[node.name] = sym
+        return sym
+
+    if isinstance(node, _UnaryNode):
+        arg = _lower_ast(node.operand, var_sorts, symtab)
+        return z3.Not(arg) if node.op == "NOT" else -arg
+
+    if isinstance(node, _CallNode):
+        args = [_lower_ast(a, var_sorts, symtab) for a in node.args]
+        if node.fn == "and":
+            return z3.And(*args) if len(args) > 1 else args[0]
+        if node.fn == "or":
+            return z3.Or(*args) if len(args) > 1 else args[0]
+        if node.fn == "not":
+            return z3.Not(args[0])
+        if node.fn == "implies":
+            return z3.Implies(args[0], args[1])
+        if node.fn == "xor":
+            return z3.Xor(args[0], args[1])
+        return args[0] == args[1]
+
+    if isinstance(node, _BinNode):
+        lval = _lower_ast(node.left, var_sorts, symtab)
+        rval = _lower_ast(node.right, var_sorts, symtab)
+        op = node.op
+        if op == "BICOND" or op == "EQ":
+            return lval == rval
+        if op == "NE":
+            return lval != rval
+        if op == "IMPLIES":
+            return z3.Implies(lval, rval)
+        if op == "OR":
+            return z3.Or(lval, rval)
+        if op == "XOR":
+            return z3.Xor(lval, rval)
+        if op == "AND":
+            return z3.And(lval, rval)
+        if op == "LT":
+            return lval < rval
+        if op == "LE":
+            return lval <= rval
+        if op == "GT":
+            return lval > rval
+        if op == "GE":
+            return lval >= rval
+        if op == "PLUS":
+            return lval + rval
+        if op == "MINUS":
+            return lval - rval
+        if op == "MUL":
+            return lval * rval
+
+    raise ValueError(f"Unsupported AST node: {node!r}")
+
+
+def _compile_ast_groups(ast_groups: List[List[Any]]) -> List[List[Any]]:
+    flat = [ast for group in ast_groups for ast in group]
+    var_sorts = _resolve_ast_sorts(flat)
+    symtab: Dict[str, Any] = {}
+    return [[_lower_ast(ast, var_sorts, symtab) for ast in group] for group in ast_groups]

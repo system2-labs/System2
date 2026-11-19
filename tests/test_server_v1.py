@@ -1,5 +1,6 @@
 """Tests for System2 server fixes, /v1/route, /v1/verify, and Docker packaging."""
 
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -12,6 +13,7 @@ from routing.domain_router import DomainRouter
 from sys2.engine import System2Engine
 from sys2.guard import GuardResult, GuardVerdict
 from sys2.server import create_app
+from sys2.symbolic.logic import LogicVerifier
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -354,6 +356,44 @@ def test_v1_verify_algebra(client):
     assert parse_resp.json()["valid"] is False
     assert parse_resp.json()["code"] == "ALGEBRA_PARSE_ERROR"
 
+    # Inequalities with '=' inside '>=' / '<=' must not be split into invalid fragments.
+    ge_resp = client.post(
+        "/v1/verify",
+        json={"code_or_expression": "x >= 2", "domain": "algebra"},
+    )
+    assert ge_resp.status_code == 200
+    assert ge_resp.json()["valid"] is False
+    assert ge_resp.json()["code"] == "ALGEBRA_PARSE_ERROR"
+
+    # Safe math functions like sin/cos/ln still parse and verify cleanly.
+    trig_resp = client.post(
+        "/v1/verify",
+        json={"code_or_expression": "sin(x)^2 + cos(x)^2 == 1", "domain": "algebra"},
+    )
+    assert trig_resp.status_code == 200
+    assert trig_resp.json()["valid"] is True
+
+
+def test_v1_verify_algebra_blocks_rce():
+    """Ensure untrusted Python payloads never execute inside SymPy parse_expr."""
+    app = create_app(engine=MagicMock(), router=MagicMock(), device="cpu")
+    tc = TestClient(app)
+    rce_payload = '__import__("builtins").setattr(__import__("sys"), "_sys2_rce_probe", True)'
+
+    for req_body in [
+        {"domain": "algebra", "code_or_expression": rce_payload},
+        {"domain": "algebra", "code_or_expression": "x + 1", "context": rce_payload},
+        {"domain": "algebra", "code_or_expression": f"1 = {rce_payload}"},
+        {"domain": "algebra", "code_or_expression": "().__class__.__mro__[1].__subclasses__()"},
+        {"domain": "algebra", "code_or_expression": "eval(1)"},
+    ]:
+        setattr(sys, "_sys2_rce_probe", False)
+        resp = tc.post("/v1/verify", json=req_body)
+        assert getattr(sys, "_sys2_rce_probe") is False
+        assert resp.status_code == 200
+        assert resp.json()["valid"] is False
+        assert resp.json()["code"] == "ALGEBRA_PARSE_ERROR"
+
 
 def test_v1_verify_logic(client):
     valid_entail = client.post(
@@ -390,6 +430,38 @@ def test_v1_verify_logic(client):
     assert neg_ctx.status_code == 200
     assert neg_ctx.json()["valid"] is False
     assert neg_ctx.json()["code"] == "LOGIC_VIOLATION"
+
+
+def test_v1_verify_logic_cross_clause_smt_sorts(client):
+    """Verify Int sort propagates across clauses and sort conflicts fail cleanly."""
+    smt_entail = client.post(
+        "/v1/verify",
+        json={"code_or_expression": "x == y, x > 5 |= y > 0", "domain": "logic"},
+    )
+    assert smt_entail.status_code == 200
+    assert smt_entail.json()["valid"] is True
+
+    smt_sat = client.post(
+        "/v1/verify",
+        json={"code_or_expression": "x == 1, y == x", "domain": "logic"},
+    )
+    assert smt_sat.status_code == 200
+    assert smt_sat.json()["valid"] is True
+
+    lv = LogicVerifier()
+    sat_res = lv.verify_expression("x == 1, y == x")
+    assert sat_res.is_valid is True
+    assert sat_res.counterexample == {"x": "1", "y": "1"}
+
+    sort_conflict = client.post(
+        "/v1/verify",
+        json={"code_or_expression": "x == y, x == True, y > 5", "domain": "logic"},
+    )
+    assert sort_conflict.status_code == 200
+    sort_data = sort_conflict.json()
+    assert sort_data["valid"] is False
+    assert sort_data["code"] == "LOGIC_VIOLATION"
+    assert sort_data["error"] == "LogicTypeError"
 
 
 def test_v1_verify_safety(client):
