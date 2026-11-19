@@ -1,14 +1,16 @@
 """server.py - System2 Non-Autoregressive Deliberation & Decision Server.
 
 Provides high-performance asynchronous REST endpoints:
-  1. POST /deliberate : Full 5-head parallel feedforward deliberation (< 30ms on MPS, < 200ms on CPU)
-  2. POST /route      : Ultra-fast two-stage domain routing (< 0.1ms lexical, < 1ms centroid)
-  3. POST /guard      : Non-autoregressive agent command safety gatekeeper
-  4. GET  /health     : Server liveness, memory status, and track inventory
-  5. GET  /tracks     : Metadata inventory across all 13 specialized tracks
-  6. POST /v1/systemone : Jev / TypeSafe AI decision endpoint compatibility
-  7. POST /v1/decisions : OpenAI-compatible structured decision endpoint compatibility
-  8. Reverse-proxy    : Transparently proxies generative LLM routes (/v1/chat/completions) if upstream-llm configured
+  1. POST /deliberate   : Full 5-head parallel feedforward deliberation (< 30ms on MPS, < 200ms on CPU)
+  2. POST /route        : Ultra-fast two-stage domain routing (< 0.1ms lexical, < 1ms centroid)
+  3. POST /v1/route     : Pi-compatible domain routing with "general" fallback track
+  4. POST /v1/verify    : Symbolic & safety verification (units, algebra, logic, safety)
+  5. POST /guard        : Non-autoregressive agent command safety gatekeeper
+  6. GET  /health       : Server liveness, memory status, and track inventory
+  7. GET  /tracks       : Metadata inventory across all 13 specialized tracks
+  8. POST /v1/systemone : Jev / TypeSafe AI decision endpoint compatibility
+  9. POST /v1/decisions : OpenAI-compatible structured decision endpoint compatibility
+ 10. Reverse-proxy      : Transparently proxies generative LLM routes (/v1/chat/completions) if upstream-llm configured
 
 Usage:
   # Standalone server:
@@ -23,15 +25,15 @@ import asyncio
 import json
 import os
 import sys
-import time
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Literal, Optional, Union
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from starlette.background import BackgroundTask
 import torch
 import uvicorn
 
@@ -39,9 +41,10 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from routing.domain_router import DomainRouter
-from sys2.engine import System2Engine, CHECKPOINT_MAP
-from sys2.guard import AgentGatekeeper, GuardVerdict
+from routing.domain_router import DomainRouter  # noqa: E402
+from sys2.engine import CHECKPOINT_MAP, System2Engine  # noqa: E402
+from sys2.guard import AgentGatekeeper, GuardVerdict  # noqa: E402
+from sys2.symbolic import AlgebraVerifier, LogicVerifier, UnitVerifier  # noqa: E402
 
 
 # -----------------------------------------------------------------------------
@@ -78,6 +81,30 @@ class RouteResponse(BaseModel):
     probabilities: Dict[str, float]
     method: str
     latency_ms: float
+
+
+class V1RouteResponse(BaseModel):
+    track: str
+    selected_track: str
+    track_name: str
+    confidence: float
+    probabilities: Dict[str, float]
+    method: str
+    latency_ms: float
+
+
+class VerifyRequest(BaseModel):
+    code_or_expression: str = Field(..., description="Command, code snippet, or symbolic expression to verify")
+    domain: Literal["units", "algebra", "logic", "safety"] = Field(..., description="Verification domain")
+    context: Optional[str] = Field(default=None, description="Optional context or target specification")
+
+
+class VerifyResponse(BaseModel):
+    valid: bool
+    code: Optional[str] = None
+    reason: Optional[str] = None
+    error: Optional[str] = None
+    details: Optional[str] = None
 
 
 class GuardRequest(BaseModel):
@@ -193,11 +220,12 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        if upstream_llm:
+        if upstream_llm and state["http_client"] is None:
             state["http_client"] = httpx.AsyncClient(base_url=upstream_llm, timeout=120.0)
         yield
         if state["http_client"] is not None:
             await state["http_client"].aclose()
+            state["http_client"] = None
 
     app = FastAPI(
         title="System2 Parallel Deliberation Server",
@@ -214,9 +242,21 @@ def create_app(
         allow_headers=["*"],
     )
 
+    # Stateless symbolic verifiers shared across /v1/verify requests
+    unit_verifier = UnitVerifier()
+    algebra_verifier = AlgebraVerifier()
+    logic_verifier = LogicVerifier()
+
     # -------------------------------------------------------------------------
     # Lazy Loader Helpers
     # -------------------------------------------------------------------------
+    def get_http_client() -> httpx.AsyncClient:
+        # Lazily create AsyncClient when callers use TestClient or ASGITransport
+        # without entering FastAPI lifespan, avoiding NoneType errors on proxy calls.
+        if state["http_client"] is None:
+            state["http_client"] = httpx.AsyncClient(base_url=upstream_llm, timeout=120.0)
+        return state["http_client"]
+
     def get_engine() -> System2Engine:
         if state["engine"] is None:
             state["engine"] = System2Engine(device=state["device"])
@@ -237,6 +277,14 @@ def create_app(
         block_th: float = 0.70,
         abstain_th: float = 0.40,
     ) -> AgentGatekeeper:
+        injected = state["gatekeeper"]
+        if (
+            injected is not None
+            and injected.allow_threshold == allow_th
+            and injected.block_threshold == block_th
+            and injected.abstain_threshold == abstain_th
+        ):
+            return injected
         eng = get_engine()
         return AgentGatekeeper(
             engine=eng,
@@ -318,7 +366,7 @@ def create_app(
                 req.question,
                 choices,
                 domain=req.domain,
-                max_len=req.max_len or 384,
+                max_len=384 if req.max_len is None else req.max_len,
             )
 
         letters = ["A", "B", "C", "D"]
@@ -355,14 +403,36 @@ def create_app(
             latency_ms=round(decision.latency_ms, 3),
         )
 
+    @app.post("/v1/route", response_model=V1RouteResponse)
+    async def v1_route_prompt(req: RouteRequest):
+        # Share the same lock discipline as /route because DomainRouter uses the
+        # resident ModernBERT backbone when falling through to Stage 2 centroids.
+        async with state["lock"]:
+            rtr = await asyncio.to_thread(get_router)
+            # Pi clients expect unspecialized or OOD prompts to route to "general"
+            # rather than silently pinning them to the "science" LoRA checkpoint.
+            decision = await asyncio.to_thread(rtr.route, req.prompt, fallback_track="general")
+        track_name = DomainRouter.TRACK_NAMES.get(decision.selected_track, decision.selected_track.upper())
+
+        return V1RouteResponse(
+            track=decision.selected_track,
+            selected_track=decision.selected_track,
+            track_name=track_name,
+            confidence=round(decision.confidence, 4),
+            probabilities=decision.probabilities,
+            method=decision.method,
+            latency_ms=round(decision.latency_ms, 3),
+        )
+
     @app.post("/guard", response_model=GuardResponse)
     async def guard_command(req: GuardRequest):
         async with state["lock"]:
+            # Use explicit None checks so legitimate 0.0 thresholds are not treated as falsy.
             gk = await asyncio.to_thread(
                 get_gatekeeper,
-                allow_th=req.allow_threshold or 0.70,
-                block_th=req.block_threshold or 0.70,
-                abstain_th=req.abstain_threshold or 0.40,
+                allow_th=0.70 if req.allow_threshold is None else req.allow_threshold,
+                block_th=0.70 if req.block_threshold is None else req.block_threshold,
+                abstain_th=0.40 if req.abstain_threshold is None else req.abstain_threshold,
             )
             res = await asyncio.to_thread(gk.evaluate, req.command)
 
@@ -377,11 +447,186 @@ def create_app(
             latency_ms=round(res.latency_ms, 2),
         )
 
+    @app.post("/v1/verify", response_model=VerifyResponse)
+    async def verify_expression(req: VerifyRequest):
+        expr = req.code_or_expression
+        if not expr.strip():
+            return VerifyResponse(
+                valid=False,
+                code="EMPTY_INPUT",
+                reason="code_or_expression must not be empty.",
+            )
+
+        try:
+            if req.domain == "units":
+                has_eq = ("=" in expr) or ("==" in expr)
+                stmt_res = None
+                if has_eq:
+                    stmt_res = unit_verifier.verify_statement(expr)
+                    if not stmt_res.is_valid or not stmt_res.is_dimensionally_homogeneous:
+                        return VerifyResponse(
+                            valid=False,
+                            code="UNIT_DIMENSION_MISMATCH",
+                            reason=stmt_res.details,
+                            details=stmt_res.details,
+                        )
+                if req.context:
+                    ctx_res = unit_verifier.verify_natural_language_claim(req.context, expr)
+                    if not ctx_res.is_valid or not ctx_res.is_dimensionally_homogeneous:
+                        return VerifyResponse(
+                            valid=False,
+                            code="UNIT_DIMENSION_MISMATCH",
+                            reason=ctx_res.details,
+                            details=ctx_res.details,
+                        )
+                    return VerifyResponse(valid=True, details=ctx_res.details)
+                if stmt_res is not None:
+                    return VerifyResponse(valid=True, details=stmt_res.details)
+                return VerifyResponse(
+                    valid=True,
+                    details="No explicit unit equality or context target to mismatch.",
+                )
+
+            if req.domain == "algebra":
+                if "==" in expr or "=" in expr:
+                    parts = expr.split("==") if "==" in expr else expr.split("=")
+                    if len(parts) < 2:
+                        return VerifyResponse(
+                            valid=False,
+                            code="ALGEBRA_PARSE_ERROR",
+                            reason=f"Invalid algebraic equation: '{expr}'",
+                            error="ParseError",
+                        )
+                    last_details = ""
+                    for i in range(len(parts) - 1):
+                        alg_res = algebra_verifier.verify_equivalence(parts[i], parts[i + 1])
+                        if alg_res.error == "ParseError":
+                            return VerifyResponse(
+                                valid=False,
+                                code="ALGEBRA_PARSE_ERROR",
+                                reason=alg_res.details,
+                                error=alg_res.error,
+                                details=alg_res.details,
+                            )
+                        if alg_res.error is not None:
+                            return VerifyResponse(
+                                valid=False,
+                                code="VERIFIER_ERROR",
+                                reason=alg_res.details,
+                                error=alg_res.error,
+                                details=alg_res.details,
+                            )
+                        if not alg_res.is_valid:
+                            return VerifyResponse(
+                                valid=False,
+                                code="ALGEBRA_MISMATCH",
+                                reason=alg_res.details,
+                                details=alg_res.details,
+                            )
+                        last_details = alg_res.details
+                    return VerifyResponse(valid=True, details=last_details)
+
+                parsed = algebra_verifier.parse(expr)
+                if parsed is None:
+                    return VerifyResponse(
+                        valid=False,
+                        code="ALGEBRA_PARSE_ERROR",
+                        reason=f"Failed to parse algebraic expression: '{expr}'",
+                        error="ParseError",
+                    )
+                if req.context and algebra_verifier.parse(req.context) is not None:
+                    alg_res = algebra_verifier.verify_equivalence(req.context, expr)
+                    if not alg_res.is_valid:
+                        return VerifyResponse(
+                            valid=False,
+                            code="ALGEBRA_MISMATCH",
+                            reason=alg_res.details,
+                            details=alg_res.details,
+                        )
+                    return VerifyResponse(valid=True, details=alg_res.details)
+                return VerifyResponse(valid=True, details=f"Parsed algebraic expression: {parsed}")
+
+            if req.domain == "logic":
+                logic_res = logic_verifier.verify_expression(expr, context=req.context)
+                if not logic_res.is_valid:
+                    return VerifyResponse(
+                        valid=False,
+                        code="LOGIC_VIOLATION",
+                        reason=logic_res.details,
+                        error=logic_res.error,
+                        details=logic_res.details,
+                    )
+                return VerifyResponse(valid=True, details=logic_res.details)
+
+            if req.domain == "safety":
+                async with state["lock"]:
+                    gk = await asyncio.to_thread(get_gatekeeper)
+                    guard_res = await asyncio.to_thread(gk.evaluate, expr)
+                if guard_res.verdict == GuardVerdict.ALLOWED:
+                    return VerifyResponse(
+                        valid=True,
+                        details=f"{guard_res.verdict.value} ({guard_res.confidence:.2%}, {guard_res.consensus}): {guard_res.explanation}",
+                    )
+                if guard_res.verdict == GuardVerdict.BLOCKED:
+                    return VerifyResponse(
+                        valid=False,
+                        code="SAFETY_BLOCKED",
+                        reason=guard_res.explanation,
+                        details=f"category={guard_res.category}, confidence={guard_res.confidence:.4f}, consensus={guard_res.consensus}",
+                    )
+                # Fail closed on ABSTAIN so ambiguous/uncertain commands require explicit review.
+                return VerifyResponse(
+                    valid=False,
+                    code="SAFETY_ABSTAIN",
+                    reason=guard_res.explanation,
+                    details=f"category={guard_res.category}, confidence={guard_res.confidence:.4f}, consensus={guard_res.consensus}",
+                )
+
+            return VerifyResponse(
+                valid=False,
+                code="VERIFIER_ERROR",
+                reason=f"Unsupported verification domain: {req.domain}",
+                error="UnsupportedDomain",
+            )
+        except Exception as exc:
+            # Fail closed with a structured response instead of an unhandled 500.
+            return VerifyResponse(
+                valid=False,
+                code="VERIFIER_ERROR",
+                reason=f"Verification failed due to internal error: {exc}",
+                error=f"{type(exc).__name__}: {exc}",
+            )
+
     # -------------------------------------------------------------------------
     # Backward Compatibility: /v1/systemone (Jev Specification)
     # -------------------------------------------------------------------------
     @app.post("/v1/systemone", response_model=SystemOneResponse)
     async def handle_systemone(req: SystemOneRequest):
+        # Validate all questions upfront so empty criteria or unknown types fail
+        # fast with 400 before loading/running the deliberation engine.
+        for q_id, q_def in req.questions.items():
+            q_type = q_def.type.lower()
+            if q_type == "choice":
+                if not isinstance(q_def.criteria, dict) or not q_def.criteria:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Criteria for '{q_id}' must be a non-empty dict mapping key -> description",
+                    )
+            elif q_type in ("noul", "bool"):
+                if q_def.criteria is not None and (not isinstance(q_def.criteria, dict) or not q_def.criteria):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Criteria for '{q_id}' must be a non-empty dict when provided",
+                    )
+            elif q_type == "score":
+                if not isinstance(q_def.criteria, list) or not q_def.criteria:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Criteria for '{q_id}' must be a non-empty list of level descriptions",
+                    )
+            else:
+                raise HTTPException(status_code=400, detail=f"Unsupported question type: '{q_type}'")
+
         async with state["lock"]:
             eng = await asyncio.to_thread(get_engine)
         state_str = json.dumps(req.state) if not isinstance(req.state, str) else req.state
@@ -392,8 +637,6 @@ def create_app(
             prompt = f"Context: {state_str}\n\nTask: {q_def.instructions}"
 
             if q_type == "choice":
-                if not isinstance(q_def.criteria, dict):
-                    raise HTTPException(status_code=400, detail=f"Criteria for '{q_id}' must be dict mapping key -> description")
                 choice_keys = list(q_def.criteria.keys())
                 choice_descs = [f"{k}: {q_def.criteria[k]}" for k in choice_keys]
 
@@ -411,7 +654,11 @@ def create_app(
                 }
 
             elif q_type in ("noul", "bool"):
-                criteria = q_def.criteria or {"true": "Condition is met / affirmative", "false": "Condition is not met / negative"}
+                criteria = (
+                    q_def.criteria
+                    if q_def.criteria is not None
+                    else {"true": "Condition is met / affirmative", "false": "Condition is not met / negative"}
+                )
                 cand_descs = [f"True: {criteria.get('true', 'True')}", f"False: {criteria.get('false', 'False')}"]
 
                 async with state["lock"]:
@@ -425,8 +672,6 @@ def create_app(
                     answers[q_id] = {"type": "bool", "bool": bool(p_true >= 0.5), "probability": p_true}
 
             elif q_type == "score":
-                if not isinstance(q_def.criteria, list):
-                    raise HTTPException(status_code=400, detail=f"Criteria for '{q_id}' must be a list of level descriptions")
                 levels = q_def.criteria
                 cand_descs = [f"Level {idx}: {desc}" for idx, desc in enumerate(levels)]
 
@@ -441,8 +686,6 @@ def create_app(
                     "probabilities": [round(p, 4) for p in c_probs],
                     "legend": {str(i): levels[i] for i in range(len(levels))},
                 }
-            else:
-                raise HTTPException(status_code=400, detail=f"Unsupported question type: '{q_type}'")
 
         input_tokens = len(state_str.split()) * 2
         return SystemOneResponse(
@@ -456,6 +699,27 @@ def create_app(
     # -------------------------------------------------------------------------
     @app.post("/v1/decisions", response_model=DecisionResponse)
     async def handle_decisions(req: DecisionRequest):
+        # Validate all questions upfront so empty choices/levels or unknown types
+        # return 400 cleanly instead of triggering ValueError/ZeroDivisionError.
+        for q in req.questions:
+            q_type = q.type.lower()
+            if q_type == "predicate":
+                continue
+            if q_type == "choice":
+                if not q.choices:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Question '{q.name}' of type 'choice' requires a non-empty choices list",
+                    )
+            elif q_type == "score":
+                if not q.levels:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Question '{q.name}' of type 'score' requires a non-empty levels list",
+                    )
+            else:
+                raise HTTPException(status_code=400, detail=f"Unsupported question type: '{q_type}'")
+
         async with state["lock"]:
             eng = await asyncio.to_thread(get_engine)
         inp_str = json.dumps(req.input) if not isinstance(req.input, str) else req.input
@@ -498,7 +762,7 @@ def create_app(
 
             elif q_type == "score":
                 levels = q.levels or []
-                descs = [l.get("label", str(i)) for i, l in enumerate(levels)]
+                descs = [lvl.get("label", str(i)) for i, lvl in enumerate(levels)]
                 async with state["lock"]:
                     res = await asyncio.to_thread(eng.adjudicate, prompt, descs, domain=domain_override)
                 c_probs = res.choice_probabilities or [1.0 / len(levels)] * len(levels)
@@ -522,7 +786,7 @@ def create_app(
     if upstream_llm:
         @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"])
         async def reverse_proxy(request: Request, path: str):
-            http_client: httpx.AsyncClient = state["http_client"]
+            http_client = get_http_client()
             url = f"{upstream_llm.rstrip('/')}/{path}"
             headers = dict(request.headers)
             headers.pop("host", None)
@@ -548,7 +812,8 @@ def create_app(
                 resp.aiter_raw(),
                 status_code=resp.status_code,
                 headers=dict(resp.headers),
-                background=resp.aclose,
+                # Starlette awaits BackgroundTask(resp.aclose) after streaming finishes.
+                background=BackgroundTask(resp.aclose),
             )
 
     return app

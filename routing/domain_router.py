@@ -9,7 +9,7 @@ import os
 import sys
 import time
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Dict, List, Optional
 
 import torch
 import torch.nn.functional as F
@@ -18,9 +18,9 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from bert import DEFAULT_BACKBONE, get_bert
-from lora import disable_lora
-from routing.lexical_rules import scan_lexical_signatures
+from bert import DEFAULT_BACKBONE, get_bert  # noqa: E402
+from lora import disable_lora  # noqa: E402
+from routing.lexical_rules import scan_lexical_signatures  # noqa: E402
 
 DEFAULT_CENTROIDS_PATH = os.path.join(ROOT_DIR, "routing", "domain_centroids.pt")
 
@@ -39,6 +39,9 @@ class DomainRouter:
     """Dynamic Domain Router for System2 Multi-Track Deliberation."""
 
     TRACKS = ["science", "code", "med", "electrical", "auto", "culinary", "math", "legal", "finance", "physics", "safety", "eval", "logic"]
+    # Keep TRACKS at the 13 specialized LoRA tracks for checkpoint/health parity,
+    # while exposing ALL_TRACKS including the unspecialized "general" fallback.
+    ALL_TRACKS = TRACKS + ["general"]
 
     TRACK_NAMES = {
         "science": "Track A: Science & Causal Reasoning",
@@ -54,6 +57,7 @@ class DomainRouter:
         "safety": "Track K: Agent Gatekeeper & Command Safety",
         "eval": "Track L: Rubric, Faithfulness & Hallucination Meta-Judge",
         "logic": "Track M: Formal & Deductive Logic",
+        "general": "General Purpose / Fallback",
     }
 
     def __init__(
@@ -112,12 +116,15 @@ class DomainRouter:
         self,
         prompt: str,
         precomputed_emb: Optional[torch.Tensor] = None,
+        fallback_track: str = "science",
     ) -> RouteDecision:
         """Route prompt to the best specialized track.
 
         Args:
             prompt: Question or prompt text.
             precomputed_emb: Optional (1, 1024) L2-normalized embedding if already computed.
+            fallback_track: Track returned on Stage 2 ambiguity or missing centroids
+                (defaults to "science" for internal LoRA callers; /v1/route passes "general").
 
         Returns:
             RouteDecision with selected_track, confidence, and distribution.
@@ -146,12 +153,12 @@ class DomainRouter:
         # ----------------------------------------------------------------------
         if self.centroids is not None:
             if precomputed_emb is not None:
-                emb = precomputed_emb.to(self.device)
+                emb = precomputed_emb.to(device=self.device, dtype=self.centroids.dtype)
                 if emb.dim() == 1:
                     emb = emb.unsqueeze(0)
                 emb = F.normalize(emb, p=2, dim=1)
             else:
-                emb = self.encode_text(prompt)
+                emb = self.encode_text(prompt).to(device=self.device, dtype=self.centroids.dtype)
 
             # Cosine similarity matrix multiplication: (6, 1024) @ (1024, 1) -> (6, 1)
             cos_sims = torch.matmul(self.centroids, emb.squeeze(0))  # (6,)
@@ -172,7 +179,7 @@ class DomainRouter:
             ambiguity_threshold = 1.5 / len(self.tracks_order)
             if max_prob < ambiguity_threshold:
                 return RouteDecision(
-                    selected_track="science",
+                    selected_track=fallback_track,
                     confidence=round(max_prob, 4),
                     probabilities=probs_dict,
                     method="fallback",
@@ -190,13 +197,16 @@ class DomainRouter:
             )
 
         # ----------------------------------------------------------------------
-        # FALLBACK: Default to Track A (Science) if centroids not yet generated
+        # FALLBACK: Return fallback_track if centroids are not yet generated
         # ----------------------------------------------------------------------
         elapsed_ms = round((time.perf_counter() - t0) * 1000, 3)
+        fallback_probs = {t: (0.5 if t == fallback_track else 0.1) for t in self.TRACKS}
+        if fallback_track not in fallback_probs:
+            fallback_probs[fallback_track] = 0.5
         return RouteDecision(
-            selected_track="science",
+            selected_track=fallback_track,
             confidence=0.50,
-            probabilities={t: (0.5 if t == "science" else 0.1) for t in self.TRACKS},
+            probabilities=fallback_probs,
             method="fallback",
             latency_ms=elapsed_ms,
         )

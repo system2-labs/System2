@@ -1,0 +1,17 @@
+.git
+.gitignore
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+scratch/
+data/
+runs/
+notes_local/
+models/*.pt
+models/test_smoke*.pt
+*.log
+*.egg-info/
+build/
+dist/

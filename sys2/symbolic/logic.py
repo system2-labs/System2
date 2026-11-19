@@ -414,3 +414,438 @@ class LogicVerifier:
             is_satisfiable=True,
             details="No overt negation conflict detected.",
         )
+
+    def verify_expression(
+        self,
+        expression: str,
+        context: Optional[str] = None,
+    ) -> LogicVerificationResult:
+        """Verify a propositional/SMT string expression and optional context via Z3.
+
+        Supports:
+        - Natural-language negation checks when context + prose claim are supplied.
+        - Entailment via turnstiles (`|=`, `|-`, `⊢`) or a single top-level `=>`/`⇒`.
+        - Satisfiability checks over boolean / linear integer constraint lists.
+        """
+        if not self.available:
+            return LogicVerificationResult(
+                is_valid=True,
+                is_satisfiable=True,
+                details="Z3 not available; check bypassed.",
+            )
+
+        expr_text = (expression or "").strip()
+        if not expr_text:
+            return LogicVerificationResult(
+                is_valid=False,
+                is_satisfiable=False,
+                details="Empty logical expression.",
+                error="LogicParseError",
+            )
+
+        if context is not None and context.strip():
+            neg_res = self.check_negation_consistency(context, expr_text)
+            if not neg_res.is_valid:
+                return neg_res
+
+            # If both context and expression parse as formal Z3 formulas, check strict
+            # entailment (context |= expression) rather than stopping at keyword heuristics.
+            try:
+                symtab: Dict[str, Any] = {}
+                ctx_parts = _split_top_level(context, separators=(",", ";", "\n"))
+                if ctx_parts:
+                    ctx_formulas = [_parse_logic_formula(p, symtab) for p in ctx_parts]
+                    conclusion = _parse_logic_formula(expr_text, symtab)
+                    if all(z3.is_bool(f) for f in ctx_formulas) and z3.is_bool(conclusion):
+                        return self.verify_entailment(ctx_formulas, conclusion)
+            except (ValueError, z3.Z3Exception):
+                # Natural language context/claim that does not parse as formal syntax;
+                # fall back to the negation consistency verdict above.
+                pass
+
+            return neg_res
+
+        # Standalone formal expression: check turnstile entailment first, then top-level '=>',
+        # and otherwise treat comma/semicolon-separated clauses as a constraint conjunction.
+        turnstile_split = _split_top_level_turnstile(expr_text)
+        if turnstile_split is not None:
+            premises_raw, conclusion_raw = turnstile_split
+            try:
+                symtab = {}
+                prem_parts = _split_top_level(premises_raw, separators=(",", ";", "\n")) if premises_raw.strip() else []
+                premises = [_parse_logic_formula(p, symtab) for p in prem_parts]
+                conclusion = _parse_logic_formula(conclusion_raw, symtab)
+                if not all(z3.is_bool(p) for p in premises) or not z3.is_bool(conclusion):
+                    return LogicVerificationResult(
+                        is_valid=False,
+                        is_satisfiable=False,
+                        details="Entailment premises and conclusion must be boolean formulas.",
+                        error="LogicTypeError",
+                    )
+                return self.verify_entailment(premises, conclusion)
+            except (ValueError, z3.Z3Exception) as exc:
+                return LogicVerificationResult(
+                    is_valid=False,
+                    is_satisfiable=False,
+                    details=f"Failed to parse logical entailment: {exc}",
+                    error="LogicParseError",
+                )
+
+        try:
+            symtab = {}
+            parts = _split_top_level(expr_text, separators=(",", ";", "\n"))
+            if not parts:
+                return LogicVerificationResult(
+                    is_valid=False,
+                    is_satisfiable=False,
+                    details="Empty logical expression.",
+                    error="LogicParseError",
+                )
+            constraints = [_parse_logic_formula(p, symtab) for p in parts]
+            if not all(z3.is_bool(c) for c in constraints):
+                return LogicVerificationResult(
+                    is_valid=False,
+                    is_satisfiable=False,
+                    details="Logical constraints must evaluate to boolean formulas.",
+                    error="LogicTypeError",
+                )
+            return self.check_satisfiability(constraints)
+        except (ValueError, z3.Z3Exception) as exc:
+            return LogicVerificationResult(
+                is_valid=False,
+                is_satisfiable=False,
+                details=f"Failed to parse logical formula: {exc}",
+                error="LogicParseError",
+            )
+
+
+# -----------------------------------------------------------------------------
+# Safe Recursive-Descent Propositional & Linear SMT Parser (no eval())
+# -----------------------------------------------------------------------------
+
+_TOKEN_SPEC = [
+    ("SKIP", r"[ \t\r\n]+"),
+    ("TURNSTILE", r"\|=|⊢|\|-"),
+    ("BICOND", r"<->|<=>|↔|⇔"),
+    ("DIMPLIES", r"=>|⇒"),
+    ("IMPLIES", r"->|→"),
+    ("LE", r"<="),
+    ("GE", r">="),
+    ("EQ", r"=="),
+    ("NE", r"!="),
+    ("AND", r"&&|&|∧|/\\"),
+    ("OR", r"\|\||\||∨|\\/"),
+    ("NOT", r"~|!|¬"),
+    ("XOR", r"\^"),
+    ("LT", r"<"),
+    ("GT", r">"),
+    ("PLUS", r"\+"),
+    ("MINUS", r"-"),
+    ("MUL", r"\*"),
+    ("LPAREN", r"\("),
+    ("RPAREN", r"\)"),
+    ("COMMA", r","),
+    ("TRUE", r"⊤"),
+    ("FALSE", r"⊥"),
+    ("INT", r"\d+"),
+    ("IDENT", r"[A-Za-z_][A-Za-z0-9_]*"),
+    ("MISMATCH", r"."),
+]
+_TOKEN_RE = re.compile("|".join(f"(?P<{name}>{pattern})" for name, pattern in _TOKEN_SPEC))
+_KEYWORD_KINDS = {
+    "and": "AND",
+    "or": "OR",
+    "not": "NOT",
+    "xor": "XOR",
+    "iff": "BICOND",
+    "true": "TRUE",
+    "false": "FALSE",
+}
+
+
+def _tokenize_logic(text: str) -> List[Tuple[str, str]]:
+    tokens: List[Tuple[str, str]] = []
+    for m in _TOKEN_RE.finditer(text):
+        kind = m.lastgroup
+        val = m.group()
+        if kind == "SKIP":
+            continue
+        if kind == "MISMATCH":
+            raise ValueError(f"Unexpected character '{val}'")
+        if kind == "IDENT":
+            kw_kind = _KEYWORD_KINDS.get(val.lower())
+            if kw_kind is not None:
+                kind = kw_kind
+        tokens.append((kind, val))
+    return tokens
+
+
+def _split_top_level(text: str, separators: Tuple[str, ...]) -> List[str]:
+    """Split text by separators only at parenthesis depth 0."""
+    parts: List[str] = []
+    depth = 0
+    buf: List[str] = []
+    for ch in text:
+        if ch == "(":
+            depth += 1
+            buf.append(ch)
+        elif ch == ")":
+            depth = max(0, depth - 1)
+            buf.append(ch)
+        elif depth == 0 and ch in separators:
+            segment = "".join(buf).strip()
+            if segment:
+                parts.append(segment)
+            buf = []
+        else:
+            buf.append(ch)
+    tail = "".join(buf).strip()
+    if tail:
+        parts.append(tail)
+    return parts
+
+
+def _split_top_level_turnstile(text: str) -> Optional[Tuple[str, str]]:
+    """Split on a single top-level turnstile (`|=`, `|-`, `⊢`) or unique `=>`/`⇒`."""
+    tokens_pos: List[Tuple[int, int, str]] = []
+    depth = 0
+    i = 0
+    n = len(text)
+    while i < n:
+        ch = text[i]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth < 0:
+                return None
+        elif depth == 0:
+            two = text[i : i + 2]
+            if two in ("|=", "|-"):
+                tokens_pos.append((i, i + 2, "TURNSTILE"))
+                i += 2
+                continue
+            if ch == "⊢":
+                tokens_pos.append((i, i + 1, "TURNSTILE"))
+                i += 1
+                continue
+            if two == "=>" and (i == 0 or text[i - 1] != "<"):
+                tokens_pos.append((i, i + 2, "DIMPLIES"))
+                i += 2
+                continue
+            if ch == "⇒":
+                tokens_pos.append((i, i + 1, "DIMPLIES"))
+                i += 1
+                continue
+        i += 1
+
+    turnstiles = [t for t in tokens_pos if t[2] == "TURNSTILE"]
+    if len(turnstiles) == 1:
+        start, end, _ = turnstiles[0]
+        return text[:start].strip(), text[end:].strip()
+    if len(turnstiles) > 1:
+        return None
+
+    dimplies = [t for t in tokens_pos if t[2] == "DIMPLIES"]
+    if len(dimplies) == 1:
+        start, end, _ = dimplies[0]
+        return text[:start].strip(), text[end:].strip()
+    return None
+
+
+def _infer_int_symbols(tokens: List[Tuple[str, str]]) -> set:
+    """Identify variables participating in arithmetic or inequality operators."""
+    int_ops = {"INT", "LT", "LE", "GT", "GE", "PLUS", "MINUS", "MUL"}
+    int_vars = set()
+    for idx, (kind, val) in enumerate(tokens):
+        if kind != "IDENT":
+            continue
+        prev_kind = tokens[idx - 1][0] if idx > 0 else None
+        next_kind = tokens[idx + 1][0] if idx + 1 < len(tokens) else None
+        if prev_kind in int_ops or next_kind in int_ops:
+            int_vars.add(val)
+        elif next_kind in ("EQ", "NE") and idx + 2 < len(tokens) and tokens[idx + 2][0] == "INT":
+            int_vars.add(val)
+        elif prev_kind in ("EQ", "NE") and idx >= 2 and tokens[idx - 2][0] == "INT":
+            int_vars.add(val)
+    return int_vars
+
+
+class _LogicFormulaParser:
+    """Recursive-descent parser converting logic tokens into Z3 expressions."""
+
+    def __init__(self, tokens: List[Tuple[str, str]], symtab: Dict[str, Any]):
+        self.tokens = tokens
+        self.pos = 0
+        self.symtab = symtab
+        self.int_vars = _infer_int_symbols(tokens)
+
+    def _peek(self) -> Optional[Tuple[str, str]]:
+        return self.tokens[self.pos] if self.pos < len(self.tokens) else None
+
+    def _consume(self, expected: Optional[str] = None) -> Tuple[str, str]:
+        tok = self._peek()
+        if tok is None:
+            raise ValueError("Unexpected end of expression")
+        if expected is not None and tok[0] != expected:
+            raise ValueError(f"Expected {expected}, got {tok[0]} ('{tok[1]}')")
+        self.pos += 1
+        return tok
+
+    def parse(self) -> Any:
+        if not self.tokens:
+            raise ValueError("Empty expression")
+        expr = self._parse_bicond()
+        if self._peek() is not None:
+            raise ValueError(f"Unexpected token '{self._peek()[1]}'")
+        return expr
+
+    def _parse_bicond(self) -> Any:
+        left = self._parse_implies()
+        while self._peek() and self._peek()[0] == "BICOND":
+            self._consume()
+            right = self._parse_implies()
+            left = left == right
+        return left
+
+    def _parse_implies(self) -> Any:
+        left = self._parse_or()
+        if self._peek() and self._peek()[0] in ("IMPLIES", "DIMPLIES"):
+            self._consume()
+            right = self._parse_implies()  # right-associative
+            return z3.Implies(left, right)
+        return left
+
+    def _parse_or(self) -> Any:
+        left = self._parse_xor()
+        while self._peek() and self._peek()[0] == "OR":
+            self._consume()
+            right = self._parse_xor()
+            left = z3.Or(left, right)
+        return left
+
+    def _parse_xor(self) -> Any:
+        left = self._parse_and()
+        while self._peek() and self._peek()[0] == "XOR":
+            self._consume()
+            right = self._parse_and()
+            left = z3.Xor(left, right)
+        return left
+
+    def _parse_and(self) -> Any:
+        left = self._parse_not()
+        while self._peek() and self._peek()[0] == "AND":
+            self._consume()
+            right = self._parse_not()
+            left = z3.And(left, right)
+        return left
+
+    def _parse_not(self) -> Any:
+        if self._peek() and self._peek()[0] == "NOT":
+            self._consume()
+            return z3.Not(self._parse_not())
+        return self._parse_cmp()
+
+    def _parse_cmp(self) -> Any:
+        left = self._parse_add()
+        tok = self._peek()
+        if tok and tok[0] in ("EQ", "NE", "LT", "LE", "GT", "GE"):
+            op = self._consume()[0]
+            right = self._parse_add()
+            if op == "EQ":
+                return left == right
+            if op == "NE":
+                return left != right
+            if op == "LT":
+                return left < right
+            if op == "LE":
+                return left <= right
+            if op == "GT":
+                return left > right
+            return left >= right
+        return left
+
+    def _parse_add(self) -> Any:
+        left = self._parse_mul()
+        while self._peek() and self._peek()[0] in ("PLUS", "MINUS"):
+            op = self._consume()[0]
+            right = self._parse_mul()
+            left = left + right if op == "PLUS" else left - right
+        return left
+
+    def _parse_mul(self) -> Any:
+        left = self._parse_unary_arith()
+        while self._peek() and self._peek()[0] == "MUL":
+            self._consume()
+            right = self._parse_unary_arith()
+            left = left * right
+        return left
+
+    def _parse_unary_arith(self) -> Any:
+        if self._peek() and self._peek()[0] == "MINUS":
+            self._consume()
+            return -self._parse_unary_arith()
+        return self._parse_atom()
+
+    def _parse_atom(self) -> Any:
+        tok = self._peek()
+        if tok is None:
+            raise ValueError("Unexpected end of expression")
+        kind, val = tok
+
+        if kind == "LPAREN":
+            self._consume("LPAREN")
+            inner = self._parse_bicond()
+            self._consume("RPAREN")
+            return inner
+        if kind == "TRUE":
+            self._consume()
+            return z3.BoolVal(True)
+        if kind == "FALSE":
+            self._consume()
+            return z3.BoolVal(False)
+        if kind == "INT":
+            self._consume()
+            return z3.IntVal(int(val))
+        if kind == "IDENT":
+            self._consume()
+            if self._peek() and self._peek()[0] == "LPAREN":
+                return self._parse_call(val)
+            existing = self.symtab.get(val)
+            if existing is not None:
+                return existing
+            sym = z3.Int(val) if val in self.int_vars else z3.Bool(val)
+            self.symtab[val] = sym
+            return sym
+
+        raise ValueError(f"Unexpected token '{val}'")
+
+    def _parse_call(self, fn_name: str) -> Any:
+        self._consume("LPAREN")
+        args: List[Any] = []
+        if self._peek() and self._peek()[0] != "RPAREN":
+            args.append(self._parse_bicond())
+            while self._peek() and self._peek()[0] == "COMMA":
+                self._consume("COMMA")
+                args.append(self._parse_bicond())
+        self._consume("RPAREN")
+
+        fname = fn_name.lower()
+        if fname == "and" and len(args) >= 1:
+            return z3.And(*args) if len(args) > 1 else args[0]
+        if fname == "or" and len(args) >= 1:
+            return z3.Or(*args) if len(args) > 1 else args[0]
+        if fname == "not" and len(args) == 1:
+            return z3.Not(args[0])
+        if fname == "implies" and len(args) == 2:
+            return z3.Implies(args[0], args[1])
+        if fname == "xor" and len(args) == 2:
+            return z3.Xor(args[0], args[1])
+        if fname in ("equiv", "iff") and len(args) == 2:
+            return args[0] == args[1]
+        raise ValueError(f"Unsupported logical function '{fn_name}' with {len(args)} argument(s)")
+
+
+def _parse_logic_formula(text: str, symtab: Dict[str, Any]) -> Any:
+    tokens = _tokenize_logic(text)
+    return _LogicFormulaParser(tokens, symtab).parse()
