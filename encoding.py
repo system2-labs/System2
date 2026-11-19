@@ -38,6 +38,56 @@ MODAL_NEGATION_IDS = {
 }
 
 
+def _compute_qa_masks(
+    input_ids: torch.Tensor,
+    attn_mask: torch.Tensor,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Split each sequence into Question and Answer spans at the LAST ' Answer:' delimiter."""
+    attn_bool = attn_mask.bool()
+    batch_size, seq_len = input_ids.shape
+    if seq_len < 2:
+        # Guard against T < 2 where input_ids[:, :-1] has width 0 and argmax would fail.
+        return attn_bool, attn_bool
+
+    # ModernBERT token ID 37741 = ' Answer', token ID 27 = ':'
+    match = (input_ids[:, :-1] == 37741) & (input_ids[:, 1:] == 27)
+    has_match = match.any(dim=1)
+    # Flip along sequence dim so argmax selects the FINAL ' Answer:' delimiter rather than
+    # splitting prematurely if the question text itself contains ' Answer:'.
+    rev_pos = match.flip(dims=[1]).int().argmax(dim=1)
+    ans_pos = (match.size(1) - 1) - rev_pos
+
+    cols = torch.arange(seq_len, device=input_ids.device).unsqueeze(0).expand(batch_size, seq_len)
+    valid_lens = attn_mask.sum(dim=1) - 1
+
+    q_mask = (cols < ans_pos.unsqueeze(1)) & attn_bool
+    a_mask = (cols >= (ans_pos + 2).unsqueeze(1)) & (cols < valid_lens.unsqueeze(1)) & attn_bool
+
+    no_match = ~has_match.unsqueeze(1)
+    q_mask = torch.where(no_match, attn_bool, q_mask)
+    a_mask = torch.where(no_match, attn_bool, a_mask)
+    return q_mask, a_mask
+
+
+def _pool_qa_spans(
+    last_hidden: torch.Tensor,
+    input_ids: torch.Tensor,
+    attn_mask: torch.Tensor,
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Pool Question tokens (with modal salience boost) and Answer tokens using _compute_qa_masks."""
+    q_mask, a_mask = _compute_qa_masks(input_ids, attn_mask)
+    # Modal salience weighting: boost negation and modal boundary tokens so polarity is not washed out
+    neg_tensor = torch.tensor(list(MODAL_NEGATION_IDS), device=input_ids.device)
+    is_modal = torch.isin(input_ids, neg_tensor) & q_mask
+    q_weights = torch.where(is_modal, 3.0, 1.0) * q_mask.float()
+    q_weights_f = q_weights.unsqueeze(-1)
+    q_vec = (last_hidden * q_weights_f).sum(dim=1) / q_weights_f.sum(dim=1).clamp(min=1.0)
+
+    a_mask_f = a_mask.unsqueeze(-1).float()
+    a_vec = (last_hidden * a_mask_f).sum(dim=1) / a_mask_f.sum(dim=1).clamp(min=1.0)
+    return q_vec, a_vec, a_mask
+
+
 def mean_pool_texts(
     texts: List[str],
     max_len: int = 192,
@@ -102,13 +152,13 @@ def mean_pool_pairwise(
     model: Optional[torch.nn.Module] = None,
     tokenizer: Optional[Any] = None,
 ) -> torch.Tensor:
-    """Pairwise encoding: (B questions, 4 choices) -> (B, 4, 1024) or (B, 5, 4, 1024).
+    """Pairwise encoding: (B questions, N choices) -> (B, N, 1024) or (B, 5, N, 1024).
 
     Constructs candidate representations with asymmetric span masking separating Question
     and Answer tokens, projecting into 5 distinct cognitive perspectives.
 
     Returns:
-        Tensor of shape (B, 5, 4, 1024) if asym_spans=True, else (B, 4, 1024).
+        Tensor of shape (B, 5, N, 1024) if asym_spans=True, else (B, N, 1024).
     """
     # Handle legacy argument order: mean_pool_pairwise(q, c, device, max_len=...)
     if isinstance(max_len, (str, torch.device)):
@@ -119,6 +169,22 @@ def mean_pool_pairwise(
     elif isinstance(device, int):
         max_len = device
         device = None
+
+    if not questions or not choices_list:
+        raise ValueError("questions and choices_list must be non-empty.")
+    if len(questions) != len(choices_list):
+        raise ValueError(
+            f"questions ({len(questions)}) and choices_list ({len(choices_list)}) must have the same length."
+        )
+    num_choices = len(choices_list[0])
+    if num_choices == 0:
+        raise ValueError("Each row in choices_list must contain at least 1 choice.")
+    for row_idx, row in enumerate(choices_list):
+        if len(row) != num_choices:
+            raise ValueError(
+                f"All rows in choices_list must have the same number of choices "
+                f"(row 0 has {num_choices}, row {row_idx} has {len(row)})."
+            )
 
     m, tok = _resolve_backbone(model, tokenizer)
     # Run inputs on the backbone's device and move the pooled output to the
@@ -139,13 +205,13 @@ def mean_pool_pairwise(
         flat_texts = [
             f"{'[Task: Scientific Facts] ' if (sources and sources[idx] == 'openbookqa') else '[Task: Causal Reasoning] '}Question: {questions[idx]} Answer: {choices_list[idx][c]}"
             for idx in range(b)
-            for c in range(4)
+            for c in range(num_choices)
         ]
     else:
         flat_texts = [
             f"Question: {questions[idx]} Answer: {choices_list[idx][c]}"
             for idx in range(b)
-            for c in range(4)
+            for c in range(num_choices)
         ]
 
     inputs = tok(flat_texts, return_tensors="pt", padding=True, truncation=True, max_length=max_len).to(dev)
@@ -159,33 +225,9 @@ def mean_pool_pairwise(
     if asym_spans:
         input_ids = inputs["input_ids"]
         attn_mask = inputs["attention_mask"]
-        B, T = input_ids.shape
+        q_vec, a_vec, a_mask = _pool_qa_spans(last_hidden, input_ids, attn_mask)
 
-        # ModernBERT token ID 37741 = ' Answer', token ID 27 = ':'
-        match = (input_ids[:, :-1] == 37741) & (input_ids[:, 1:] == 27)
-        has_match = match.any(dim=1)
-        ans_pos = match.int().argmax(dim=1)
-        cols = torch.arange(T, device=dev).unsqueeze(0).expand(B, T)
-        valid_lens = attn_mask.sum(dim=1) - 1
-
-        q_mask = (cols < ans_pos.unsqueeze(1)) & (attn_mask.bool())
-        a_mask = (cols >= (ans_pos + 2).unsqueeze(1)) & (cols < valid_lens.unsqueeze(1)) & (attn_mask.bool())
-
-        no_match = ~has_match.unsqueeze(1)
-        q_mask = torch.where(no_match, attn_mask.bool(), q_mask)
-        a_mask = torch.where(no_match, attn_mask.bool(), a_mask)
-
-        # Modal salience weighting: boost negation and modal boundary tokens so polarity is not washed out
-        neg_tensor = torch.tensor(list(MODAL_NEGATION_IDS), device=dev)
-        is_modal = torch.isin(input_ids, neg_tensor) & q_mask
-        q_weights = torch.where(is_modal, 3.0, 1.0) * q_mask.float()
-        q_weights_f = q_weights.unsqueeze(-1)
-        q_vec = (last_hidden * q_weights_f).sum(dim=1) / q_weights_f.sum(dim=1).clamp(min=1.0)
-
-        a_mask_f = a_mask.unsqueeze(-1).float()
-        a_vec = (last_hidden * a_mask_f).sum(dim=1) / a_mask_f.sum(dim=1).clamp(min=1.0)
-
-        mask = inputs["attention_mask"].unsqueeze(-1)
+        mask = attn_mask.unsqueeze(-1)
         holistic = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
 
         if asym_span_mode == "causal_attn":
@@ -233,43 +275,18 @@ def mean_pool_pairwise(
             v3 = 0.50 * q_vec + 0.50 * a_vec
             v4 = holistic
 
-        multi_head_vecs = torch.stack([v0, v1, v2, v3, v4], dim=1)  # (B*4, 5, 1024)
-        multi_head_vecs = multi_head_vecs.view(b, 4, 5, -1).permute(0, 2, 1, 3)  # (B, 5, 4, 1024)
+        multi_head_vecs = torch.stack([v0, v1, v2, v3, v4], dim=1)  # (B*N, 5, 1024)
+        multi_head_vecs = multi_head_vecs.view(b, num_choices, 5, -1).permute(0, 2, 1, 3)  # (B, 5, N, 1024)
         return multi_head_vecs.to(out_dev) if multi_head_vecs.device != out_dev else multi_head_vecs
 
     if span_pooling:
-        input_ids = inputs["input_ids"]
-        attn_mask = inputs["attention_mask"]
-        B, T = input_ids.shape
-        match = (input_ids[:, :-1] == 37741) & (input_ids[:, 1:] == 27)
-        has_match = match.any(dim=1)
-        ans_pos = match.int().argmax(dim=1)
-        cols = torch.arange(T, device=dev).unsqueeze(0).expand(B, T)
-        valid_lens = attn_mask.sum(dim=1) - 1
-
-        q_mask = (cols < ans_pos.unsqueeze(1)) & (attn_mask.bool())
-        a_mask = (cols >= (ans_pos + 2).unsqueeze(1)) & (cols < valid_lens.unsqueeze(1)) & (attn_mask.bool())
-
-        no_match = ~has_match.unsqueeze(1)
-        q_mask = torch.where(no_match, attn_mask.bool(), q_mask)
-        a_mask = torch.where(no_match, attn_mask.bool(), a_mask)
-
-        # Modal salience weighting: boost negation and modal boundary tokens so polarity is not washed out
-        neg_tensor = torch.tensor(list(MODAL_NEGATION_IDS), device=dev)
-        is_modal = torch.isin(input_ids, neg_tensor) & q_mask
-        q_weights = torch.where(is_modal, 3.0, 1.0) * q_mask.float()
-        q_weights_f = q_weights.unsqueeze(-1)
-        q_vec = (last_hidden * q_weights_f).sum(dim=1) / q_weights_f.sum(dim=1).clamp(min=1.0)
-
-        a_mask_f = a_mask.unsqueeze(-1).float()
-        a_vec = (last_hidden * a_mask_f).sum(dim=1) / a_mask_f.sum(dim=1).clamp(min=1.0)
-
+        q_vec, a_vec, _ = _pool_qa_spans(last_hidden, inputs["input_ids"], inputs["attention_mask"])
         pooled = (1.0 - span_weight) * q_vec + span_weight * a_vec
-        out = pooled.view(b, 4, -1)
+        out = pooled.view(b, num_choices, -1)
         return out.to(out_dev) if out.device != out_dev else out
 
     # Standard whole-sequence mean pooling
     mask = inputs["attention_mask"].unsqueeze(-1)
     pooled = (last_hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
-    out = pooled.view(b, 4, -1)
+    out = pooled.view(b, num_choices, -1)
     return out.to(out_dev) if out.device != out_dev else out

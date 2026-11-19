@@ -30,7 +30,12 @@ class ThoughtHead(nn.Module):
             dropout=dropout,
             norm_first=norm_first,
         )
-        self.layers = nn.TransformerEncoder(layer, num_layers=num_layers)
+        # Disable PyTorch's nested-tensor fast path: when src_key_padding_mask is
+        # supplied in eval() on MPS, TransformerEncoder calls
+        # _nested_tensor_from_mask_left_aligned before checking device support and
+        # raises NotImplementedError. Standard dense masking gives identical output
+        # when unmasked and runs cleanly on both CPU and MPS.
+        self.layers = nn.TransformerEncoder(layer, num_layers=num_layers, enable_nested_tensor=False)
 
         # Confidence machine: 512 -> 64 -> 1 (logit)
         self.confidence_head = nn.Sequential(

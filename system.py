@@ -1,7 +1,58 @@
 import math
+from typing import Optional, Tuple
 import torch
 import torch.nn as nn
 from heads import ThoughtHead
+
+
+# NOTE: [iterate] Helper-extracted masked reductions vs inline branches: shared
+# helpers eliminate 4x duplicated mean/std/margin masking while preserving the
+# exact unmasked PyTorch calls (bit-for-bit identical) when mask is None.
+def _masked_mean(x: torch.Tensor, mask: Optional[torch.Tensor], dim: int) -> torch.Tensor:
+    """Compute keepdim mean over `dim`, excluding False entries when `mask` is provided."""
+    if mask is None:
+        return x.mean(dim=dim, keepdim=True)
+    # torch.where avoids 0.0 * (-1e9 or inf) edge cases on padded slots.
+    valid = torch.where(mask, x, x.new_zeros(()))
+    count = mask.to(dtype=x.dtype).sum(dim=dim, keepdim=True).clamp(min=1.0)
+    return valid.sum(dim=dim, keepdim=True) / count
+
+
+def _masked_mean_std(
+    x: torch.Tensor,
+    mask: Optional[torch.Tensor],
+    dim: int,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Compute per-row mean and Bessel-corrected std over valid slots; safe for valid_count == 1."""
+    if mask is None and x.size(dim) > 1:
+        return x.mean(dim=dim, keepdim=True), x.std(dim=dim, keepdim=True).clamp(min=1e-5)
+    if mask is None:
+        # C == 1 with no mask: ddof=1 variance is undefined; clamp std=1e-5 so logits center to 0.0 without NaN.
+        mean = x.mean(dim=dim, keepdim=True)
+        return mean, torch.full_like(mean, 1e-5)
+    mean = _masked_mean(x, mask, dim=dim)
+    sq_diff = torch.where(mask, (x - mean) ** 2, x.new_zeros(()))
+    count = mask.to(dtype=x.dtype).sum(dim=dim, keepdim=True)
+    # Use (count - 1).clamp(min=1) to match PyTorch's unbiased std for count >= 2
+    # while yielding 0 variance (clamped to 1e-5 std) without NaN when count == 1.
+    denom = (count - 1.0).clamp(min=1.0)
+    std = torch.sqrt(sq_diff.sum(dim=dim, keepdim=True) / denom).clamp(min=1e-5)
+    return mean, std
+
+
+def _top2_margin(
+    sorted_vals: torch.Tensor,
+    valid_count: Optional[torch.Tensor],
+) -> torch.Tensor:
+    """Return top-1 minus top-2 margin across valid entries; 0.0 when fewer than 2 valid entries exist."""
+    if sorted_vals.size(-1) <= 1:
+        return sorted_vals.new_zeros(sorted_vals.shape[:-1])
+    raw_margin = sorted_vals[..., 0] - sorted_vals[..., 1]
+    if valid_count is None:
+        return raw_margin
+    # Reshape (B,) -> (B, 1, ...) so (B, C) margins never broadcast to (B, B).
+    vc = valid_count.reshape(sorted_vals.size(0), *([1] * (raw_margin.dim() - 1)))
+    return torch.where(vc >= 2, raw_margin, raw_margin.new_zeros(()))
 
 
 class Judger(nn.Module):
@@ -121,34 +172,65 @@ class System2(nn.Module):
         ])
         self.judger = Judger(learnable_temp=learnable_temp, centered_conf=centered_conf, margin_features=(margin_features or consensus_features), margin_dim=effective_margin_dim, residual=judger_residual, judger_mlp_dim=judger_mlp_dim, judger_num_heads=judger_num_heads, judger_dropout=judger_dropout)
 
-    def forward(self, encoder_output, detach_judger=False):
+    def forward(self, encoder_output, detach_judger=False, choice_mask: Optional[torch.Tensor] = None):
         if encoder_output.dim() >= 3:
             # Pairwise candidate reasoning: (B, num_choices, 1024) or (B, N, num_choices, 1024)
+            B_in, C_in = encoder_output.size(0), encoder_output.size(-2)
+            if choice_mask is not None:
+                choice_mask = choice_mask.to(device=encoder_output.device, dtype=torch.bool)
+                if choice_mask.shape != (B_in, C_in):
+                    raise ValueError(
+                        f"choice_mask shape {tuple(choice_mask.shape)} does not match (B, C)=({B_in}, {C_in})."
+                    )
+                if not choice_mask.any(dim=-1).all():
+                    raise ValueError("choice_mask must contain at least one True (valid) choice per batch item.")
+                # Collapse all-True masks to None so 4+ choice paths execute the exact unmasked graph.
+                if choice_mask.all():
+                    choice_mask = None
+
+            mask_bc1 = choice_mask.unsqueeze(-1) if choice_mask is not None else None   # (B, C, 1)
+            mask_b1c = choice_mask.unsqueeze(1) if choice_mask is not None else None    # (B, 1, C)
+            valid_count_b = choice_mask.sum(dim=-1) if choice_mask is not None else None  # (B,)
+            pad_mask = ~choice_mask if choice_mask is not None else None
+
             all_logits, confidences, embeddings = [], [], []
             for n, head in enumerate(self.heads):
                 head_in = encoder_output[:, n, :, :] if encoder_output.dim() == 4 else encoder_output
                 x = head.input_proj(head_in)  # (B, num_choices, 512)
                 if getattr(head, "input_norm", None) is not None:
                     x = head.input_norm(x)
-                x = head.layers(x)            # (B, num_choices, 512) - cross-candidate self-attention
+                # TransformerEncoder src_key_padding_mask uses True = ignored position.
+                x = head.layers(x, src_key_padding_mask=pad_mask) if pad_mask is not None else head.layers(x)
+                if mask_bc1 is not None:
+                    # Zero padded token activations after self-attention so residual/FFN outputs
+                    # on dummy slots never leak into centroid contrast or head embeddings.
+                    x = torch.where(mask_bc1, x, x.new_zeros(()))
+
+                x_mean = _masked_mean(x, mask_bc1, dim=1)  # (B, 1, 512)
                 if self.diff_features:
-                    # Centroid difference: contrast candidate against the group mean
-                    diff = x - x.mean(dim=1, keepdim=True)
+                    # Centroid difference: contrast valid candidates against the valid group mean
+                    diff = x - x_mean
+                    if mask_bc1 is not None:
+                        diff = torch.where(mask_bc1, diff, diff.new_zeros(()))
                     feat = torch.cat([x, diff], dim=-1)  # (B, num_choices, 1024)
                     cand_scores = head.hypothesis_head(feat).squeeze(-1)
                 else:
                     cand_scores = head.hypothesis_head(x).squeeze(-1)  # (B, num_choices)
+
+                if pad_mask is not None:
+                    cand_scores = cand_scores.masked_fill(pad_mask, -1e9)
+
                 if getattr(self, "judger_soft_emb", False):
                     soft_tau = getattr(self, "judger_soft_tau", 1.0)
                     p_c = torch.softmax(cand_scores / soft_tau, dim=-1)
                     soft_x = torch.einsum('bc,bcd->bd', p_c, x)
-                    head_emb = 0.5 * x.mean(dim=1) + 0.5 * soft_x
+                    head_emb = 0.5 * x_mean.squeeze(1) + 0.5 * soft_x
                 elif getattr(self, "judger_win_emb", False):
                     win_c = cand_scores.argmax(dim=-1)
                     win_x = x[torch.arange(x.size(0), device=x.device), win_c]
-                    head_emb = 0.5 * x.mean(dim=1) + 0.5 * win_x
+                    head_emb = 0.5 * x_mean.squeeze(1) + 0.5 * win_x
                 else:
-                    head_emb = x.mean(dim=1)             # (B, 512)
+                    head_emb = x_mean.squeeze(1)             # (B, 512)
                 conf = torch.sigmoid(head.confidence_head(head_emb)).squeeze(-1)  # (B,)
                 all_logits.append(cand_scores)
                 confidences.append(conf)
@@ -157,10 +239,12 @@ class System2(nn.Module):
             confidences = torch.stack(confidences, dim=1)  # (B, N)
             logits = torch.stack(all_logits, dim=1)        # (B, N, num_choices)
             if getattr(self, "head_center_logits", False):
-                logits = logits - logits.mean(dim=-1, keepdim=True)
+                logits = logits - _masked_mean(logits, mask_b1c, dim=-1)
+                if mask_b1c is not None:
+                    logits = logits.masked_fill(~mask_b1c, -1e9)
 
             sorted_l, _ = torch.sort(logits, dim=-1, descending=True)
-            m1 = sorted_l[:, :, 0] - sorted_l[:, :, 1]
+            m1 = _top2_margin(sorted_l, valid_count_b)
             if getattr(self, "consensus_features", False):
                 preds = logits.argmax(dim=-1)  # (B, N)
                 agreement = (preds.unsqueeze(-1) == preds.unsqueeze(-2)).float()  # (B, N, N)
@@ -168,13 +252,13 @@ class System2(nn.Module):
                 p = torch.softmax(logits, dim=-1)  # (B, N, C)
                 mean_probs = p.mean(dim=1)  # (B, C)
                 chosen_consensus_prob = mean_probs.gather(1, preds)  # (B, N)
-                m_mean = sorted_l[:, :, 0] - logits.mean(dim=-1)
+                m_mean = sorted_l[:, :, 0] - _masked_mean(logits, mask_b1c, dim=-1).squeeze(-1)
                 ent = -(p * torch.log(p + 1e-8)).sum(dim=-1) / 1.38629
                 margin_feats = torch.stack([m1, m_mean, ent, agree_ratio, chosen_consensus_prob], dim=-1)
                 if detach_judger:
                     margin_feats = margin_feats.detach()
             elif self.margin_features:
-                m_mean = sorted_l[:, :, 0] - logits.mean(dim=-1)
+                m_mean = sorted_l[:, :, 0] - _masked_mean(logits, mask_b1c, dim=-1).squeeze(-1)
                 p = torch.softmax(logits, dim=-1)
                 ent = -(p * torch.log(p + 1e-8)).sum(dim=-1) / 1.38629
                 margin_feats = torch.stack([m1, m_mean, ent], dim=-1)
@@ -197,8 +281,8 @@ class System2(nn.Module):
                     arb_scores = arb_scores + torch.log(hw.clamp(min=1e-5))
                 if prob_gamma > 0.0:
                     head_probs = torch.softmax(logits, dim=-1)
-                    top2_p = torch.topk(head_probs, k=2, dim=-1).values
-                    m_prob = top2_p[..., 0] - top2_p[..., 1]
+                    sorted_p = torch.sort(head_probs, dim=-1, descending=True).values
+                    m_prob = _top2_margin(sorted_p, valid_count_b)
                     arb_scores = arb_scores + prob_gamma * m_prob
                 if gamma > 0.0:
                     weights = torch.softmax(arb_scores + gamma * m1, dim=-1)
@@ -206,11 +290,14 @@ class System2(nn.Module):
                     weights = torch.softmax(arb_scores, dim=-1)
 
                 if getattr(self, "head_norm_logits", False):
-                    logits_mean = logits.mean(dim=-1, keepdim=True)
-                    logits_std = logits.std(dim=-1, keepdim=True).clamp(min=1e-5)
+                    logits_mean, logits_std = _masked_mean_std(logits, mask_b1c, dim=-1)
                     normed_logits = (logits - logits_mean) / logits_std
+                    if mask_b1c is not None:
+                        normed_logits = normed_logits.masked_fill(~mask_b1c, -1e9)
                 elif getattr(self, "head_center_logits", False):
-                    normed_logits = logits - logits.mean(dim=-1, keepdim=True)
+                    normed_logits = logits - _masked_mean(logits, mask_b1c, dim=-1)
+                    if mask_b1c is not None:
+                        normed_logits = normed_logits.masked_fill(~mask_b1c, -1e9)
                 else:
                     normed_logits = logits
 
@@ -250,6 +337,10 @@ class System2(nn.Module):
                     # Mask by per-row conflict so agreeing rows in a mixed batch (B > 1) are untouched,
                     # and apply before decision_conf so win_conf reflects the post-duel logits.
                     ens_logits = ens_logits + duel_boost * conflict.unsqueeze(1).to(ens_logits.dtype)
+            if pad_mask is not None:
+                # Re-assert -1e9 on padded slots after prob_ensemble/veto_blend/dual_stream_contest so
+                # padded slots never carry finite log(1e-8) values and cannot win argmax.
+                ens_logits = ens_logits.masked_fill(pad_mask, -1e9)
             if getattr(self, "decision_conf", False):
                 conf_tau = torch.exp(self.log_decision_tau).clamp(min=0.1, max=10.0) if (getattr(self, "decision_conf_learnable", False) and hasattr(self, "log_decision_tau")) else getattr(self, "decision_conf_tau", 0.75)
                 conf_mode = getattr(self, "decision_conf_mode", "softmax")
@@ -259,12 +350,12 @@ class System2(nn.Module):
                     win_conf = probs.max(dim=-1).values
                 elif conf_mode == "margin":
                     sorted_e, _ = torch.sort(ens_for_conf, dim=-1, descending=True)
-                    m = sorted_e[:, 0] - sorted_e[:, 1]
+                    m = _top2_margin(sorted_e, valid_count_b)
                     win_conf = torch.sigmoid(m / conf_tau)
                 elif conf_mode == "hybrid":
                     alpha = getattr(self, "decision_conf_alpha", 0.3)
                     sorted_e, _ = torch.sort(ens_for_conf, dim=-1, descending=True)
-                    m = sorted_e[:, 0] - sorted_e[:, 1]
+                    m = _top2_margin(sorted_e, valid_count_b)
                     m_conf = torch.sigmoid(m / conf_tau)
                     win_conf = alpha * best_conf + (1.0 - alpha) * m_conf
                 else:

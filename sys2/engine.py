@@ -190,6 +190,9 @@ class System2Engine:
         max_len: int = 1024,
     ) -> DeliberationResult:
         """Adjudicate candidate choices in < 35ms through 5-head parallel deliberation."""
+        if not choices:
+            raise ValueError("choices must be a non-empty list.")
+
         t_start = time.perf_counter()
 
         # Sanitize authority injection preambles before feature extraction
@@ -214,9 +217,16 @@ class System2Engine:
             self.switch_domain(selected_domain)
 
             num_raw = len(choices)
-            eval_choices = list(choices)
-            while len(eval_choices) < 4:
-                eval_choices.append("N/A")
+            if num_raw < 4:
+                # Pad <4-choice queries to 4 slots to match the 4-choice geometry checkpoints
+                # were trained on; choice_mask hides padding from attention, centroid contrast,
+                # per-head normalization, and voting.
+                eval_choices = list(choices) + ["N/A"] * (4 - num_raw)
+                choice_mask = torch.zeros((1, 4), dtype=torch.bool, device=self.device)
+                choice_mask[:, :num_raw] = True
+            else:
+                eval_choices = list(choices)
+                choice_mask = None
 
             # 3. Deliberation Forward Pass
             t_delib_0 = time.perf_counter()
@@ -232,22 +242,20 @@ class System2Engine:
                     model=self.model,
                     tokenizer=self.tokenizer,
                 )
-                best, conf, pruned, confs, logits, emb, scores, ens_logits = self.current_sys2(vecs)
+                best, conf, pruned, confs, logits, emb, scores, ens_logits = self.current_sys2(
+                    vecs, choice_mask=choice_mask
+                )
                 t_delib_ms = (time.perf_counter() - t_delib_0) * 1000
 
-                if num_raw < 4:
-                    masked_ens = ens_logits.clone()
-                    masked_ens[:, num_raw:] = -1e9
-                    win_idx = masked_ens.argmax(dim=-1).item()
-                    raw_probs = torch.softmax(masked_ens[:, :num_raw], dim=-1).squeeze(0).tolist()
-                else:
-                    win_idx = ens_logits[:, :num_raw].argmax(dim=-1).item()
-                    raw_probs = torch.softmax(ens_logits[:, :num_raw], dim=-1).squeeze(0).tolist()
+                valid_ens = ens_logits[0, :num_raw]
+                win_idx = int(valid_ens.argmax(dim=-1).item())
+                raw_probs = torch.softmax(valid_ens, dim=-1).tolist()
 
                 if isinstance(raw_probs, float):
                     raw_probs = [raw_probs]
                 choice_probs = [round(float(p), 4) for p in raw_probs]
 
+                # System2.forward sets padded logits to -1e9 so argmax votes strictly over 0..num_raw-1.
                 head_preds = logits.squeeze(0).argmax(dim=-1).tolist()
                 consensus = head_preds.count(win_idx)
                 calibrated_conf = conf.item() if hasattr(conf, "item") else float(conf)
