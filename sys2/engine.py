@@ -11,20 +11,22 @@ import sys
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
+
+import torch
 
 os.environ["TRANSFORMERS_VERBOSITY"] = "error"
-import torch
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
-from bert import DEFAULT_BACKBONE, get_bert
-from encoding import mean_pool_pairwise
-from lora import apply_lora
-from routing.domain_router import DomainRouter
-from system import System2
+from bert import DEFAULT_BACKBONE, get_bert  # noqa: E402
+from encoding import mean_pool_pairwise  # noqa: E402
+from load_system2 import extract_config  # noqa: E402
+from lora import apply_lora  # noqa: E402
+from routing.domain_router import DomainRouter  # noqa: E402
+from system import System2  # noqa: E402
 
 AUTHORITY_PREAMBLE_PATTERN = re.compile(
     r"^(?:Note:\s*)?(?:(?:Leading|Senior|Domain|Expert|Unanimous)\s+)?(?:domain\s+)?"
@@ -126,34 +128,36 @@ class System2Engine:
             print(f"[System2Engine warning] Checkpoint {ckpt_path} missing, falling back to {fallback}", file=sys.stderr)
             ckpt_path = fallback
 
+        # weights_only=True safely deserializes tensor dicts plus the primitive/list/dict
+        # metadata keys consumed by extract_config across all domain checkpoints without
+        # executing arbitrary pickle code.
         state = torch.load(ckpt_path, map_location=self.device, weights_only=True)
-        sys2_state = state["sys2"] if isinstance(state, dict) and "sys2" in state else state
+        config, sys2_state = extract_config(state)
 
-        # Extract encoder LoRA parameters if present
-        encoder_state = {}
-        if isinstance(state, dict) and "lora" in state:
-            encoder_state = state["lora"]
-        elif isinstance(state, dict) and "encoder" in state:
-            encoder_state = state["encoder"]
+        # Extract encoder LoRA parameters (and merge trained LayerNorms if saved).
+        # Shallow-copy before merging so we never mutate the deserialized checkpoint dict.
+        encoder_state: Dict[str, torch.Tensor] = {}
+        if isinstance(state, dict) and isinstance(state.get("lora"), dict):
+            encoder_state = dict(state["lora"])
+        elif isinstance(state, dict) and isinstance(state.get("encoder"), dict):
+            encoder_state = dict(state["encoder"])
         elif isinstance(state, dict):
             encoder_state = {k: v for k, v in state.items() if "lora_" in k or "layers." in k}
+        if isinstance(state, dict) and isinstance(state.get("lora_norms"), dict):
+            encoder_state.update(state["lora_norms"])
 
-        sys2 = System2(
-            num_heads=5,
-            num_classes=1,
-            pairwise=True,
-            diff_features=True,
-            head_layers=2,
-            ensemble_temp=1.8,
-            margin_features=True,
-            judger_residual=True,
-            head_norm_logits=True,
-            decision_conf=True,
-            decision_conf_mode="softmax",
-            decision_conf_tau=0.75,
-            decision_conf_alpha=0.3,
-        )
-        sys2.load_state_dict(sys2_state, strict=False)
+        # Reconstruct System2 from checkpoint metadata/shapes rather than hardcoded defaults
+        # so per-domain ensemble_temp, head_weights, judger_soft_emb, and learnable calibration
+        # tensors (e.g. log_decision_tau) are never silently overridden or dropped.
+        sys2 = System2(**config)
+        try:
+            sys2.load_state_dict(sys2_state, strict=True)
+        except RuntimeError as e:
+            print(
+                f"[System2Engine warning] Strict load failed for {ckpt_path} ({e}), retrying with strict=False...",
+                file=sys.stderr,
+            )
+            sys2.load_state_dict(sys2_state, strict=False)
         sys2.to(self.device)
         sys2.eval()
 

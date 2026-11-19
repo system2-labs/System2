@@ -226,7 +226,7 @@ class System2(nn.Module):
                 active_l = normed_logits if (getattr(self, "head_norm_logits", False) or getattr(self, "head_center_logits", False)) else logits
                 peak_logits = active_l[torch.arange(logits.size(0), device=logits.device), best]
                 ens_logits = (1.0 - vb) * ens_logits + vb * peak_logits
-            if getattr(self, "dual_stream_contest", False):
+            if getattr(self, "dual_stream_contest", False) and scores.size(-1) >= 2:
                 # Option A.2: Déjà vu Dual-Stream 1-on-1 Duel between top 2 hypotheses
                 sorted_heads = scores.argsort(dim=-1, descending=True)
                 h1 = sorted_heads[:, 0]
@@ -247,6 +247,9 @@ class System2(nn.Module):
                     winner = torch.where(duel_diff > 0, c1, c2)
                     ds_blend = getattr(self, "dual_stream_blend", 0.3)
                     duel_boost = torch.zeros_like(ens_logits).scatter_(1, winner.unsqueeze(1), ds_blend)
+                    # Mask by per-row conflict so agreeing rows in a mixed batch (B > 1) are untouched,
+                    # and apply before decision_conf so win_conf reflects the post-duel logits.
+                    ens_logits = ens_logits + duel_boost * conflict.unsqueeze(1).to(ens_logits.dtype)
             if getattr(self, "decision_conf", False):
                 conf_tau = torch.exp(self.log_decision_tau).clamp(min=0.1, max=10.0) if (getattr(self, "decision_conf_learnable", False) and hasattr(self, "log_decision_tau")) else getattr(self, "decision_conf_tau", 0.75)
                 conf_mode = getattr(self, "decision_conf_mode", "softmax")
