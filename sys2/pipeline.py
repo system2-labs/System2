@@ -33,6 +33,7 @@ except ImportError:
     sympy = None
     _SYMPY_AVAILABLE = False
 
+from routing.vot_gate import ValueOfThinkingGate, VoTDecision, VoTFeatures
 from sys1.engine import System1Engine, PerceptionResult
 from sys2.parser import (
     SemanticParser,
@@ -77,6 +78,9 @@ class DualProcessResult:
     audit_trail: List[str] = field(default_factory=list)
     latency_ms: float = 0.0
     routed_domain: str = ""
+    vot_expected_utility_gain: Optional[float] = None
+    vot_lambda_cost: Optional[float] = None
+    recommended_thinking: Optional[str] = None
 
     def __str__(self) -> str:
         lines = [
@@ -171,6 +175,8 @@ class DualProcessPipeline:
         device: Optional[str] = None,
         fast_path_threshold: float = 0.70,
         min_margin_threshold: float = 0.25,
+        vot_gate: Optional[ValueOfThinkingGate] = None,
+        lambda_cost: Optional[float] = None,
     ):
         self.sys1 = System1Engine(device=device)
         self.parser = SemanticParser()
@@ -180,6 +186,8 @@ class DualProcessPipeline:
         self.mcts_engine = MCTSDeliberationEngine()
         self.fast_path_threshold = fast_path_threshold
         self.min_margin_threshold = min_margin_threshold
+        self.vot_gate = vot_gate
+        self.lambda_cost = lambda_cost
 
     def _substitute_physics_vars(self, question: str, choice: str) -> str:
         """Normalize compound units and map symbolic physics variables to SI units.
@@ -1076,15 +1084,33 @@ class DualProcessPipeline:
             or any(w in question.lower() for w in [" cause", " do(", "counterfactual", "intervention"])
         )
 
-        triggers_active = (
-            force_sys2
-            or has_units
-            or has_equations
-            or has_negation
-            or has_causal
-            or (s1_res.confidence < self.fast_path_threshold)
-            or (margin < self.min_margin_threshold)
-        )
+        hard_triggers = force_sys2 or has_units or has_equations or has_negation or has_causal
+        vot_decision: Optional[VoTDecision] = None
+
+        if self.vot_gate is not None:
+            # Gate 1 (Fail-Closed): safety track and symbolic/causal triggers ALWAYS
+            # escalate to System 2 regardless of lambda_cost or VoT score.
+            safety_trigger = (s1_res.domain or "").strip().lower() == "safety"
+            hard_triggers_active = hard_triggers or safety_trigger
+            vot_features = VoTFeatures.from_perception_result(
+                s1_res,
+                has_hard_trigger=hard_triggers_active,
+            )
+            vot_decision = self.vot_gate.decide(vot_features, lambda_cost=self.lambda_cost)
+            triggers_active = hard_triggers_active or vot_decision.escalate
+            audit.append(
+                f"VoT Gate: delta_U={vot_decision.expected_utility_gain:.4f} vs "
+                f"lambda={vot_decision.lambda_cost:.4f} -> "
+                f"{'ESCALATE' if triggers_active else 'FAST_PATH'} "
+                f"(thinking={vot_decision.recommended_thinking}, "
+                f"hard_override={vot_decision.hard_trigger_override})"
+            )
+        else:
+            triggers_active = (
+                hard_triggers
+                or (s1_res.confidence < self.fast_path_threshold)
+                or (margin < self.min_margin_threshold)
+            )
 
         if not triggers_active:
             # Fast Path Accepted!
@@ -1102,6 +1128,9 @@ class DualProcessPipeline:
                 audit_trail=audit,
                 latency_ms=t_total,
                 routed_domain=s1_res.domain,
+                vot_expected_utility_gain=vot_decision.expected_utility_gain if vot_decision else None,
+                vot_lambda_cost=vot_decision.lambda_cost if vot_decision else None,
+                recommended_thinking=vot_decision.recommended_thinking if vot_decision else None,
             )
 
         # Step 2: System 2 Deliberative Verification
@@ -1200,6 +1229,9 @@ class DualProcessPipeline:
                 audit_trail=audit,
                 latency_ms=t_total,
                 routed_domain=s1_res.domain,
+                vot_expected_utility_gain=vot_decision.expected_utility_gain if vot_decision else None,
+                vot_lambda_cost=vot_decision.lambda_cost if vot_decision else None,
+                recommended_thinking=vot_decision.recommended_thinking if vot_decision else None,
             )
 
         # Verification 5: Dynamic Search / Rollout over candidate hypotheses
@@ -1269,6 +1301,9 @@ class DualProcessPipeline:
             audit_trail=audit,
             latency_ms=t_total,
             routed_domain=s1_res.domain,
+            vot_expected_utility_gain=vot_decision.expected_utility_gain if vot_decision else None,
+            vot_lambda_cost=vot_decision.lambda_cost if vot_decision else None,
+            recommended_thinking=vot_decision.recommended_thinking if vot_decision else None,
         )
 
     def parse_annotated_prompt(self, raw_text: str) -> Tuple[str, List[str], List[Dict[str, Any]]]:

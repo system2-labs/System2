@@ -43,6 +43,7 @@ if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 from routing.domain_router import DomainRouter  # noqa: E402
+from routing.vot_gate import ValueOfThinkingGate, VoTFeatures  # noqa: E402
 from sys2.engine import CHECKPOINT_MAP, System2Engine  # noqa: E402
 from sys2.guard import AgentGatekeeper, GuardVerdict  # noqa: E402
 from sys2.symbolic import AlgebraVerifier, LogicVerifier, UnitVerifier  # noqa: E402
@@ -73,6 +74,11 @@ class DeliberateResponse(BaseModel):
 
 class RouteRequest(BaseModel):
     prompt: str = Field(..., description="Prompt or query text to route")
+    lambda_cost: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        description="Optional cost-of-thinking price lambda for Value-of-Thinking gate",
+    )
 
 
 class RouteResponse(BaseModel):
@@ -92,6 +98,8 @@ class V1RouteResponse(BaseModel):
     probabilities: Dict[str, float]
     method: str
     latency_ms: float
+    recommended_thinking: Optional[Literal["off", "on"]] = None
+    expected_utility_gain: Optional[float] = None
 
 
 class VerifyRequest(BaseModel):
@@ -205,6 +213,7 @@ def create_app(
     gatekeeper: Optional[AgentGatekeeper] = None,
     device: Optional[str] = None,
     upstream_llm: Optional[str] = None,
+    vot_gate: Optional[ValueOfThinkingGate] = None,
 ) -> FastAPI:
     """Create and configure the System2 FastAPI application."""
     target_device = device or ("mps" if torch.backends.mps.is_available() else "cpu")
@@ -214,6 +223,7 @@ def create_app(
         "engine": engine,
         "router": router,
         "gatekeeper": gatekeeper,
+        "vot_gate": vot_gate if vot_gate is not None else ValueOfThinkingGate(),
         "device": target_device,
         "lock": asyncio.Lock(),
         "http_client": None,
@@ -415,6 +425,15 @@ def create_app(
             decision = await asyncio.to_thread(rtr.route, req.prompt, fallback_track="general")
         track_name = DomainRouter.TRACK_NAMES.get(decision.selected_track, decision.selected_track.upper())
 
+        # Cost-aware Value-of-Thinking gate (pure NumPy, <0.2ms, zero backbone load).
+        # Safety track is unconditionally fail-closed: recommended_thinking="on".
+        vot_features = VoTFeatures.from_route_decision(decision, prompt=req.prompt)
+        vot_decision = state["vot_gate"].decide(vot_features, lambda_cost=req.lambda_cost)
+        rec_thinking: Literal["off", "on"] = (
+            "on" if decision.selected_track == "safety" else vot_decision.recommended_thinking
+        )
+        exp_gain = 1.0 if decision.selected_track == "safety" else round(vot_decision.expected_utility_gain, 4)
+
         return V1RouteResponse(
             track=decision.selected_track,
             selected_track=decision.selected_track,
@@ -423,6 +442,8 @@ def create_app(
             probabilities=decision.probabilities,
             method=decision.method,
             latency_ms=round(decision.latency_ms, 3),
+            recommended_thinking=rec_thinking,
+            expected_utility_gain=exp_gain,
         )
 
     @app.post("/guard", response_model=GuardResponse)
