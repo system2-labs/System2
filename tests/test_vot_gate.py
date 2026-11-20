@@ -532,3 +532,122 @@ def test_extract_enumerable_decision_points_on_real_skill_doc():
         points = extract_enumerable_decision_points(skill_path.read_text(encoding="utf-8"))
         assert len(points) >= 1, f"Expected >= 1 decision point in {skill_path.name}"
         assert all(isinstance(dp, SkillDecisionPoint) and len(dp.choices) >= 1 for dp in points)
+
+
+# -----------------------------------------------------------------------------
+# 8. Regime 2 v2 Model-Tier `<think>` Policy & LoRA r=8 Compression Tests
+# -----------------------------------------------------------------------------
+
+
+def test_regime2_v2_model_tier_classification_and_policy():
+    """Empirically grounded Regime 2 v2 tier routing across 27B/9B/0.8B/2-bit/cloud."""
+    from routing.vot_gate import MID_LOCAL_DEFAULT_LAMBDA, classify_model_tier
+
+    assert classify_model_tier("qwen3.8-27b-splash", "lmstudio") == "flagship_local"
+    assert classify_model_tier("qwen3.6-35b-a3b-splash", "lmstudio") == "flagship_local"
+    assert classify_model_tier("qwen3.5-9b", "lmstudio") == "mid_local"
+    assert classify_model_tier("google/gemma-4-12b", "lmstudio") == "mid_local"
+    assert classify_model_tier("Qwen3.5-0.8B-4bit", "mlx") == "edge_tiny_4bit"
+    assert classify_model_tier("gemma-4-e2b-it-qat", "lmstudio") == "edge_tiny_4bit"
+    assert classify_model_tier("qwen-3.8-27b-smoll", "lmstudio") == "ultra_low_bit"
+    assert classify_model_tier("qwen-3.8-27b-intermediate@q2_k_xl", "lmstudio") == "ultra_low_bit"
+    assert classify_model_tier("claude-sonnet-4-6", "anthropic") == "cloud_frontier"
+
+    gate = ValueOfThinkingGate()
+    easy_feat = VoTFeatures.from_probabilities([0.95, 0.02, 0.02, 0.01], domain="general", head_consensus_ratio=1.0)
+    hard_feat = VoTFeatures.from_probabilities([0.34, 0.33, 0.20, 0.13], domain="math", head_consensus_ratio=0.4)
+    safe_feat = VoTFeatures.from_probabilities([0.98, 0.01, 0.01, 0.00], domain="safety", has_hard_trigger=True)
+
+    # Flagship local (27B splash): ALWAYS ON even on easy prompts
+    d_27b = gate.decide_for_model(easy_feat, "qwen3.8-27b-splash", "lmstudio")
+    assert d_27b.model_tier == "flagship_local"
+    assert d_27b.recommended_thinking == "on"
+
+    # Mid local (9B): calibrated lam=0.70 -> OFF on easy, ON on hard & safety
+    d_9b_easy = gate.decide_for_model(easy_feat, "qwen3.5-9b", "lmstudio")
+    d_9b_hard = gate.decide_for_model(hard_feat, "qwen3.5-9b", "lmstudio")
+    d_9b_safe = gate.decide_for_model(safe_feat, "qwen3.5-9b", "lmstudio")
+    assert d_9b_easy.model_tier == "mid_local"
+    assert d_9b_easy.lambda_cost == MID_LOCAL_DEFAULT_LAMBDA
+    assert d_9b_easy.recommended_thinking == "off"
+    assert d_9b_hard.recommended_thinking == "on"
+    assert d_9b_safe.recommended_thinking == "on"
+    assert d_9b_safe.hard_trigger_override is True
+
+    # Edge tiny <=4.5B 4-bit: OFF under greedy, escalates only with Tree-Ising + rep penalty
+    d_08b_default = gate.decide_for_model(hard_feat, "Qwen3.5-0.8B-4bit", "mlx")
+    d_08b_ti = gate.decide_for_model(
+        hard_feat, "Qwen3.5-0.8B-4bit", "mlx", has_tree_ising=True, has_repetition_penalty=True
+    )
+    assert d_08b_default.recommended_thinking == "off"
+    assert d_08b_ti.recommended_thinking == "on"
+
+    # Ultra low bit (2-bit / 3-bit): hard-kill <think> even on safety, while keeping escalate=True
+    d_2bit_safe = gate.decide_for_model(safe_feat, "qwen-3.8-27b-smoll", "lmstudio")
+    assert d_2bit_safe.model_tier == "ultra_low_bit"
+    assert d_2bit_safe.recommended_thinking == "off"
+    assert d_2bit_safe.escalate is True
+    assert d_2bit_safe.hard_trigger_override is True
+
+
+def test_v1_route_respects_optional_model_id_tier():
+    """POST /v1/route emits model_tier and applies Regime 2 v2 policy when model_id is passed."""
+    from fastapi.testclient import TestClient
+    from sys2.server import create_app
+
+    class _StubRouter:
+        def route(self, prompt: str, fallback_track: str = "general"):
+            from routing.domain_router import RouteDecision
+
+            return RouteDecision(
+                selected_track="general",
+                confidence=0.96,
+                probabilities={"general": 0.96, "math": 0.04},
+                method="centroid",
+                latency_ms=0.2,
+            )
+
+    app = create_app(router=_StubRouter(), vot_gate=ValueOfThinkingGate())
+    client = TestClient(app)
+
+    r_splash = client.post("/v1/route", json={"prompt": "hi", "model_id": "qwen3.8-27b-splash", "provider": "lmstudio"})
+    assert r_splash.status_code == 200
+    assert r_splash.json()["model_tier"] == "flagship_local"
+    assert r_splash.json()["recommended_thinking"] == "on"
+
+    r_smoll = client.post("/v1/route", json={"prompt": "hi", "model_id": "qwen-3.8-27b-smoll", "provider": "lmstudio"})
+    assert r_smoll.status_code == 200
+    assert r_smoll.json()["model_tier"] == "ultra_low_bit"
+    assert r_smoll.json()["recommended_thinking"] == "off"
+
+
+def test_compress_lora_r8_bf16_svd_roundtrip():
+    """compress_checkpoint_dict shrinks r=32 BF16 LoRA to r=8/alpha=8 with exact shape & finiteness."""
+    import torch
+    from scripts.compress_lora_r8 import compress_checkpoint_dict
+
+    torch.manual_seed(0)
+    # Build synthetic rank-3 low-rank matrix embedded inside r=32 LoRA factors.
+    u = torch.randn(64, 3)
+    v = torch.randn(3, 32)
+    true_dw = (u @ v).to(torch.bfloat16)
+    a_full = torch.zeros(32, 32, dtype=torch.bfloat16)
+    b_full = torch.zeros(64, 32, dtype=torch.bfloat16)
+    a_full[:3, :] = v.to(torch.bfloat16)
+    b_full[:, :3] = u.to(torch.bfloat16)
+
+    fake_ckpt = {
+        "lora": {"layers.20.attn.Wo.lora_A": a_full, "layers.20.attn.Wo.lora_B": b_full},
+        "lora_config": {"r": 32, "alpha": 32, "num_layers": 8},
+    }
+    compressed, stats = compress_checkpoint_dict(fake_ckpt, target_rank=8)
+    assert stats["skipped"] is False
+    assert stats["compression_ratio"] == 4.0
+    assert stats["spectral_energy_retained_pct"] >= 99.9
+    assert compressed["lora_config"]["r"] == 8
+    assert compressed["lora_config"]["alpha"] == 8
+    a8 = compressed["lora"]["layers.20.attn.Wo.lora_A"]
+    b8 = compressed["lora"]["layers.20.attn.Wo.lora_B"]
+    assert a8.shape == (8, 32) and b8.shape == (64, 8)
+    rec = b8.float() @ a8.float()
+    assert torch.allclose(rec, true_dw.float(), atol=5e-2, rtol=5e-2)

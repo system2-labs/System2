@@ -223,12 +223,12 @@ def load_system2(
         import bert as bert_mod
         bert_name = state.get("bert_model", "answerdotai/ModernBERT-large")
         tok, target_bert = get_bert(bert_name)
-        lora_cfg = state.get("lora_config", {"r": 32, "alpha": 32, "num_layers": 8})
+        lora_cfg = state.get("lora_config", {"r": 8, "alpha": 8, "num_layers": 8})
         train_norms = lora_cfg.get("train_norms", False) or ("lora_norms" in state)
         apply_lora(
             target_bert,
-            r=lora_cfg.get("r", 32),
-            alpha=lora_cfg.get("alpha", 32),
+            r=lora_cfg.get("r", 8),
+            alpha=lora_cfg.get("alpha", 8),
             num_layers=lora_cfg.get("num_layers", 8),
             train_norms=train_norms,
         )

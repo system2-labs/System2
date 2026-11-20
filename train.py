@@ -40,8 +40,11 @@ HYPERPARAMS = {
     "lr_soft_centroid": 1e-3,
     "lr_judger": 0.0003,
     "use_lora": True,
-    "lora_r": 32,
-    "lora_alpha": 32,
+    # Empirically validated default (LORA_ASYM_SPANS_AND_R8_TRUNCATION_EVAL.md):
+    # r=8/alpha=8 cuts adapter size 4.0x (3.00 -> 0.75 MiB) with -0.23pp mean delta
+    # across 1,300 held-out items and 0.0% flips on 8/13 adapters + system2_safety.
+    "lora_r": 8,
+    "lora_alpha": 8,
     "lora_layers": 8,  # adapt top 8 layers of ModernBERT via LoRA
     "lr_lora": 0.0002,
     "batch_size": 16,
@@ -159,9 +162,27 @@ def main():
     ap.add_argument("--resume", action="store_true", help="Resume from most recent intermediate epoch checkpoint")
     ap.add_argument("--device", default=None, help="Device to train on (mps, cpu, cuda)")
     ap.add_argument("--lora", action=argparse.BooleanOptionalAction, default=True, help="Enable/disable LoRA encoder adaptation")
+    ap.add_argument("--lora-r", type=int, default=None, help="Override LoRA rank r (default: HYPERPARAMS['lora_r']=8)")
+    ap.add_argument("--lora-alpha", type=int, default=None, help="Override LoRA alpha (default: HYPERPARAMS['lora_alpha']=8)")
+    ap.add_argument("--lr-lora", type=float, default=None, help="Override LoRA learning rate")
+    ap.add_argument("--lora-dropout", type=float, default=None, help="Override LoRA dropout probability")
+    ap.add_argument("--weight-decay", type=float, default=None, help="Override AdamW weight decay")
+    ap.add_argument("--seed", type=int, default=None, help="Override deterministic training seed")
     args = ap.parse_args()
     if not args.lora:
         HYPERPARAMS["use_lora"] = False
+    if args.lora_r is not None:
+        HYPERPARAMS["lora_r"] = args.lora_r
+    if args.lora_alpha is not None:
+        HYPERPARAMS["lora_alpha"] = args.lora_alpha
+    if args.lr_lora is not None:
+        HYPERPARAMS["lr_lora"] = args.lr_lora
+    if args.lora_dropout is not None:
+        HYPERPARAMS["lora_dropout"] = args.lora_dropout
+    if args.weight_decay is not None:
+        HYPERPARAMS["weight_decay"] = args.weight_decay
+    if args.seed is not None:
+        HYPERPARAMS["seed"] = args.seed
     if args.device is not None:
         HYPERPARAMS["device"] = args.device
     if args.train_size is not None:
@@ -640,7 +661,7 @@ def main():
         "span_pooling": False,
         "span_weight": HYPERPARAMS.get("span_weight", 0.5),
         "span_mode": HYPERPARAMS.get("span_mode", "mean"),
-        "lora_dropout": 0.0,
+        "lora_dropout": HYPERPARAMS.get("lora_dropout", 0.0),
         "head_dropout": 0.0,
         "head_label_smoothing": HYPERPARAMS.get("head_label_smoothing", 0.08),
         "margin_gamma": HYPERPARAMS.get("margin_gamma", 0.2),
@@ -684,8 +705,8 @@ def main():
     if use_lora:
         save_dict["lora"] = {k: v.cpu() for k, v in model.state_dict().items() if "lora_" in k}
         save_dict["lora_config"] = {
-            "r": HYPERPARAMS.get("lora_r", 32),
-            "alpha": HYPERPARAMS.get("lora_alpha", 32),
+            "r": HYPERPARAMS.get("lora_r", 8),
+            "alpha": HYPERPARAMS.get("lora_alpha", 8),
             "num_layers": HYPERPARAMS.get("lora_layers", 8),
             "train_norms": train_norms,
         }

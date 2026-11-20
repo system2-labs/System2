@@ -303,6 +303,72 @@ class VoTDecision:
     recommended_thinking: Literal["off", "on"]
     reason: str
     hard_trigger_override: bool
+    model_tier: Optional[str] = None
+
+
+# -----------------------------------------------------------------------------
+# Regime 2 v2 Model-Tier `<think>` Policy (Empirical M4 Max Calibration)
+# -----------------------------------------------------------------------------
+
+ModelThinkingTier = Literal[
+    "ultra_low_bit",
+    "edge_tiny_4bit",
+    "mid_local",
+    "flagship_local",
+    "cloud_frontier",
+]
+
+# Empirically calibrated on qwen3.5-9b Q4_K_S (REGIME2_V2_4096_AND_TREEISING_EVAL.md):
+# lambda=0.70 escalates ~45% hard turns to `<think>`, reaching 87.5% accuracy
+# (+7.5pp over always-ON 80.0%, +5.0pp over always-OFF 82.5%, -41.5% ms/solved vs ON).
+MID_LOCAL_DEFAULT_LAMBDA: float = 0.70
+
+_ULTRA_LOW_BIT_RE = re.compile(
+    r"(?:iq[123](?:_[a-z0-9]+)?|q2_k(?:_[a-z0-9]+)?|q3_k(?:_[a-z0-9]+)?|[23]-?bit|smoll)",
+    re.IGNORECASE,
+)
+_LOCAL_MODEL_HINT_RE = re.compile(
+    r"(?:gguf|mlx|yuzu|splash|heretic|abliter|q[4568]_[0k]|4-?bit|8-?bit|mxfp8|ud-)",
+    re.IGNORECASE,
+)
+_LOCAL_PROVIDERS = frozenset({"lmstudio", "mlx", "ollama", "local", "vllm-local"})
+_PARAM_SIZE_RE = re.compile(r"(?:^|[-_/@\s:])e?(\d+(?:\.\d+)?)b(?=$|[-_/@\s:.])", re.IGNORECASE)
+
+
+def classify_model_tier(model_id: str, provider: str = "") -> ModelThinkingTier:
+    """Classify a target model into its Regime 2 v2 empirical `<think>` tier.
+
+    Grounded in M4 Max empirical sweeps (`REGIME2_V2_THINK_AND_LORA_AUDIT.md`,
+    `REGIME2_V2_4096_AND_TREEISING_EVAL.md`):
+    - `ultra_low_bit`: 2-bit / 3-bit quantized weights (`iq1`, `iq2`, `q2_k`, `iq3`, `smoll`).
+      Hard-kill `<think>` (representational collapse: 0%-2.5% acc, negative SQNR).
+    - `edge_tiny_4bit`: <=4.5B local 4-bit weights (e.g. `qwen3.5-0.8b`, `gemma-4-e2b`).
+      `<think>` OFF by default under greedy (75%-97.5% degenerate 8-gram loops).
+    - `mid_local`: 7B-14B local 4-bit weights (e.g. `qwen3.5-9b`, `gemma-4-12b`).
+      Zero degenerate loops (`dup8=0%`) but verbose over-thinking; use HDM VoT Gate (`lam=0.70`).
+    - `flagship_local`: >=24B local 4-bit / speculative weights (e.g. `qwen3.8-27b-splash`).
+      `<think>` ALWAYS ON (97.5% GSM8K, 100% stress-10, +12.5pp and -21.2% ms/solved vs OFF).
+    - `cloud_frontier`: Cloud / unquantized frontier models -> standard HDM VoT Gate.
+    """
+    mid = (model_id or "").strip().lower()
+    prov = (provider or "").strip().lower()
+
+    if _ULTRA_LOW_BIT_RE.search(mid):
+        return "ultra_low_bit"
+
+    is_local = (prov in _LOCAL_PROVIDERS) or bool(_LOCAL_MODEL_HINT_RE.search(mid))
+    if not is_local:
+        return "cloud_frontier"
+
+    # Extract parameter scale in billions (e.g. "27b" -> 27.0, "0.8b" -> 0.8, "e2b" -> 2.0).
+    sizes = [float(m.group(1)) for m in _PARAM_SIZE_RE.finditer(mid)]
+    max_b = max(sizes) if sizes else None
+
+    if (max_b is not None and max_b >= 24.0) or "splash" in mid or "agentworld" in mid:
+        return "flagship_local"
+    if max_b is not None and max_b <= 4.5:
+        return "edge_tiny_4bit"
+    return "mid_local"
 
 
 @dataclass(frozen=True)
@@ -441,6 +507,113 @@ class ValueOfThinkingGate:
 
     # Alias matching scorecard naming (`VoTGate.predict()`).
     predict = decide
+
+    def decide_for_model(
+        self,
+        features: VoTFeatures,
+        model_id: str,
+        provider: str = "",
+        lambda_cost: Optional[float] = None,
+        has_tree_ising: bool = False,
+        has_repetition_penalty: bool = False,
+    ) -> VoTDecision:
+        """Apply Regime 2 v2 tier-aware `<think>` policy around the calibrated VoT gate.
+
+        Combines the model's empirical quantization/scale tier with Gate 1 fail-closed
+        safety invariants:
+        - `ultra_low_bit`: hard-kill internal `<think>` (`"off"`) to prevent 2-bit/3-bit
+          representational collapse, while preserving `escalate=True` on Gate 1 hard
+          triggers so external System 2 symbolic verification still runs.
+        - `flagship_local` (e.g. `qwen3.8-27b-splash`): `<think>` ALWAYS `"on"` (strictly
+          Pareto-dominant on both accuracy +12.5pp and latency -21.2% ms/solved).
+        - `edge_tiny_4bit` (<=4.5B local): `<think>` `"off"` by default unless BOTH
+          Tree-Ising loop excision and sampling repetition/presence penalty are active.
+        - `mid_local` (7B-14B local, e.g. `qwen3.5-9b`): HDM VoT Gate with calibrated
+          `MID_LOCAL_DEFAULT_LAMBDA = 0.70` (unless caller overrides `lambda_cost`).
+        - `cloud_frontier`: standard HDM VoT Gate (`default_lambda_cost`).
+        """
+        tier = classify_model_tier(model_id, provider=provider)
+        is_hard = bool(features.has_hard_trigger or (features.domain or "").strip().lower() == "safety")
+
+        if tier == "ultra_low_bit":
+            eff_lam = self.default_lambda_cost if lambda_cost is None else float(lambda_cost)
+            return VoTDecision(
+                escalate=is_hard,
+                expected_utility_gain=1.0 if is_hard else self.predict_utility_gain(features),
+                lambda_cost=eff_lam,
+                recommended_thinking="off",
+                reason=(
+                    "regime2_v2[ultra_low_bit]: hard-kill <think> on 2-bit/3-bit weights "
+                    "(external symbolic verification preserved on hard trigger)"
+                    if is_hard
+                    else "regime2_v2[ultra_low_bit]: hard-kill <think> on 2-bit/3-bit weights"
+                ),
+                hard_trigger_override=is_hard,
+                model_tier=tier,
+            )
+
+        if tier == "flagship_local":
+            eff_lam = self.default_lambda_cost if lambda_cost is None else float(lambda_cost)
+            delta_u = 1.0 if is_hard else self.predict_utility_gain(features)
+            return VoTDecision(
+                escalate=True,
+                expected_utility_gain=delta_u,
+                lambda_cost=eff_lam,
+                recommended_thinking="on",
+                reason="regime2_v2[flagship_local]: <think> always on (Pareto-dominant accuracy & ms/solved)",
+                hard_trigger_override=is_hard,
+                model_tier=tier,
+            )
+
+        if tier == "edge_tiny_4bit":
+            eff_lam = self.default_lambda_cost if lambda_cost is None else float(lambda_cost)
+            if has_tree_ising and has_repetition_penalty:
+                base = self.decide(features, lambda_cost=eff_lam)
+                return VoTDecision(
+                    escalate=base.escalate,
+                    expected_utility_gain=base.expected_utility_gain,
+                    lambda_cost=base.lambda_cost,
+                    recommended_thinking=base.recommended_thinking,
+                    reason=f"regime2_v2[edge_tiny_4bit+tree_ising]: {base.reason}",
+                    hard_trigger_override=base.hard_trigger_override,
+                    model_tier=tier,
+                )
+            return VoTDecision(
+                escalate=is_hard,
+                expected_utility_gain=1.0 if is_hard else self.predict_utility_gain(features),
+                lambda_cost=eff_lam,
+                recommended_thinking="off",
+                reason=(
+                    "regime2_v2[edge_tiny_4bit]: <think> disabled under greedy 4-bit edge weights "
+                    "(requires Tree-Ising + repetition penalty to enable)"
+                ),
+                hard_trigger_override=is_hard,
+                model_tier=tier,
+            )
+
+        if tier == "mid_local":
+            eff_lam = MID_LOCAL_DEFAULT_LAMBDA if lambda_cost is None else float(lambda_cost)
+            base = self.decide(features, lambda_cost=eff_lam)
+            return VoTDecision(
+                escalate=base.escalate,
+                expected_utility_gain=base.expected_utility_gain,
+                lambda_cost=base.lambda_cost,
+                recommended_thinking=base.recommended_thinking,
+                reason=f"regime2_v2[mid_local]: {base.reason}",
+                hard_trigger_override=base.hard_trigger_override,
+                model_tier=tier,
+            )
+
+        base = self.decide(features, lambda_cost=lambda_cost)
+        return VoTDecision(
+            escalate=base.escalate,
+            expected_utility_gain=base.expected_utility_gain,
+            lambda_cost=base.lambda_cost,
+            recommended_thinking=base.recommended_thinking,
+            reason=f"regime2_v2[cloud_frontier]: {base.reason}",
+            hard_trigger_override=base.hard_trigger_override,
+            model_tier=tier,
+        )
 
     def fit(
         self,
@@ -914,12 +1087,15 @@ def extract_decision_points_from_paths(paths: Iterable[Union[str, Path]]) -> Dic
 
 __all__ = [
     "DOMAIN_RISK_PRIORS",
+    "MID_LOCAL_DEFAULT_LAMBDA",
+    "ModelThinkingTier",
     "SkillDecisionPoint",
     "ValueOfThinkingGate",
     "VoTDecision",
     "VoTEpisode",
     "VoTFeatures",
     "VoTGate",
+    "classify_model_tier",
     "detect_prompt_hard_triggers",
     "domain_risk_prior",
     "extract_decision_points_from_paths",

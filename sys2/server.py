@@ -79,6 +79,14 @@ class RouteRequest(BaseModel):
         ge=0.0,
         description="Optional cost-of-thinking price lambda for Value-of-Thinking gate",
     )
+    model_id: Optional[str] = Field(
+        default=None,
+        description="Optional target model identifier for Regime 2 v2 tier-aware thinking policy",
+    )
+    provider: Optional[str] = Field(
+        default=None,
+        description="Optional target model provider (e.g. lmstudio, mlx, anthropic)",
+    )
 
 
 class RouteResponse(BaseModel):
@@ -100,6 +108,7 @@ class V1RouteResponse(BaseModel):
     latency_ms: float
     recommended_thinking: Optional[Literal["off", "on"]] = None
     expected_utility_gain: Optional[float] = None
+    model_tier: Optional[str] = None
 
 
 class VerifyRequest(BaseModel):
@@ -426,12 +435,22 @@ def create_app(
         track_name = DomainRouter.TRACK_NAMES.get(decision.selected_track, decision.selected_track.upper())
 
         # Cost-aware Value-of-Thinking gate (pure NumPy, <0.2ms, zero backbone load).
-        # Safety track is unconditionally fail-closed: recommended_thinking="on".
+        # When `model_id` is supplied, apply Regime 2 v2 tier-aware policy; otherwise
+        # preserve legacy fail-closed behavior (`safety` -> recommended_thinking="on").
         vot_features = VoTFeatures.from_route_decision(decision, prompt=req.prompt)
-        vot_decision = state["vot_gate"].decide(vot_features, lambda_cost=req.lambda_cost)
-        rec_thinking: Literal["off", "on"] = (
-            "on" if decision.selected_track == "safety" else vot_decision.recommended_thinking
-        )
+        if req.model_id:
+            vot_decision = state["vot_gate"].decide_for_model(
+                vot_features,
+                model_id=req.model_id,
+                provider=req.provider or "",
+                lambda_cost=req.lambda_cost,
+            )
+            rec_thinking = vot_decision.recommended_thinking
+            model_tier = vot_decision.model_tier
+        else:
+            vot_decision = state["vot_gate"].decide(vot_features, lambda_cost=req.lambda_cost)
+            rec_thinking = "on" if decision.selected_track == "safety" else vot_decision.recommended_thinking
+            model_tier = None
         exp_gain = 1.0 if decision.selected_track == "safety" else round(vot_decision.expected_utility_gain, 4)
 
         return V1RouteResponse(
@@ -444,6 +463,7 @@ def create_app(
             latency_ms=round(decision.latency_ms, 3),
             recommended_thinking=rec_thinking,
             expected_utility_gain=exp_gain,
+            model_tier=model_tier,
         )
 
     @app.post("/guard", response_model=GuardResponse)
